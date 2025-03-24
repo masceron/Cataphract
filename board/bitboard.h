@@ -5,17 +5,24 @@
 #include <sstream>
 #include "bitboard.h"
 
-enum side
+
+constexpr uint64_t not_a_file = 0xFEFEFEFEFEFEFEFE;
+constexpr uint64_t not_h_file = 0x7F7F7F7F7F7F7F7F;
+constexpr uint64_t not_ab_file = 0xFCFCFCFCFCFCFCFC;
+constexpr uint64_t not_gh_file = 0x3F3F3F3F3F3F3F3F;
+
+
+enum side: uint8_t
 {
     white, black, both
 };
 
-enum castling_rights
+enum castling_rights: uint8_t
 {
     white_king = 1,white_queen = 2, black_king = 4, black_queen = 8
   };
 
-enum pieces {P, N, B, R, Q, K, p, n, b, r, q, k};
+enum pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k};
 
 inline bool get_bit(const uint64_t& bitboard, const uint8_t& index)
 {
@@ -32,14 +39,9 @@ inline uint64_t clear_bit(const uint64_t& bitboard, const uint8_t& index)
     return bitboard & ~(1 << index);
 }
 
-inline uint8_t count_set_bit(const uint64_t& bitboard)
+inline uint8_t least_significant_one(const uint64_t& bitboard)
 {
-    return std::popcount(bitboard);
-}
-
-inline uint64_t least_significant_one(const uint64_t& bitboard)
-{
-    return count_set_bit((bitboard & ~bitboard) - 1);
+    return std::popcount((bitboard & -bitboard) - 1);
 }
 
 inline void print_board(const uint64_t& bitboard)

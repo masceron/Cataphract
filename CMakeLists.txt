@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30)
 project(CSEngine)
-include_directories(./board, ./board/pieces)
+include_directories(./board, ./board/pieces, ./position)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -18,4 +18,7 @@ add_executable(CSEngine main.cpp
         board/pieces/rook.h
         board/pieces/slider.h
         board/pieces/slider.cpp
+        position/game.h
+        position/fen.cpp
+        position/fen.h
 )

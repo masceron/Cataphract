@@ -47,13 +47,14 @@ inline uint8_t least_significant_one(const uint64_t& bitboard)
 inline void print_board(const uint64_t& bitboard)
 {
     std::stringstream board;
-    board << "   a  b  c  d  e  f  g  h\n";
+    board << "   a b c d e f g h\n";
     for (int rank = 0; rank < 8; rank++) {
         board << (8-rank) << "  ";
         for (int file = 0; file < 8; file++) {
-            board << ((bitboard >> rank * 8 + file) & 1) << "  ";
+            board << ((bitboard >> rank * 8 + file) & 1) << " ";
         }
         board << "\n";
     }
+    board << "\n";
     std::cout << board.str();
 }

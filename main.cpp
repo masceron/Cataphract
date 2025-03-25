@@ -1,7 +1,12 @@
-#include "knight.h"
+#include "slider.h"
 #include "board/bitboard.h"
 
 int main()
 {
-    print_board(knight_attack_tables[27]);
+    uint64_t occ = 282643207815424;
+    print_board(get_queen_attack(32, occ));
+
+
+
+    std::cin.get();
 }

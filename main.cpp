@@ -1,12 +1,10 @@
-#include "slider.h"
+#include "fen.h"
+#include "board/pieces/slider.h"
 #include "board/bitboard.h"
 
 int main()
 {
-    uint64_t occ = 282643207815424;
-    print_board(get_queen_attack(32, occ));
-
-
+    std::cout << fen_parse("startpos") << "\n";
 
     std::cin.get();
 }

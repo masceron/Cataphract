@@ -26,22 +26,22 @@ enum pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k};
 
 inline bool get_bit(const uint64_t& bitboard, const uint8_t& index)
 {
-    return (bitboard >> index) & 1;
+    return (bitboard >> index) & 1ull;
 }
 
-inline uint64_t set_bit(const uint64_t& bitboard, const uint8_t& index)
+inline void set_bit(uint64_t& bitboard, const uint8_t& index)
 {
-    return bitboard | (1 << index);
+    bitboard =  bitboard | (1ull << index);
 }
 
-inline uint64_t clear_bit(const uint64_t& bitboard, const uint8_t& index)
+inline void clear_bit(uint64_t& bitboard, const uint8_t& index)
 {
-    return bitboard & ~(1 << index);
+    bitboard = bitboard & ~(1ull << index);
 }
 
 inline uint8_t least_significant_one(const uint64_t& bitboard)
 {
-    return std::popcount((bitboard & -bitboard) - 1);
+    return std::popcount((bitboard & -bitboard) - 1ull);
 }
 
 inline void print_board(const uint64_t& bitboard)

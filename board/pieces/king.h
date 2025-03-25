@@ -3,7 +3,7 @@
 #include <array>
 #include "../bitboard.h"
 
-constexpr uint64_t mask_king_attack(const uint8_t& index) {
+consteval uint64_t mask_king_attack(const uint8_t& index) {
     uint64_t attack_board = 0;
     const uint64_t piece_board = (attack_board + 1) << index;
     attack_board |= (piece_board >> 7) & 0x1ffffffffffffff & not_a_file;
@@ -17,7 +17,7 @@ constexpr uint64_t mask_king_attack(const uint8_t& index) {
     return attack_board;
 }
 
-constexpr std::array<uint64_t, 64> generate_king_attack_tables()
+consteval std::array<uint64_t, 64> generate_king_attack_tables()
 {
     std::array<uint64_t, 64> king_tables{};
     for (uint8_t i = 0; i < 64; i ++) {
@@ -26,4 +26,4 @@ constexpr std::array<uint64_t, 64> generate_king_attack_tables()
     return king_tables;
 }
 
-constexpr std::array<uint64_t, 64> king_attack_tables = generate_king_attack_tables();
+consteval std::array<uint64_t, 64> king_attack_tables = generate_king_attack_tables();

@@ -3,7 +3,7 @@
 #include <array>
 #include "../bitboard.h"
 
-consteval uint64_t mask_knight_attack(const uint8_t& index) {
+consteval uint64_t mask_knight_attack(const uint8_t index) {
     uint64_t attack_board = 0;
     const uint64_t piece_board = (attack_board + 1) << index;
     attack_board |= (piece_board >> 17) & 0x7fffffffffff & not_h_file;
@@ -26,4 +26,4 @@ consteval std::array<uint64_t, 64> generate_knight_attack_tables()
     return knight_tables;
 }
 
-consteval std::array<uint64_t, 64> knight_attack_tables = generate_knight_attack_tables();
+constexpr std::array<uint64_t, 64> knight_attack_tables = generate_knight_attack_tables();

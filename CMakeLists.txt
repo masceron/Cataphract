@@ -21,4 +21,7 @@ add_executable(CSEngine main.cpp
         position/game.h
         position/fen.cpp
         position/fen.h
+        position/position.h
+        board/lines.h
+        board/lines.cpp
 )

@@ -13,7 +13,7 @@ constexpr std::array<uint8_t, 64> bishop_relevancy = {
     6, 5, 5, 5, 5, 5, 5, 6
 };
 
-inline uint64_t mask_bishop_attack(const int& index)
+inline uint64_t mask_bishop_attack(const int index)
 {
     uint64_t attack_board = 0;
     constexpr uint64_t one = 1;
@@ -32,7 +32,7 @@ inline uint64_t mask_bishop_attack(const int& index)
     return attack_board;
 }
 
-inline uint64_t generate_bishop_attack(const int& index, const uint64_t& block_table)
+inline uint64_t generate_bishop_attack(const int index, const uint64_t block_table)
 {
     uint64_t attack_board = 0;
     constexpr uint64_t one = 1;

@@ -57,7 +57,7 @@ inline void print_board(const uint64_t bitboard)
     for (int rank = 0; rank < 8; rank++) {
         board << (8-rank) << "  ";
         for (int file = 0; file < 8; file++) {
-            board << ((bitboard >> rank * 8 + file) & 1) << " ";
+            board << ((bitboard >> (rank * 8 + file)) & 1) << " ";
         }
         board << "\n";
     }

@@ -30,7 +30,7 @@ inline uint64_t generate_random_number()
     std::random_device random;
     std::mt19937_64 generator(random());
     std::uniform_int_distribution<uint64_t> distribution;
-    return distribution(generator) & 0xFFFF | ((distribution(generator) & 0xFFFF) << 16) | ((distribution(generator) & 0xFFFF) << 32) | ((distribution(generator) & 0xFFFF) << 48);
+    return (distribution(generator) & 0xFFFF) | ((distribution(generator) & 0xFFFF) << 16) | ((distribution(generator) & 0xFFFF) << 32) | ((distribution(generator) & 0xFFFF) << 48);
 }
 
 inline uint64_t random_uint64_few_bits()

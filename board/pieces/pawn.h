@@ -3,7 +3,7 @@
 #include "../bitboard.h"
 #include <array>
 
-constexpr uint64_t mask_pawn_attack(const uint8_t& side, const uint8_t& index)
+constexpr uint64_t mask_pawn_attack(const uint8_t side, const uint8_t index)
 {
     uint64_t attack_board = 0;
     const uint64_t piece_board = (attack_board + 1) << index;

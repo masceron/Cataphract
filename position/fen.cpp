@@ -1,5 +1,7 @@
 #include <string>
 #include "game.h"
+#include "position.h"
+
 int algebraic_to_num(const std::string &algebraic)
 {
     if (algebraic.length() != 2) return -1;
@@ -157,6 +159,7 @@ int fen_parse(std::string fen)
         break;
         case 'b':
             side_to_move = black;
+        break;
         default:
             new_game();
             return -1;
@@ -196,7 +199,7 @@ int fen_parse(std::string fen)
             break;
             case ' ':
                 counter = 4;
-                break;
+            break;
             default:
                 new_game();
                 return -1;
@@ -241,5 +244,10 @@ int fen_parse(std::string fen)
         new_game();
         return -1;
     }
+    occupations[white] = boards[P] | boards[K] | boards[N] | boards[Q] | boards[B] | boards[R];
+    occupations[black] = boards[p] | boards[k] | boards[n] | boards[q] | boards[b] | boards[r];
+    occupations[both] = occupations[white] | occupations[black];
+    pinned[white] = get_pinned_board_of(white);
+    pinned[black] = get_pinned_board_of(black);
     return 0;
 }

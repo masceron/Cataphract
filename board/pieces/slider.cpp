@@ -14,7 +14,7 @@ constexpr uint64_t occupancy_board(const uint8_t set_index, const uint8_t mask_b
     return occupancy;
 }
 
-uint64_t get_bishop_attack(const uint8_t& index, uint64_t& occupancy)
+uint64_t get_bishop_attack(const uint8_t index, uint64_t occupancy)
 {
     const uint64_t* table = bishop_magics[index].attacks;
     occupancy &= bishop_magics[index].mask;
@@ -23,7 +23,7 @@ uint64_t get_bishop_attack(const uint8_t& index, uint64_t& occupancy)
     return table[occupancy];
 }
 
-uint64_t get_bishop_attack_index(const uint8_t& index, uint64_t& occupancy)
+uint64_t get_bishop_attack_index(const uint8_t index, uint64_t occupancy)
 {
     occupancy &= bishop_magics[index].mask;
     occupancy *= bishop_magics[index].magic;
@@ -76,7 +76,7 @@ std::array<Magic, 64> generate_magics(const bool is_bishop)
     return magics;
 }
 
-uint64_t get_rook_attack(const uint8_t& index, uint64_t& occupancy)
+uint64_t get_rook_attack(const uint8_t index, uint64_t occupancy)
 {
     const uint64_t* table = rook_magics[index].attacks;
     occupancy &= rook_magics[index].mask;
@@ -85,7 +85,7 @@ uint64_t get_rook_attack(const uint8_t& index, uint64_t& occupancy)
     return table[occupancy];
 }
 
-uint64_t get_rook_attack_index(const uint8_t& index, uint64_t& occupancy)
+uint64_t get_rook_attack_index(const uint8_t index, uint64_t occupancy)
 {
     occupancy &= rook_magics[index].mask;
     occupancy *= rook_magics[index].magic;
@@ -93,7 +93,7 @@ uint64_t get_rook_attack_index(const uint8_t& index, uint64_t& occupancy)
     return occupancy;
 }
 
-uint64_t get_queen_attack(const uint8_t& index, uint64_t& occupancy)
+uint64_t get_queen_attack(const uint8_t index, uint64_t occupancy)
 {
     auto temp = occupancy;
     const uint64_t* b_table = rook_magics[index].attacks;

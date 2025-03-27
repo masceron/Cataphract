@@ -248,5 +248,6 @@ int fen_parse(std::string fen)
     position.occupations[both] = position.occupations[white] | position.occupations[black];
     position.pinned[white] = get_pinned_board_of(white);
     position.pinned[black] = get_pinned_board_of(black);
+    position.checker[position.side_to_move] = get_checker_of(position.side_to_move);
     return 0;
 }

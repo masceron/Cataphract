@@ -24,4 +24,5 @@ add_executable(CSEngine main.cpp
         position/position.h
         board/lines.h
         board/lines.cpp
+        position/move.h
 )

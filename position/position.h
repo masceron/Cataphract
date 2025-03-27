@@ -21,6 +21,7 @@ public:
     uint64_t boards[12]{};
     uint64_t occupations[3]{};
     uint64_t pinned[2]{};
+    uint64_t checker[2]{};
     side side_to_move{};
     uint16_t half_moves{};
     uint16_t full_moves{};
@@ -36,6 +37,7 @@ public:
         std::fill_n(boards, 12, 0);
         std::fill_n(occupations, 3, 0);
         std::fill_n(pinned, 2, 0);
+        std::fill_n(checker, 2, 0);
         side_to_move = white;
         state->en_passant_square = -1;
         state->castling_rights = 0;
@@ -92,4 +94,14 @@ inline uint64_t get_pinned_board_of(const side side)
     }
 
     return pinned_board;
+}
+
+inline uint64_t get_checker_of(const side side)
+{
+    const uint8_t king_index = least_significant_one(side == white ? position.boards[K] : position.boards[k]);
+    const uint64_t checkers = (pawn_attack_tables[side][king_index] & (side == white ? position.boards[p] : position.boards[P]))
+        | (knight_attack_tables[king_index] & (side == white ? position.boards[n] : position.boards[N]))
+        | (get_bishop_attack(king_index, position.occupations[both]) & (side == white ? (position.boards[b] | position.boards[q]) : (position.boards[B] | position.boards[Q])))
+        | (get_rook_attack(king_index, position.occupations[both]) & (side == white ? (position.boards[r] | position.boards[q]) : (position.boards[R] | position.boards[Q])));
+    return checkers;
 }

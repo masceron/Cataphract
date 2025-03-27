@@ -25,6 +25,8 @@ enum castling_rights: uint8_t
 
 enum pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k};
 
+constexpr char piece_icons[]{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'};
+
 inline bool get_bit(const uint64_t bitboard, const uint8_t index)
 {
     return (bitboard >> index) & 1ull;
@@ -50,7 +52,7 @@ inline uint8_t least_significant_one(const uint64_t bitboard)
     return std::popcount((bitboard & -bitboard) - 1ull);
 }
 
-inline void print_board(const uint64_t bitboard)
+inline void print_bitboard(const uint64_t bitboard)
 {
     std::stringstream board;
     board << "   a b c d e f g h\n";

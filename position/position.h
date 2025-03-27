@@ -105,3 +105,27 @@ inline uint64_t get_checker_of(const side side)
         | (get_rook_attack(king_index, position.occupations[both]) & (side == white ? (position.boards[r] | position.boards[q]) : (position.boards[R] | position.boards[Q])));
     return checkers;
 }
+
+inline void print_board()
+{
+    std::string lines[8];
+    for (int rank = 0; rank < 8; rank++) {
+        lines[rank] += std::to_string(8-rank) + "  ";
+        for (int file = 0; file < 8; file++) {
+            lines[rank] += ". ";
+        }
+        lines[rank] += "\n";
+    }
+    for (int i = 0; i < 12; i++) {
+        uint64_t board = position.boards[i];
+        while (board) {
+            const auto pos = least_significant_one(board);
+            lines[pos / 8][3 + (pos % 8) * 2] = piece_icons[i];
+
+            board &= board - 1;
+        }
+    }
+
+    std::cout << "   a b c d e f g h\n";
+    for (const auto& i: lines) std::cout << i;
+}

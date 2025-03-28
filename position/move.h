@@ -23,7 +23,7 @@ class Move
 {
 public:
     uint16_t move;
-    Move(const uint16_t src, const uint16_t dest, const uint16_t flags)
+    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags)
     {
         move = src | (dest << 6) | (flags << 12);
     }

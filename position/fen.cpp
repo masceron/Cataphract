@@ -49,61 +49,73 @@ int fen_parse(std::string fen)
         switch (fen[cr_chars]) {
             case 'p':
                 set_bit(position.boards[p], cr_pts);
+                position.piece_on[cr_pts] = p;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'r':
                 set_bit(position.boards[r], cr_pts);
+                position.piece_on[cr_pts] = r;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'b':
                 set_bit(position.boards[b], cr_pts);
+                position.piece_on[cr_pts] = b;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'n':
                 set_bit(position.boards[n], cr_pts);
+                position.piece_on[cr_pts] = n;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'k':
                 set_bit(position.boards[k], cr_pts);
+                position.piece_on[cr_pts] = k;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'q':
                 set_bit(position.boards[q], cr_pts);
+                position.piece_on[cr_pts] = q;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'P':
                 set_bit(position.boards[P], cr_pts);
+                position.piece_on[cr_pts] = P;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'R':
                 set_bit(position.boards[R], cr_pts);
+                position.piece_on[cr_pts] = R;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'B':
                 set_bit(position.boards[B], cr_pts);
+                position.piece_on[cr_pts] = B;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'N':
                 set_bit(position.boards[N], cr_pts);
+                position.piece_on[cr_pts] = N;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'K':
                 set_bit(position.boards[K], cr_pts);
+                position.piece_on[cr_pts] = K;
                 cr_pts++;
                 cr_chars++;
             break;
             case 'Q':
                 set_bit(position.boards[Q], cr_pts);
+                position.piece_on[cr_pts] = Q;
                 cr_pts++;
                 cr_chars++;
             break;

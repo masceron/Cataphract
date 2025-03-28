@@ -21,9 +21,9 @@ enum side: uint8_t
 enum castling_rights: uint8_t
 {
     white_king = 1,white_queen = 2, black_king = 4, black_queen = 8
-  };
+};
 
-enum pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k};
+enum pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k, nil};
 
 constexpr char piece_icons[]{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'};
 

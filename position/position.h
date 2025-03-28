@@ -6,19 +6,26 @@
 #include "../board/pieces/pawn.h"
 #include "../board/pieces/slider.h"
 
+inline side color_of(const pieces piece)
+{
+    if (piece < 6) return white;
+    return black;
+}
+
 class State
 {
 public:
     uint8_t rule_50;
     uint8_t castling_rights;
-    uint64_t key;
     int en_passant_square;
+    pieces captured_piece;
 };
 
 class Position
 {
 public:
-    uint64_t boards[12]{};
+    pieces piece_on[64]{};
+    uint64_t boards[13]{};
     uint64_t occupations[3]{};
     uint64_t pinned[2]{};
     uint64_t checker[2]{};
@@ -34,6 +41,7 @@ public:
     void new_game()
     {
         state = new State;
+        std::fill_n(piece_on, 64, nil);
         std::fill_n(boards, 12, 0);
         std::fill_n(occupations, 3, 0);
         std::fill_n(pinned, 2, 0);
@@ -41,8 +49,39 @@ public:
         side_to_move = white;
         state->en_passant_square = -1;
         state->castling_rights = 0;
+        state->captured_piece = nil;
         half_moves = 0;
         full_moves = 1;
+    }
+
+    void move_piece(const uint8_t from, const uint8_t to)
+    {
+        const pieces piece = piece_on[from];
+        const uint64_t ft = (1ull << from) | (1ull << to);
+        boards[piece] ^= ft;
+        occupations[color_of(piece)] ^= ft;
+        occupations[both] ^= ft;
+        piece_on[to] = piece;
+        piece_on[from] = nil;
+    }
+
+    void put_piece(const pieces piece, const uint8_t sq)
+    {
+        piece_on[sq] = piece;
+        const uint64_t board = 1ull << sq;
+        occupations[color_of(piece)] |= board;
+        occupations[both] |= board;
+        boards[piece] |= board;
+    }
+
+    void remove_piece(const uint8_t sq)
+    {
+        const pieces piece = piece_on[sq];
+        const uint64_t board = 1ull << sq;
+        piece_on[sq] = nil;
+        occupations[color_of(piece)] ^= board;
+        occupations[both] ^= board;
+        boards[piece] ^= board;
     }
 };
 
@@ -128,4 +167,5 @@ inline void print_board()
 
     std::cout << "   a b c d e f g h\n";
     for (const auto& i: lines) std::cout << i;
+    std::cout << "\n";
 }

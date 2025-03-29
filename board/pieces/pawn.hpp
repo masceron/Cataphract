@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "../bitboard.h"
+#include "../bitboard.hpp"
 #include <array>
 
 constexpr uint64_t mask_pawn_attack(const uint8_t side, const uint8_t index)

@@ -1,7 +1,7 @@
 #pragma once
 #include <cstdint>
 #include <random>
-#include "rook.h"
+#include "rook.hpp"
 
 struct Magic
 {

@@ -1,5 +1,7 @@
-#include "fen.h"
-#include "position.h"
+#include <iostream>
+
+#include "fen.hpp"
+#include "position.hpp"
 
 
 int main()

@@ -2,11 +2,11 @@
 #include <cstdint>
 #include <deque>
 
-#include "../board/bitboard.h"
-#include "../board/pieces/king.h"
-#include "../board/pieces/knight.h"
-#include "../board/pieces/pawn.h"
-#include "../board/pieces/slider.h"
+#include "../board/bitboard.hpp"
+#include "../board/pieces/king.hpp"
+#include "../board/pieces/knight.hpp"
+#include "../board/pieces/pawn.hpp"
+#include "../board/pieces/slider.hpp"
 
 inline side color_of(const pieces piece)
 {

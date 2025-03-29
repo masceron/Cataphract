@@ -25,7 +25,7 @@ enum castling_rights: uint8_t
 
 enum pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k, nil};
 
-constexpr char piece_icons[]{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'};
+constexpr char piece_icons[] {'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k'};
 
 inline bool get_bit(const uint64_t bitboard, const uint8_t index)
 {

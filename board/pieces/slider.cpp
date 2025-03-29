@@ -1,5 +1,6 @@
 #include "slider.h"
 #include "bishop.h"
+#include <bit>
 
 constexpr uint64_t occupancy_board(const uint8_t set_index, const uint8_t mask_bits_count, uint64_t attack_board)
 {
@@ -7,8 +8,8 @@ constexpr uint64_t occupancy_board(const uint8_t set_index, const uint8_t mask_b
     for (uint8_t count = 0; count < mask_bits_count; count++) {
         const uint8_t index = std::popcount((attack_board & -attack_board) - 1);
         attack_board = attack_board & (attack_board - 1);
-        if (set_index & (1 << count)) {
-            occupancy |= 1 << index;
+        if (set_index & (1ull << count)) {
+            occupancy |= 1ull << index;
         }
     }
     return occupancy;
@@ -64,7 +65,7 @@ std::array<Magic, 64> generate_magics(const bool is_bishop)
 
             magic.magic = magic_number;
             for (++count, i = 0; i < size; ++i) {
-                if (const unsigned int index = ((occupancy[i] & mask) * magic_number) >> magic.shift; epoch[index] < count) {
+                if (const uint64_t index = ((occupancy[i] & mask) * magic_number) >> magic.shift; epoch[index] < count) {
                     epoch[index] = count;
                     magic.attacks[index] = references[i];
                 }

@@ -27,10 +27,10 @@ constexpr uint64_t occupancy_board(uint8_t set_index, uint8_t mask_bits_count, u
 
 inline uint64_t generate_random_number()
 {
-    std::random_device random;
-    std::mt19937_64 generator(random());
-    std::uniform_int_distribution<uint64_t> distribution;
-    return (distribution(generator) & 0xFFFF) | ((distribution(generator) & 0xFFFF) << 16) | ((distribution(generator) & 0xFFFF) << 32) | ((distribution(generator) & 0xFFFF) << 48);
+    std::random_device rd;
+    std::mt19937_64 gnr(rd());
+    std::uniform_int_distribution<uint64_t> dis;
+    return (dis(gnr) & 0xFFFF) | ((dis(gnr) & 0xFFFF) << 16) | ((dis(gnr) & 0xFFFF) << 32) | ((dis(gnr) & 0xFFFF) << 48);
 }
 
 inline uint64_t random_uint64_few_bits()

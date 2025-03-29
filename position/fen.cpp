@@ -1,5 +1,6 @@
 #include <string>
 #include "position.h"
+#include "zobrist.h"
 
 int algebraic_to_num(const std::string &algebraic)
 {
@@ -43,79 +44,91 @@ int fen_parse(std::string fen)
 {
     position.new_game();
     if (fen == "startpos") fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    int cr_pts = 0;
+    uint64_t cr_pts = 0;
     uint64_t cr_chars = 0;
     while (fen[cr_chars] != ' ') {
         switch (fen[cr_chars]) {
             case 'p':
                 set_bit(position.boards[p], cr_pts);
                 position.piece_on[cr_pts] = p;
+                position.state->pawn_key ^= zobrist_keys.pawn_keys[z_p][cr_pts - 8];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'r':
                 set_bit(position.boards[r], cr_pts);
                 position.piece_on[cr_pts] = r;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_r][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'b':
                 set_bit(position.boards[b], cr_pts);
                 position.piece_on[cr_pts] = b;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_b][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'n':
                 set_bit(position.boards[n], cr_pts);
                 position.piece_on[cr_pts] = n;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_n][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'k':
                 set_bit(position.boards[k], cr_pts);
                 position.piece_on[cr_pts] = k;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_k][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'q':
                 set_bit(position.boards[q], cr_pts);
                 position.piece_on[cr_pts] = q;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_q][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'P':
                 set_bit(position.boards[P], cr_pts);
                 position.piece_on[cr_pts] = P;
+                position.state->pawn_key ^= zobrist_keys.pawn_keys[z_P][cr_pts - 8];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'R':
                 set_bit(position.boards[R], cr_pts);
                 position.piece_on[cr_pts] = R;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_R][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'B':
                 set_bit(position.boards[B], cr_pts);
                 position.piece_on[cr_pts] = B;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_B][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'N':
                 set_bit(position.boards[N], cr_pts);
                 position.piece_on[cr_pts] = N;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_N][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'K':
                 set_bit(position.boards[K], cr_pts);
                 position.piece_on[cr_pts] = K;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_K][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'Q':
                 set_bit(position.boards[Q], cr_pts);
                 position.piece_on[cr_pts] = Q;
+                position.state->non_pawn_key ^= zobrist_keys.non_pawn_keys[z_Q][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
@@ -176,6 +189,10 @@ int fen_parse(std::string fen)
             return -1;
     }
     cr_chars++;
+
+    if (position.side_to_move == black)
+        position.state->side_key ^= zobrist_keys.side_key;
+
     if (fen[cr_chars] != ' ') {
         position.new_game();
         return -1;
@@ -215,11 +232,15 @@ int fen_parse(std::string fen)
                 position.new_game();
                 return -1;
         }
+
+    position.state->castling_key ^= zobrist_keys.castling_keys[position.state->castling_rights];
+
     if (fen[cr_chars] != ' ') {
         position.new_game();
         return -1;
     }
     cr_chars++;
+
     if (const std::string en_passant{fen[cr_chars], fen[cr_chars + 1]}; en_passant != "- ") {
         if (position.state->en_passant_square = algebraic_to_num(en_passant); position.state->en_passant_square == -1) {
             position.new_game();
@@ -229,6 +250,10 @@ int fen_parse(std::string fen)
     }
     else
         cr_chars +=1;
+
+    if (position.state->en_passant_square != -1)
+        position.state->en_passant_key ^= zobrist_keys.en_passant_key;
+
     if (cr_chars >= fen.length()) {
         position.half_moves = 0;
         position.full_moves = 1;
@@ -261,5 +286,7 @@ int fen_parse(std::string fen)
     position.pinned[white] = get_pinned_board_of(white);
     position.pinned[black] = get_pinned_board_of(black);
     position.checker[position.side_to_move] = get_checker_of(position.side_to_move);
+    position.state->key = position.state->pawn_key ^ position.state->non_pawn_key ^ position.state->castling_key ^ position.state->en_passant_key ^ position.state->side_key;
+
     return 0;
 }

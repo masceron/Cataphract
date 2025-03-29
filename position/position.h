@@ -1,5 +1,7 @@
 #pragma once
 #include <cstdint>
+#include <deque>
+
 #include "../board/bitboard.h"
 #include "../board/pieces/king.h"
 #include "../board/pieces/knight.h"
@@ -12,20 +14,30 @@ inline side color_of(const pieces piece)
     return black;
 }
 
-class State
+struct State
 {
-public:
     uint8_t rule_50;
     uint8_t castling_rights;
     int en_passant_square;
     pieces captured_piece;
+    State* previous;
+    uint64_t pawn_key;
+    uint64_t non_pawn_key;
+    uint64_t castling_key;
+    uint64_t en_passant_key;
+    uint64_t side_key;
+
+    uint64_t key;
+
 };
+
+inline std::deque<State> states{};
 
 class Position
 {
 public:
     pieces piece_on[64]{};
-    uint64_t boards[13]{};
+    uint64_t boards[12]{};
     uint64_t occupations[3]{};
     uint64_t pinned[2]{};
     uint64_t checker[2]{};
@@ -40,7 +52,10 @@ public:
 
     void new_game()
     {
-        state = new State;
+        constexpr State c_state{};
+        states.clear();
+        states.push_front(c_state);
+        state = &states.at(0);
         std::fill_n(piece_on, 64, nil);
         std::fill_n(boards, 12, 0);
         std::fill_n(occupations, 3, 0);
@@ -50,6 +65,13 @@ public:
         state->en_passant_square = -1;
         state->castling_rights = 0;
         state->captured_piece = nil;
+        state->previous = nullptr;
+        state->non_pawn_key = 0;
+        state->pawn_key = 0;
+        state->castling_key = 0;
+        state->en_passant_key = 0;
+        state->side_key = 0;
+        state->key = 0;
         half_moves = 0;
         full_moves = 1;
     }
@@ -126,7 +148,7 @@ inline uint64_t get_pinned_board_of(const side side)
     while (attacker) {
         const uint8_t sniper = least_significant_one(attacker);
 
-        if (const uint64_t between = get_line_between(sniper, king_index) & position.occupations[side]; only_one_1(between))
+        if (const uint64_t between = lines_between[sniper][king_index] & position.occupations[side]; only_one_1(between))
             pinned_board |= between;
 
         attacker &= attacker - 1;
@@ -143,6 +165,12 @@ inline uint64_t get_checker_of(const side side)
         | (get_bishop_attack(king_index, position.occupations[both]) & (side == white ? (position.boards[b] | position.boards[q]) : (position.boards[B] | position.boards[Q])))
         | (get_rook_attack(king_index, position.occupations[both]) & (side == white ? (position.boards[r] | position.boards[q]) : (position.boards[R] | position.boards[Q])));
     return checkers;
+}
+
+inline uint64_t get_check_blocker_of(const side side)
+{
+    const uint64_t checker = get_checker_of(side);
+    return checker | lines_between[least_significant_one(checker)][least_significant_one(side == white ? position.boards[K] : position.boards[k])];
 }
 
 inline void print_board()

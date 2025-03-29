@@ -18,19 +18,19 @@ endif()
 
 
 add_executable(CSEngine main.cpp
-        board/bitboard.h
-        board/pieces/pawn.h
-        board/pieces/knight.h
-        board/pieces/king.h
-        board/pieces/bishop.h
-        board/pieces/rook.h
-        board/pieces/slider.h
+        board/bitboard.hpp
+        board/pieces/pawn.hpp
+        board/pieces/knight.hpp
+        board/pieces/king.hpp
+        board/pieces/bishop.hpp
+        board/pieces/rook.hpp
+        board/pieces/slider.hpp
         board/pieces/slider.cpp
         position/fen.cpp
-        position/fen.h
-        position/position.h
-        board/lines.h
+        position/fen.hpp
+        position/position.hpp
+        board/lines.hpp
         board/lines.cpp
-        position/move.h
-        position/zobrist.h
+        position/move.hpp
+        position/zobrist.hpp
 )

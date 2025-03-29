@@ -1,5 +1,5 @@
-#include "lines.h"
-#include "pieces/slider.h"
+#include "lines.hpp"
+#include "pieces/slider.hpp"
 
 void generate_lines()
 {

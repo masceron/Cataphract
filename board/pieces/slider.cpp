@@ -1,5 +1,5 @@
-#include "slider.h"
-#include "bishop.h"
+#include "slider.hpp"
+#include "bishop.hpp"
 #include <bit>
 
 constexpr uint64_t occupancy_board(const uint8_t set_index, const uint8_t mask_bits_count, uint64_t attack_board)

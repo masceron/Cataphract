@@ -2,7 +2,7 @@
 
 #include <cstdint>
 #include <array>
-#include "../bitboard.h"
+#include "../bitboard.hpp"
 
 consteval uint64_t mask_king_attack(const uint8_t index) {
     uint64_t attack_board = 0;

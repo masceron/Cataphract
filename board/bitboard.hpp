@@ -1,10 +1,11 @@
 #pragma once
+
 #include <cstdint>
 #include <bit>
 #include <iostream>
 #include <sstream>
-#include "bitboard.h"
-#include "lines.h"
+#include "bitboard.hpp"
+#include "lines.hpp"
 
 
 constexpr uint64_t not_a_file = 0xFEFEFEFEFEFEFEFE;

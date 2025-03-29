@@ -1,6 +1,6 @@
 #include <string>
-#include "position.h"
-#include "zobrist.h"
+#include "position.hpp"
+#include "zobrist.hpp"
 
 int algebraic_to_num(const std::string &algebraic)
 {

@@ -1,6 +1,6 @@
 #pragma once
 #include <cstdint>
-#include "../board/bitboard.h"
+#include "../board/bitboard.hpp"
 enum flag: uint16_t
 {
     quiet_moves,

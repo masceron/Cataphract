@@ -13,7 +13,7 @@ struct MoveList
     Move* last;
     [[nodiscard]] Move* begin() { return list; }
     [[nodiscard]] Move* end() const { return last; }
-    [[nodiscard]] size_t size() const { return last - list; }
+    [[nodiscard]] int16_t size() const { return last - list; }
     MoveList(): list(), last(list) {}
 };
 
@@ -250,6 +250,7 @@ inline bool is_legal(const Move& move)
     return (!(position.pinned[us] & (1ull << from)) || (lines_intersect[from][to] & king_board));
 }
 
+
 inline MoveList legal_move_generator()
 {
     MoveList move_list;
@@ -263,14 +264,10 @@ inline MoveList legal_move_generator()
     while (current != move_list.last) {
         if (Move move = *current; ((position.pinned[us] & (1ull << move.src())) || (position.piece_on[move.src()] == king) || move.flag() == ep_capture) && (!is_legal(move))) {
             *current = *(--move_list.last);
-
         }
         else {
             current++;
         }
-
     }
-
-
     return move_list;
 }

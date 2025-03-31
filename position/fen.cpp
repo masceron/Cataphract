@@ -284,12 +284,7 @@ int fen_parse(std::string fen)
         }
         try {
             position.state->rule_50 = std::stoi(fen.substr(cr_chars, next - cr_chars));
-        } catch (...) {
-            position.new_game();
-            return -1;
-        }
-        try {
-            position.state->ply = 2 * (std::stoi(fen.substr(next + 1, std::string::npos)) - 1) + (position.side_to_move == black ? 1 : 0);;
+            position.state->ply = 0;
         } catch (...) {
             position.new_game();
             return -1;

@@ -7,7 +7,7 @@ int algebraic_to_num(const std::string &algebraic)
     if (algebraic.length() != 2) return -1;
     int rank = 0;
     int file = 0;
-    if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - static_cast<int>(algebraic[1]);
+    if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - static_cast<int>(algebraic[1] - '0');
     else return - 1;
     switch (algebraic[0]) {
         case 'a':
@@ -40,8 +40,22 @@ int algebraic_to_num(const std::string &algebraic)
     return rank * 8 + file;
 }
 
+std::string num_to_algebraic(const uint8_t sq)
+{
+    constexpr char files[] = "abcdefgh";
+
+    return files[sq % 8] + std::to_string(8 - sq/8);
+}
+
 int fen_parse(std::string fen)
 {
+    fen.erase(fen.begin(), std::find_if(fen.begin(), fen.end(), [](const unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+    fen.erase(std::find_if(fen.rbegin(), fen.rend(), [](const unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), fen.end());
+
     position.new_game();
     if (fen == "startpos") fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     uint64_t cr_pts = 0;
@@ -241,7 +255,8 @@ int fen_parse(std::string fen)
     }
     cr_chars++;
 
-    if (const std::string en_passant{fen[cr_chars], fen[cr_chars + 1]}; en_passant != "- ") {
+    if (fen[cr_chars] != '-') {
+        const std::string en_passant{fen[cr_chars], fen[cr_chars + 1]};
         if (position.state->en_passant_square = algebraic_to_num(en_passant); position.state->en_passant_square == -1) {
             position.new_game();
             return -1;
@@ -251,41 +266,44 @@ int fen_parse(std::string fen)
     else
         cr_chars +=1;
 
+
     if (position.state->en_passant_square != -1)
-        position.state->en_passant_key ^= zobrist_keys.en_passant_key;
+        position.state->en_passant_key ^= zobrist_keys.en_passant_key[position.state->en_passant_square % 8];
+
 
     if (cr_chars >= fen.length()) {
-        position.half_moves = 0;
-        position.full_moves = 1;
+        position.state->rule_50 = 0;
+        position.state->ply = 0;
     }
-    else if (fen[cr_chars] != ' ') {
-        position.new_game();
-        return -1;
+    else {
+        cr_chars++;
+        const auto next = fen.find(' ', cr_chars);
+        if (next == std::string::npos) {
+            position.new_game();
+            return -1;
+        }
+        try {
+            position.state->rule_50 = std::stoi(fen.substr(cr_chars, next - cr_chars));
+        } catch (...) {
+            position.new_game();
+            return -1;
+        }
+        try {
+            position.state->ply = 2 * (std::stoi(fen.substr(next + 1, std::string::npos)) - 1) + (position.side_to_move == black ? 1 : 0);;
+        } catch (...) {
+            position.new_game();
+            return -1;
+        }
     }
-    cr_chars++;
-    const auto next = fen.find(' ', cr_chars);
-    if (next == std::string::npos) {
-        position.new_game();
-        return -1;
-    }
-    try {
-        position.half_moves = std::stoi(fen.substr(cr_chars, next - cr_chars));
-    } catch (...) {
-        position.new_game();
-        return -1;
-    }
-    try {
-        position.full_moves = std::stoi(fen.substr(next + 1, std::string::npos));
-    } catch (...) {
-        position.new_game();
-        return -1;
-    }
+
     position.occupations[white] = position.boards[P] | position.boards[K] | position.boards[N] | position.boards[Q] | position.boards[B] | position.boards[R];
     position.occupations[black] = position.boards[p] | position.boards[k] | position.boards[n] | position.boards[q] | position.boards[b] | position.boards[r];
-    position.occupations[both] = position.occupations[white] | position.occupations[black];
+    position.occupations[2] = position.occupations[white] | position.occupations[black];
     position.pinned[white] = get_pinned_board_of(white);
     position.pinned[black] = get_pinned_board_of(black);
-    position.checker[position.side_to_move] = get_checker_of(position.side_to_move);
+    if (is_king_in_check_by(1 - position.side_to_move))
+        position.checker = get_checker_of(position.side_to_move);
+
     position.state->key = position.state->pawn_key ^ position.state->non_pawn_key ^ position.state->castling_key ^ position.state->en_passant_key ^ position.state->side_key;
 
     return 0;

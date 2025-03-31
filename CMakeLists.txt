@@ -33,4 +33,7 @@ add_executable(CSEngine main.cpp
         board/lines.cpp
         position/move.hpp
         position/zobrist.hpp
+        position/position.cpp
+        position/movegen.hpp
+        position/perft.hpp
 )

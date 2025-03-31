@@ -9,8 +9,8 @@ constexpr uint64_t mask_pawn_attack(const uint8_t side, const uint8_t index)
     const uint64_t piece_board = (attack_board + 1) << index;
     switch (side) {
         case white:
-            attack_board |= (piece_board >> 7) & 0x1ffffffffffffff & not_a_file;
-            attack_board |= (piece_board >> 9) & 0x7fffffffffffff & not_h_file;
+            attack_board |= (piece_board >> 7)  & not_a_file;
+            attack_board |= (piece_board >> 9)  & not_h_file;
             break;
         case black:
             attack_board |= (piece_board << 7) & not_h_file;

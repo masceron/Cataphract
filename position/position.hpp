@@ -25,7 +25,7 @@ uint64_t get_check_blocker_of(bool side);
 
 struct State
 {
-    uint16_t rule_50 = 1;
+    uint16_t rule_50 = 0;
     uint8_t castling_rights = 0;
     int en_passant_square = -1;
     Pieces captured_piece = nil;
@@ -236,12 +236,11 @@ public:
         pinned[side_to_move] = get_pinned_board_of(side_to_move);
 
         state->repetition = 1;
-        if (state->rule_50 >= 4) {
-            const int cutoff = state->ply - state->rule_50;
+        if (const uint16_t cutoff = std::min(state->rule_50, state->ply); cutoff >= 4) {
             const State* tst = state->previous->previous;
-            for (int cr = state->ply - 2; cr >= cutoff + 2; cr -= 2) {
+            for (int cr = 4; cr <= cutoff; cr += 2) {
                 tst = tst->previous->previous;
-                if (tst != nullptr && state->key == tst->key) {
+                if (state->key == tst->key) {
                     state->repetition = tst->repetition + 1;
                     break;
                 }

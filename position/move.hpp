@@ -30,7 +30,6 @@ public:
     {
         move = src | (dest << 6) | (flags << 12);
     }
-    explicit Move(const uint16_t _move): move(_move) {};
     Move() {};
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
     [[nodiscard]] uint16_t src() const { return move & 0b111111; }

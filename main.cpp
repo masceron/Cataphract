@@ -1,15 +1,29 @@
-#include <iostream>
-
 #include "fen.hpp"
-#include "position.hpp"
-
+#include "movegen.hpp"
+#include "perft.hpp"
 
 int main()
 {
     initialize();
-    fen_parse("8/1r6/5q2/7k/1P6/8/1K2B1r1/8 b - - 0 1");
-    print_board();
-
-    std::cout << position.state->key;
-
+    std::string fen = "";
+    while (fen != "quit") {
+        std::cout << "Enter FEN:";
+        std::getline(std::cin, fen);
+        if (fen_parse(fen) == - 1) {
+            std::cerr << "Invalid FEN.\n";
+            continue;
+        }
+        std::cout << "Depth:";
+        int depth;
+        std::cin >> depth;
+        while (!std::cin.good()) {
+            std::cerr << "Invalid depth. Enter again:";
+            std::cin.clear();
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            std::cin >> depth;
+        }
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        divide(depth);
+    }
 }

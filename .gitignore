@@ -1,5 +1,7 @@
 .idea/
-cmake-build-debug/
-cmake-build-release/
+cmake-build-debuggcc/
+cmake-build-releasegcc/
 cmake-build-debugmsvc/
 cmake-build-releasemsvc/
+cmake-build-debugclang/
+cmake-build-releaseclang/

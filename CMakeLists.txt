@@ -13,7 +13,11 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS_DEBUG "/W4 /wd4244 /wd4146 /std:c++latest")
-    set(CMAKE_CXX_FLAGS_RELEASE "/W4 /wd4244 /wd4146 /O2 /LTCG /favor:AMD64 /GA /std:c++latest")
+    set(CMAKE_CXX_FLAGS_RELEASE "/W4 /wd4244 /wd4146 /O2 /Ob3 /GL /GA /std:c++latest")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    set(CMAKE_CXX_STANDARD 23)
+    set(CMAKE_CXX_FLAGS_DEBUG "-Wextra -g")
+    set(CMAKE_CXX_FLAGS_RELEASE "-march=native -mtune=native -O3 -funroll-loops")
 endif()
 
 

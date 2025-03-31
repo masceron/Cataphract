@@ -40,4 +40,8 @@ add_executable(CSEngine main.cpp
         position/position.cpp
         position/movegen.hpp
         position/perft.hpp
+        uci.hpp
+        position/movepick.hpp
+        eval/eval.hpp
+        search/search.hpp
 )

@@ -9,15 +9,15 @@
 
 struct MoveList
 {
-    Move list[218];
-    Move* last;
-    [[nodiscard]] Move* begin() { return list; }
-    [[nodiscard]] Move* end() const { return last; }
+    uint16_t list[218];
+    uint16_t* last;
+    [[nodiscard]] uint16_t* begin() { return list; }
+    [[nodiscard]] uint16_t* end() const { return last; }
     [[nodiscard]] int16_t size() const { return last - list; }
     MoveList(): list(), last(list) {}
 };
 
-inline void pawn_move_generator(Move*& pos, const bool evasion)
+inline void pawn_move_generator(uint16_t*& pos, const bool evasion)
 {
     const bool us = position.side_to_move;
     const uint8_t ep_square = position.state->en_passant_square;
@@ -40,13 +40,13 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
 
     while (left_capture) {
         const uint8_t to = least_significant_one(left_capture);
-        *(pos++) = Move(to + upleft_shift, to, capture);
+        *(pos++) = Moves::Move(to + upleft_shift, to, capture);
         left_capture &= left_capture - 1;
     }
 
     while (right_capture) {
         const uint8_t to = least_significant_one(right_capture);
-        *(pos++) = Move(to + upright_shift, to, capture);
+        *(pos++) = Moves::Move(to + upright_shift, to, capture);
         right_capture &= right_capture - 1;
     }
 
@@ -54,7 +54,7 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
         if (!evasion || !(check_blocker & (1ull << (ep_square + (us == white ? -8 : 8))))) {
             uint64_t eligible_pawns = pawn_attack_tables[enemy][ep_square] & board;
             while (eligible_pawns) {
-                *(pos++) = Move(least_significant_one(eligible_pawns), ep_square, ep_capture);
+                *(pos++) = Moves::Move(least_significant_one(eligible_pawns), ep_square, ep_capture);
                 eligible_pawns &= eligible_pawns - 1;
             }
         }
@@ -71,10 +71,10 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
             if (evasion) promote_capture &= check_blocker;
             while (promote_capture) {
                 const uint8_t to = least_significant_one(promote_capture);
-                *(pos++) = Move(from, to, queen_promo_capture);
-                *(pos++) = Move(from, to, rook_promo_capture);
-                *(pos++) = Move(from, to, bishop_promo_capture);
-                *(pos++) = Move(from, to, knight_promo_capture);
+                *(pos++) = Moves::Move(from, to, queen_promo_capture);
+                *(pos++) = Moves::Move(from, to, rook_promo_capture);
+                *(pos++) = Moves::Move(from, to, bishop_promo_capture);
+                *(pos++) = Moves::Move(from, to, knight_promo_capture);
                 promote_capture &= promote_capture - 1;
             }
 
@@ -84,10 +84,10 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
 
             if (promote) {
                 const uint8_t to = least_significant_one(promote);
-                *(pos++) = Move(from, to, queen_promotion);
-                *(pos++) = Move(from, to, rook_promotion);
-                *(pos++) = Move(from, to, bishop_promotion);
-                *(pos++) = Move(from, to, knight_promotion);
+                *(pos++) = Moves::Move(from, to, queen_promotion);
+                *(pos++) = Moves::Move(from, to, rook_promotion);
+                *(pos++) = Moves::Move(from, to, bishop_promotion);
+                *(pos++) = Moves::Move(from, to, knight_promotion);
             }
             about_to_promote &= about_to_promote - 1;
         }
@@ -102,19 +102,19 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
     }
     while (double_pawn_push) {
         if (const uint8_t to = least_significant_one(double_pawn_push); !((1ull << (to + upshift)) & position.occupations[2]))
-            *(pos++) = Move(to + upshift + upshift, to, double_push);
+            *(pos++) = Moves::Move(to + upshift + upshift, to, double_push);
 
         double_pawn_push &= double_pawn_push - 1;
     }
     while (single_pawn_push) {
         const uint8_t to = least_significant_one(single_pawn_push);
-        *(pos++) = Move(to + upshift, to, quiet_move);
+        *(pos++) = Moves::Move(to + upshift, to, quiet_move);
 
         single_pawn_push &= single_pawn_push - 1;
     }
 }
 
-inline void general_move_generator(Move*& pos, const Pieces piece, const bool evasion)
+inline void general_move_generator(uint16_t*& pos, const Pieces piece, const bool evasion)
 {
     uint64_t board = 0;
     const bool us = position.side_to_move;
@@ -158,8 +158,8 @@ inline void general_move_generator(Move*& pos, const Pieces piece, const bool ev
         }
         attack &= evasion ? get_check_blocker_of(us) : (~occ);
         while (attack) {
-            if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) *(pos++) = Move(from, to, capture);
-            else *(pos++) = Move(from, to, quiet_move);
+            if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) *(pos++) = Moves::Move(from, to, capture);
+            else *(pos++) = Moves::Move(from, to, quiet_move);
 
             attack &= attack - 1;
         }
@@ -168,7 +168,7 @@ inline void general_move_generator(Move*& pos, const Pieces piece, const bool ev
     }
 }
 
-inline void king_move_generator(Move*& pos, const bool evasion, const uint8_t king)
+inline void king_move_generator(uint16_t*& pos, const bool evasion, const uint8_t king)
 {
     const bool us = position.side_to_move;
     const uint64_t occ = position.occupations[us];
@@ -178,26 +178,26 @@ inline void king_move_generator(Move*& pos, const bool evasion, const uint8_t ki
         const uint64_t kp = us == white ? 0x6000000000000000ull : 0x60ull;
         const uint64_t qp = us == white ? 0xE00000000000000ull : 0xEull;
         if ((castling_rights & 0b01) && !(kp & aocc)) {
-            *(pos++) = Move(king, king + 2, king_castle);
+            *(pos++) = Moves::Move(king, king + 2, king_castle);
         }
         if ((castling_rights & 0b10) && !(qp & aocc)) {
-            *(pos++) = Move(king, king - 2, queen_castle);
+            *(pos++) = Moves::Move(king, king - 2, queen_castle);
         }
     }
     uint64_t attack = king_attack_tables[king] & (evasion ? (lines_between[least_significant_one(position.checker)][king] | (~occ)) : (~occ));
     while (attack) {
         if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) {
-            *(pos++) = Move(king, to , capture);
+            *(pos++) = Moves::Move(king, to , capture);
         }
         else {
-            *(pos++) = Move(king, to, quiet_move);
+            *(pos++) = Moves::Move(king, to, quiet_move);
         }
         attack &= attack - 1;
     }
 }
 
 
-inline void pseudo_legal_move_generator(const bool evasion, Move*& last)
+inline void pseudo_legal_move_generator(const bool evasion, uint16_t*& last)
 {
     if (std::popcount(position.checker) != 2) {
         pawn_move_generator(last, evasion);
@@ -210,13 +210,13 @@ inline void pseudo_legal_move_generator(const bool evasion, Move*& last)
 
 }
 
-inline bool is_legal(const Move& move)
+inline bool is_legal(const uint16_t& move)
 {
     const bool us = position.side_to_move;
     const bool enemy = 1 - position.side_to_move;
-    const uint8_t from = move.src();
-    const uint8_t to = move.dest();
-    const uint8_t flag = move.flag();
+    const uint8_t from = Moves::src(move);
+    const uint8_t to = Moves::dest(move);
+    const uint8_t flag = Moves::flag(move);
     const uint64_t king_board = position.boards[us == white ? K : k];
     const uint8_t king = least_significant_one(king_board);
 
@@ -260,9 +260,9 @@ inline MoveList legal_move_generator()
     else pseudo_legal_move_generator(false, move_list.last);
 
     const uint8_t king = us == white ? K : k;
-    Move* current = move_list.begin();
+    uint16_t* current = move_list.begin();
     while (current != move_list.last) {
-        if (Move move = *current; ((position.pinned[us] & (1ull << move.src())) || (position.piece_on[move.src()] == king) || move.flag() == ep_capture) && (!is_legal(move))) {
+        if (uint16_t move = *current; ((position.pinned[us] & (1ull << Moves::src(move))) || (position.piece_on[Moves::src(move)] == king) || Moves::flag(move) == ep_capture) && (!is_legal(move))) {
             *current = *(--move_list.last);
         }
         else {

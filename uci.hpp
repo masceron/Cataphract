@@ -48,11 +48,13 @@ namespace UCI
     {
         fen_parse("startpos");
         std::string input;
-        while (input != "quit") {
+        bool quit = false;
+        while (!quit) {
             std::getline(std::cin, input);
             const auto I = std::ranges::unique(input, [](auto lhs, auto rhs){ return lhs == rhs && lhs == ' '; } ).begin();
             input.erase(I, input.end());
-            if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
+            if (input == "quit") quit = true;
+            else if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
             else if (input == "uci") {
                 std::cout << "uciok\n";
             }

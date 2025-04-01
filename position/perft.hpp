@@ -9,13 +9,13 @@ inline size_t perft(const int depth)
         return 1;
     }
     const MoveList moves = legal_move_generator();
-    const int16_t n = moves.size();
+    const int n = moves.size();
     uint64_t nodes = 0;
     if (depth == 1) {
         return n;
     }
 
-    for (int16_t i = 0; i < n; i++) {
+    for (int i = 0; i < n; i++) {
         State st;
         position.make_move(moves.list[i], st);
         nodes += perft(depth - 1);
@@ -31,8 +31,8 @@ inline void divide(const int depth)
 
     const auto start = std::chrono::high_resolution_clock::now();
     const MoveList moves = legal_move_generator();
-    const int16_t n = moves.size();
-    for (int16_t i = 0; i < n; i++) {
+    const int n = moves.size();
+    for (int i = 0; i < n; i++) {
         State st;
         position.make_move(moves.list[i], st);
         const size_t num = perft(depth - 1);

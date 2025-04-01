@@ -13,11 +13,16 @@ struct MoveList
     Move* last;
     [[nodiscard]] Move* begin() { return list; }
     [[nodiscard]] Move* end() const { return last; }
-    [[nodiscard]] int16_t size() const { return last - list; }
+    [[nodiscard]] int64_t size() const { return last - list; }
     MoveList(): list(), last(list) {}
 };
 
-inline void pawn_move_generator(Move*& pos, const bool evasion)
+enum MoveType: uint8_t
+{
+    evasions, non_evasions, captures
+};
+
+inline void pawn_move_generator(Move*& pos, const MoveType type)
 {
     const bool us = position.side_to_move;
     const uint8_t ep_square = position.state->en_passant_square;
@@ -28,12 +33,12 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
     const int8_t upshift = us == white ? 8 : -8;
     const uint64_t last_line = us == white ? 0xFF00ull : 0xFF000000000000ull;
     const uint64_t line_3 = us == white ? 0xFF00000000ull: 0xFF000000ull;
-    const uint64_t check_blocker = evasion ? get_check_blocker_of(us) : 0ull;
+    const uint64_t check_blocker = position.is_king_in_check_by(enemy) ? position.state->check_blocker : 0ull;
 
     uint64_t left_capture = (upleft_shift > 0 ? (((board & ~last_line) >> 9) & not_h_file) : (((board & ~last_line) << 9) & not_a_file)) & position.occupations[enemy];
     uint64_t right_capture = (upright_shift > 0 ? (((board & ~last_line) >> 7) & not_a_file) : (((board & ~last_line) << 7)) & not_h_file) & position.occupations[enemy];
 
-    if (evasion) {
+    if (type == evasions) {
         left_capture &= check_blocker;
         right_capture &= check_blocker;
     }
@@ -51,7 +56,7 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
     }
 
     if (position.state->en_passant_square != -1) {
-        if (!evasion || !(check_blocker & (1ull << (ep_square + (us == white ? -8 : 8))))) {
+        if (type != evasions || !(check_blocker & (1ull << (ep_square + (us == white ? -8 : 8))))) {
             uint64_t eligible_pawns = pawn_attack_tables[enemy][ep_square] & board;
             while (eligible_pawns) {
                 *(pos++) = Move(least_significant_one(eligible_pawns), ep_square, ep_capture);
@@ -68,7 +73,7 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
             uint64_t promote_capture = (((upleft_shift > 0 ? ((from_board >> 9) & not_h_file) : ((from_board << 9) & not_a_file))
                                     | (upright_shift > 0 ? ((from_board >> 7) & not_a_file) : ((from_board << 7) & not_h_file))) & position.occupations[enemy]);
 
-            if (evasion) promote_capture &= check_blocker;
+            if (type == evasions) promote_capture &= check_blocker;
             while (promote_capture) {
                 const uint8_t to = least_significant_one(promote_capture);
                 *(pos++) = Move(from, to, queen_promo_capture);
@@ -78,43 +83,47 @@ inline void pawn_move_generator(Move*& pos, const bool evasion)
                 promote_capture &= promote_capture - 1;
             }
 
-            uint64_t promote = (upshift > 0 ? (from_board >> 8) : (from_board << 8)) & (~position.occupations[2]);
+            if (type != captures) {
+                uint64_t promote = (upshift > 0 ? (from_board >> 8) : (from_board << 8)) & (~position.occupations[2]);
 
-            if (evasion) promote &= check_blocker;
+                if (type == evasions) promote &= check_blocker;
 
-            if (promote) {
-                const uint8_t to = least_significant_one(promote);
-                *(pos++) = Move(from, to, queen_promotion);
-                *(pos++) = Move(from, to, rook_promotion);
-                *(pos++) = Move(from, to, bishop_promotion);
-                *(pos++) = Move(from, to, knight_promotion);
+                if (promote) {
+                    const uint8_t to = least_significant_one(promote);
+                    *(pos++) = Move(from, to, queen_promotion);
+                    *(pos++) = Move(from, to, rook_promotion);
+                    *(pos++) = Move(from, to, bishop_promotion);
+                    *(pos++) = Move(from, to, knight_promotion);
+                }
             }
             about_to_promote &= about_to_promote - 1;
         }
     }
 
-    const uint64_t normal_pawns = board & (~last_line);
-    uint64_t single_pawn_push = (upshift > 0 ? (normal_pawns >> 8) : (normal_pawns << 8)) & ~position.occupations[2];
-    uint64_t double_pawn_push = (upshift > 0 ? (normal_pawns >> 16) : (normal_pawns << 16)) & line_3 & ~position.occupations[2];
-    if (evasion) {
-        single_pawn_push &= check_blocker;
-        double_pawn_push &= check_blocker;
-    }
-    while (double_pawn_push) {
-        if (const uint8_t to = least_significant_one(double_pawn_push); !((1ull << (to + upshift)) & position.occupations[2]))
-            *(pos++) = Move(to + upshift + upshift, to, double_push);
+    if (type != captures) {
+        const uint64_t normal_pawns = board & (~last_line);
+        uint64_t single_pawn_push = (upshift > 0 ? (normal_pawns >> 8) : (normal_pawns << 8)) & ~position.occupations[2];
+        uint64_t double_pawn_push = (upshift > 0 ? (normal_pawns >> 16) : (normal_pawns << 16)) & line_3 & ~position.occupations[2];
+        if (type == evasions) {
+            single_pawn_push &= check_blocker;
+            double_pawn_push &= check_blocker;
+        }
+        while (double_pawn_push) {
+            if (const uint8_t to = least_significant_one(double_pawn_push); !((1ull << (to + upshift)) & position.occupations[2]))
+                *(pos++) = Move(to + upshift + upshift, to, double_push);
 
-        double_pawn_push &= double_pawn_push - 1;
-    }
-    while (single_pawn_push) {
-        const uint8_t to = least_significant_one(single_pawn_push);
-        *(pos++) = Move(to + upshift, to, quiet_move);
+            double_pawn_push &= double_pawn_push - 1;
+        }
+        while (single_pawn_push) {
+            const uint8_t to = least_significant_one(single_pawn_push);
+            *(pos++) = Move(to + upshift, to, quiet_move);
 
-        single_pawn_push &= single_pawn_push - 1;
+            single_pawn_push &= single_pawn_push - 1;
+        }
     }
 }
 
-inline void general_move_generator(Move*& pos, const Pieces piece, const bool evasion)
+inline void general_move_generator(Move*& pos, const Pieces piece, const MoveType type)
 {
     uint64_t board = 0;
     const bool us = position.side_to_move;
@@ -156,7 +165,7 @@ inline void general_move_generator(Move*& pos, const Pieces piece, const bool ev
             default:
                 break;
         }
-        attack &= evasion ? get_check_blocker_of(us) : (~occ);
+        attack &= type == evasions ? position.state->check_blocker : (type == captures ? eocc : (~occ));
         while (attack) {
             if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) *(pos++) = Move(from, to, capture);
             else *(pos++) = Move(from, to, quiet_move);
@@ -168,23 +177,25 @@ inline void general_move_generator(Move*& pos, const Pieces piece, const bool ev
     }
 }
 
-inline void king_move_generator(Move*& pos, const bool evasion, const uint8_t king)
+inline void king_move_generator(Move*& pos, const MoveType type, const uint8_t king)
 {
     const bool us = position.side_to_move;
     const uint64_t occ = position.occupations[us];
     const uint64_t eocc = position.occupations[1 - us];
     const uint64_t aocc = position.occupations[2];
-    if (const uint8_t castling_rights = us == white ? (position.state->castling_rights & 0b11) : (position.state->castling_rights >> 2); !evasion && castling_rights) {
-        const uint64_t kp = us == white ? 0x6000000000000000ull : 0x60ull;
-        const uint64_t qp = us == white ? 0xE00000000000000ull : 0xEull;
-        if ((castling_rights & 0b01) && !(kp & aocc)) {
-            *(pos++) = Move(king, king + 2, king_castle);
-        }
-        if ((castling_rights & 0b10) && !(qp & aocc)) {
-            *(pos++) = Move(king, king - 2, queen_castle);
+    if (type != captures) {
+        if (const uint8_t castling_rights = us == white ? (position.state->castling_rights & 0b11) : (position.state->castling_rights >> 2); type != evasions && castling_rights) {
+            const uint64_t kp = us == white ? 0x6000000000000000ull : 0x60ull;
+            const uint64_t qp = us == white ? 0xE00000000000000ull : 0xEull;
+            if ((castling_rights & 0b01) && !(kp & aocc)) {
+                *(pos++) = Move(king, king + 2, king_castle);
+            }
+            if ((castling_rights & 0b10) && !(qp & aocc)) {
+                *(pos++) = Move(king, king - 2, queen_castle);
+            }
         }
     }
-    uint64_t attack = king_attack_tables[king] & (evasion ? (lines_between[least_significant_one(position.checker)][king] | (~occ)) : (~occ));
+    uint64_t attack = king_attack_tables[king] & (type == evasions ? (lines_between[least_significant_one(position.state->checker)][king] | (~occ)) : (type == captures ? eocc : (~occ)));
     while (attack) {
         if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) {
             *(pos++) = Move(king, to , capture);
@@ -197,16 +208,16 @@ inline void king_move_generator(Move*& pos, const bool evasion, const uint8_t ki
 }
 
 
-inline void pseudo_legal_move_generator(const bool evasion, Move*& last)
+inline void pseudo_legal_move_generator(const MoveType type, Move*& last)
 {
-    if (std::popcount(position.checker) != 2) {
-        pawn_move_generator(last, evasion);
-        general_move_generator(last, Q, evasion);
-        general_move_generator(last, R, evasion);
-        general_move_generator(last, B, evasion);
-        general_move_generator(last, N, evasion);
+    if (std::popcount(position.state->checker) != 2) {
+        pawn_move_generator(last, type);
+        general_move_generator(last, Q, type);
+        general_move_generator(last, R, type);
+        general_move_generator(last, B, type);
+        general_move_generator(last, N, type);
     }
-    king_move_generator(last, evasion, least_significant_one(position.boards[position.side_to_move == white ? K : k]));
+    king_move_generator(last, type, least_significant_one(position.boards[position.side_to_move == white ? K : k]));
 
 }
 
@@ -222,12 +233,12 @@ inline bool is_legal(const Move& move)
 
     if (flag == king_castle) {
         for (uint8_t k = from; k <= from + 2; k++) {
-            if (is_square_attacked_by(k, enemy)) return false;
+            if (position.is_square_attacked_by(k, enemy)) return false;
         }
     }
     else if (flag == queen_castle) {
         for (uint8_t k = from; k >= from - 2; k--) {
-            if (is_square_attacked_by(k, enemy)) return false;
+            if (position.is_square_attacked_by(k, enemy)) return false;
         }
     }
     else if (flag == ep_capture) {
@@ -240,14 +251,14 @@ inline bool is_legal(const Move& move)
     }
     else if (position.piece_on[from] == k || position.piece_on[from] == K) {
         position.occupations[2] ^= king_board;
-        if (is_square_attacked_by(to, enemy)) {
+        if (position.is_square_attacked_by(to, enemy)) {
             position.occupations[2] ^= king_board;
             return false;
         }
         position.occupations[2] ^= king_board;
     }
 
-    return (!(position.pinned[us] & (1ull << from)) || (lines_intersect[from][to] & king_board));
+    return (!(position.state->pinned & (1ull << from)) || (lines_intersect[from][to] & king_board));
 }
 
 
@@ -255,19 +266,42 @@ inline MoveList legal_move_generator()
 {
     MoveList move_list;
     const bool us = position.side_to_move;
-    if (is_king_in_check_by(1 - us))
-        pseudo_legal_move_generator(true, move_list.last);
-    else pseudo_legal_move_generator(false, move_list.last);
+    if (position.is_king_in_check_by(1 - us))
+        pseudo_legal_move_generator(evasions, move_list.last);
+    else pseudo_legal_move_generator(non_evasions, move_list.last);
 
     const uint8_t king = us == white ? K : k;
     Move* current = move_list.begin();
     while (current != move_list.last) {
-        if (Move move = *current; ((position.pinned[us] & (1ull << move.src())) || (position.piece_on[move.src()] == king) || move.flag() == ep_capture) && (!is_legal(move))) {
+        if (Move move = *current; ((position.state->pinned & (1ull << move.src())) || (position.piece_on[move.src()] == king) || move.flag() == ep_capture) && (!is_legal(move))) {
             *current = *(--move_list.last);
         }
         else {
             current++;
         }
     }
+    return move_list;
+}
+
+inline MoveList capture_move_generator()
+{
+    const bool us = position.side_to_move;
+    MoveList move_list;
+    pseudo_legal_move_generator(captures, move_list.last);
+    const uint8_t king = us == white ? K : k;
+    Move* current = move_list.begin();
+    const uint64_t checker = position.state->check_blocker;
+    while (current != move_list.last) {
+        if (Move move = *current;
+            (checker && !((1ull << move.dest()) & checker)) ||
+            (((position.state->pinned & (1ull << move.src())) || (position.piece_on[move.src()] == king) || move.flag() == ep_capture) && (!is_legal(move)))) {
+            *current = *(--move_list.last);
+        }
+        else {
+            current++;
+        }
+    }
+    return move_list;
+
     return move_list;
 }

@@ -13,10 +13,8 @@ namespace UCI
     {
         if (fen.starts_with("startpos")) {
             fen_parse("startpos");
-            return;
         }
-
-        if (fen.starts_with("fen ")) {
+        else if (fen.starts_with("fen ")) {
             if (fen_parse(fen.substr(4, std::string::npos)) == - 1) {
                 std::cout << "Invalid FEN.\n";
             }

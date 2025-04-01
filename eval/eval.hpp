@@ -9,7 +9,7 @@ constexpr int16_t bishop_weight = 825;
 constexpr int16_t rook_weight = 1276;
 constexpr int16_t queen_weight = 2538;
 
-inline int16_t material()
+inline int32_t material()
 {
     const int us = position.side_to_move;
     int mat = 0;
@@ -21,10 +21,10 @@ inline int16_t material()
     return mat;
 }
 
-inline int16_t eval()
+inline int32_t eval()
 {
     const bool us = position.side_to_move;
-    int16_t score = 0;
+    int32_t score = 0;
 
     score = material() * (us == white ? white_negamax : black_negamax);
 

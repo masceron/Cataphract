@@ -6,6 +6,9 @@
 #include "move.hpp"
 #include "zobrist.hpp"
 #include "../board/pieces/pawn.hpp"
+#include "../board/pieces/slider.hpp"
+#include "../board/pieces/knight.hpp"
+#include "../board/pieces/king.hpp"
 
 inline Side color_of(const Pieces piece)
 {
@@ -13,33 +16,25 @@ inline Side color_of(const Pieces piece)
     return black;
 }
 
-bool is_square_attacked_by(uint8_t index, bool side);
-
-bool is_king_in_check_by(bool side);
-
-uint64_t get_pinned_board_of(bool side);
-
-uint64_t get_checker_of(bool side);
-
-uint64_t get_check_blocker_of(bool side);
-
 struct State
 {
-    uint16_t rule_50 = 0;
-    uint8_t castling_rights = 0;
-    int en_passant_square = -1;
-    Pieces captured_piece = nil;
-    State* previous = nullptr;
-    uint64_t pawn_key = 0;
-    uint64_t non_pawn_key = 0;
-    uint64_t castling_key = 0;
-    uint64_t en_passant_key = 0;
-    uint64_t side_key = 0;
-    uint8_t repetition = 1;
+    uint16_t rule_50;
+    uint8_t castling_rights;
+    int en_passant_square;
+    uint64_t pawn_key;
+    uint64_t non_pawn_key;
+    uint64_t castling_key;
+    uint64_t en_passant_key;
+    uint64_t side_key;
+    uint16_t ply;
 
     uint64_t key = 0;
-    uint16_t ply = 0;
-
+    Pieces captured_piece;
+    uint64_t pinned;
+    uint64_t checker;
+    uint64_t check_blocker;
+    State* previous;
+    uint8_t repetition;
 };
 
 inline std::deque<State> states(1);
@@ -50,8 +45,6 @@ public:
     Pieces piece_on[64]{};
     uint64_t boards[12]{};
     uint64_t occupations[3]{};
-    uint64_t pinned[2]{};
-    uint64_t checker = 0;
     bool side_to_move = white;
     State* state = nullptr;
     Position()
@@ -67,7 +60,6 @@ public:
         std::fill_n(piece_on, 64, nil);
         std::fill_n(boards, 12, 0);
         std::fill_n(occupations, 3, 0);
-        std::fill_n(pinned, 2, 0);
     }
 
     void move_piece(const uint8_t from, const uint8_t to)
@@ -102,7 +94,7 @@ public:
 
     void make_move(const Move& move, State& st)
     {
-        st = *state;
+        memcpy(&st, state, offsetof(State, key));
         st.previous = state;
         st.rule_50++;
         st.ply++;
@@ -192,8 +184,6 @@ public:
                 state->pawn_key ^= zobrist_keys.pawn_keys[side_to_move][from - 8];
             }
 
-
-
             state->rule_50 = 0;
         }
         else {
@@ -213,7 +203,6 @@ public:
             if (from == 0 && (state->castling_rights & 0b1000)) state->castling_rights &= 0b0111;
         }
         else if (moving_piece == R) {
-
             if (from == 63 && (state->castling_rights & 0b0001)) state->castling_rights &= 0b1110;
             if (from == 56 && (state->castling_rights & 0b0010)) state->castling_rights &= 0b1101;
         }
@@ -226,14 +215,18 @@ public:
 
         state->key = state->pawn_key ^ state->non_pawn_key ^ state->castling_key ^ state->en_passant_key ^ state->side_key;
 
+        state->checker = 0;
+        state->check_blocker = 0;
+
         if (is_king_in_check_by(side_to_move)) {
-            checker = get_checker_of(1 - side_to_move);
+            state->checker = get_checker_of(1 - side_to_move);
+            state->check_blocker = get_check_blocker_of(1 - side_to_move);
         }
-        else checker = 0;
+        else state->checker = 0;
 
         side_to_move = 1 - side_to_move;
 
-        pinned[side_to_move] = get_pinned_board_of(side_to_move);
+        state->pinned = get_pinned_board_of(side_to_move);
 
         state->repetition = 1;
         if (const uint16_t cutoff = std::min(state->rule_50, state->ply); cutoff >= 4) {
@@ -277,7 +270,6 @@ public:
         }
 
         state = state->previous;
-        if (is_king_in_check_by(1 - side_to_move)) checker = get_checker_of(side_to_move);
     }
 
     void do_move(const Move& move)
@@ -286,6 +278,70 @@ public:
         make_move(move, st);
         states.push_back(st);
         state = &states.back();
+    }
+
+    bool is_square_attacked_by(const uint8_t index, const bool side) const
+    {
+        switch (side) {
+            case white:
+                if (knight_attack_tables[index] & boards[N]) return true;
+                if (king_attack_tables[index] & boards[K]) return true;
+                if (pawn_attack_tables[black][index] & boards[P]) return true;
+                if (get_bishop_attack(index, occupations[2]) & (boards[B] | boards[Q])) return true;
+                if (get_rook_attack(index, occupations[2]) & (boards[R] | boards[Q])) return true;
+            break;
+            case black:
+                if (knight_attack_tables[index] & boards[n]) return true;
+                if (king_attack_tables[index] & boards[k]) return true;
+                if (pawn_attack_tables[white][index] & boards[p]) return true;
+                if (get_bishop_attack(index, occupations[2]) & (boards[b] | boards[q])) return true;
+                if (get_rook_attack(index, occupations[2]) & (boards[r] | boards[q])) return true;
+            break;
+            default:
+                return false;
+        }
+        return false;
+    }
+
+    bool is_king_in_check_by(const bool side) const
+    {
+        return is_square_attacked_by(least_significant_one(side == white ? boards[k] : boards[K]), side);
+    }
+
+    uint64_t get_pinned_board_of(const bool side) const
+    {
+        uint64_t attacker = 0, pinned_board = 0;
+        const uint8_t king_index = least_significant_one(side == white ? boards[K] : boards[k]);
+
+        attacker = (get_rook_attack(king_index, occupations[1 - side]) & (side == white ? (boards[r] | boards[q]) : (boards[R] | boards[Q])))
+                     | (get_bishop_attack(king_index, occupations[1 - side]) & (side == white ? (boards[b] | boards[q]) : (boards[B] | boards[Q])));
+
+        while (attacker) {
+            const uint8_t sniper = least_significant_one(attacker);
+
+            if (const uint64_t between = lines_between[sniper][king_index] & occupations[side]; std::has_single_bit(between))
+                pinned_board |= between;
+
+            attacker &= attacker - 1;
+        }
+
+        return pinned_board;
+    }
+
+    uint64_t get_checker_of(const bool side) const
+    {
+        const uint8_t king_index = least_significant_one(side == white ? boards[K] : boards[k]);
+        const uint64_t checkers = (pawn_attack_tables[side][king_index] & (side == white ? boards[p] : boards[P]))
+            | (knight_attack_tables[king_index] & (side == white ? boards[n] : boards[N]))
+            | (get_bishop_attack(king_index, occupations[2]) & (side == white ? (boards[b] | boards[q]) : (boards[B] | boards[Q])))
+            | (get_rook_attack(king_index, occupations[2]) & (side == white ? (boards[r] | boards[q]) : (boards[R] | boards[Q])));
+        return checkers;
+    }
+
+    uint64_t get_check_blocker_of(const bool side) const
+    {
+        const uint64_t checker = get_checker_of(side);
+        return checker | lines_between[least_significant_one(checker)][least_significant_one(side == white ? boards[K] : boards[k])];
     }
 };
 

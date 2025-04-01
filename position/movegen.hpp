@@ -302,6 +302,4 @@ inline MoveList capture_move_generator()
         }
     }
     return move_list;
-
-    return move_list;
 }

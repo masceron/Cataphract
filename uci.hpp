@@ -51,6 +51,7 @@ namespace UCI
             const auto I = std::ranges::unique(input, [](auto lhs, auto rhs){ return lhs == rhs && lhs == ' '; } ).begin();
             input.erase(I, input.end());
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
+            else if (input == "d") print_board();
             else if (input == "uci") {
                 std::cout << "uciok\n";
             }

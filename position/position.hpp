@@ -100,7 +100,7 @@ public:
         boards[piece] ^= board;
     }
 
-    void make_move(const Move& move, State& st)
+    void make_move(const uint16_t& move, State& st)
     {
         st = *state;
         st.previous = state;
@@ -108,9 +108,9 @@ public:
         st.ply++;
         state = &st;
 
-        const uint8_t from = move.src();
-        const uint8_t to = move.dest();
-        const uint8_t flag = move.flag();
+        const uint8_t from = Moves::src(move);
+        const uint8_t to = Moves::dest(move);
+        const uint8_t flag = Moves::flag(move);
         const Pieces moving_piece = piece_on[from];
         const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
 
@@ -184,7 +184,7 @@ public:
                 state->pawn_key ^= zobrist_keys.pawn_keys[side_to_move][from - 8] ^ zobrist_keys.pawn_keys[side_to_move][to - 8];
             }
             else if (flag >= knight_promotion) {
-                const Pieces promoted_to = move.promoted_to(side_to_move);
+                const Pieces promoted_to = Moves::promoted_to(move, side_to_move);
                 remove_piece(to);
                 put_piece(promoted_to, to);
 
@@ -248,12 +248,12 @@ public:
         }
     }
 
-    void unmake_move(const Move &move)
+    void unmake_move(const uint16_t& move)
     {
         side_to_move = 1 - side_to_move;
-        const uint8_t from = move.src();
-        const uint8_t to = move.dest();
-        const uint8_t flag = move.flag();
+        const uint8_t from = Moves::src(move);
+        const uint8_t to = Moves::dest(move);
+        const uint8_t flag = Moves::flag(move);
 
         if (flag >= knight_promotion) {
             remove_piece(to);
@@ -280,7 +280,7 @@ public:
         if (is_king_in_check_by(1 - side_to_move)) checker = get_checker_of(side_to_move);
     }
 
-    void do_move(const Move& move)
+    void do_move(const uint16_t& move)
     {
         State st;
         make_move(move, st);

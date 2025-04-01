@@ -22,29 +22,24 @@ enum flag: uint16_t
     queen_promo_capture
 };
 
-class Move
+namespace Moves
 {
-public:
-    uint16_t move;
-    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags)
-    {
-        move = src | (dest << 6) | (flags << 12);
-    }
-    Move() {};
-    [[nodiscard]] uint16_t flag() const { return move >> 12; }
-    [[nodiscard]] uint16_t src() const { return move & 0b111111; }
-    [[nodiscard]] uint16_t dest() const { return (move >> 6) & 0b111111; }
-    [[nodiscard]] bool is_capture() const { return flag() & capture & ep_capture & bishop_promo_capture & rook_promo_capture & knight_promo_capture & queen_promo_capture; }
-    [[nodiscard]] Pieces promoted_to(const bool side) const { return static_cast<Pieces>(6 * side + ((flag() & 0b11) + 1)); }
-};
+    inline uint16_t Move(const uint16_t from, const uint16_t to, const uint16_t flag) {return from + (to << 6) + (flag << 12);}
+    inline uint16_t src(const uint16_t& move) { return move & 0b111111; }
+    inline uint16_t dest(const uint16_t& move) { return (move >> 6 & 0b111111); }
+    inline uint16_t flag(const uint16_t& move) { return (move >> 12); }
+    inline bool is_capture(const uint16_t& move) { return flag(move) & capture & ep_capture & bishop_promo_capture & rook_promo_capture & knight_promo_capture & queen_promo_capture; }
+    inline Pieces promoted_to(const uint16_t& move, const bool side) { return static_cast<Pieces>(6 * side + ((flag(move) & 0b11) + 1)); }
 
-inline std::string get_move_string(const Move& move)
+}
+
+inline std::string get_move_string(const uint16_t& move)
 {
     std::stringstream s;
-    s << num_to_algebraic(move.src()) << num_to_algebraic(move.dest());
+    s << num_to_algebraic(Moves::src(move)) << num_to_algebraic(Moves::dest(move));
 
-    if (move.flag() >= knight_promotion) {
-        switch (move.promoted_to(white)) {
+    if (Moves::flag(move) >= knight_promotion) {
+        switch (Moves::promoted_to(move, white)) {
             case N:
                 s << "n";
             break;

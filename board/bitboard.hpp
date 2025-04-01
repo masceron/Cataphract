@@ -27,19 +27,9 @@ enum Pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k, nil};
 
 constexpr char piece_icons[] {'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', '.'};
 
-inline bool get_bit(const uint64_t bitboard, const uint8_t index)
-{
-    return (bitboard >> index) & 1ull;
-}
-
 inline void set_bit(uint64_t& bitboard, const uint8_t index)
 {
     bitboard = bitboard | (1ull << index);
-}
-
-inline void clear_bit(uint64_t& bitboard, const uint8_t index)
-{
-    bitboard = bitboard & ~(1ull << index);
 }
 
 inline uint8_t least_significant_one(const uint64_t bitboard)

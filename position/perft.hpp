@@ -2,6 +2,7 @@
 
 #include "movegen.hpp"
 #include <chrono>
+#include <iomanip>
 
 inline size_t perft(const int depth)
 {

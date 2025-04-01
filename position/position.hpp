@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <deque>
 #include <cstring>
+#include <bit>
 
 #include "move.hpp"
 #include "zobrist.hpp"

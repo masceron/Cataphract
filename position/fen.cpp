@@ -59,6 +59,7 @@ void setup_state(State& st)
     st.previous = nullptr;
     st.side_key = 0;
     st.repetition = 1;
+    st.checker = 0;
 }
 
 int fen_parse(std::string fen)

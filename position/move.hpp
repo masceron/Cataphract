@@ -22,19 +22,14 @@ enum flag: uint16_t
     queen_promo_capture
 };
 
-class Move
+struct Move
 {
-public:
     uint16_t move;
-    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags)
-    {
-        move = src | (dest << 6) | (flags << 12);
-    }
+    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags) : move(src | (dest << 6) | (flags << 12)) {}
     Move() {};
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
     [[nodiscard]] uint16_t src() const { return move & 0b111111; }
     [[nodiscard]] uint16_t dest() const { return (move >> 6) & 0b111111; }
-    [[nodiscard]] bool is_capture() const { return flag() & capture & ep_capture & bishop_promo_capture & rook_promo_capture & knight_promo_capture & queen_promo_capture; }
     [[nodiscard]] Pieces promoted_to(const bool side) const { return static_cast<Pieces>(6 * side + ((flag() & 0b11) + 1)); }
 };
 

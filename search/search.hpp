@@ -71,13 +71,12 @@ inline std::string start_search(const int depth)
         int iteration_max = 0;
         for (int i = 0; i < list.size(); i++) {
             State st;
-            position.make_move(list.list[i], st);
 
+            position.make_move(list.list[i], st);
             scores[i] = search(INT32_MIN, INT32_MAX, cr_depth);
+            position.unmake_move(list.list[i]);
 
             if (scores[i] > scores[iteration_max]) iteration_max = i;
-
-            position.unmake_move(list.list[i]);
 
             if (is_search_cancelled) break;
         }

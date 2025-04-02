@@ -26,6 +26,36 @@ enum Pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k, nil};
 
 constexpr char piece_icons[] {'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', '.'};
 
+enum Direction
+{
+    Upright = 7,
+    Up = 8,
+    Upleft = 9,
+};
+
+template<Direction direction, bool side> uint64_t Shift(const uint64_t& board)
+{
+    if constexpr (direction == Up && side == white) {
+        return board >> 8;
+    }
+    else if constexpr (direction == Up && side == black) {
+        return board << 8;
+    }
+    else if constexpr (direction == Upleft && side == white) {
+        return (board >> 9) & not_h_file;
+    }
+    else if constexpr (direction == Upleft && side == black) {
+        return (board << 9) & not_a_file;
+    }
+    else if constexpr (direction == Upright && side == white) {
+        return (board >> 7) & not_a_file;
+    }
+    else if constexpr (direction == Upright && side == black) {
+        return (board << 7) & not_h_file;
+    }
+    return board;
+}
+
 inline void set_bit(uint64_t& bitboard, const uint8_t index)
 {
     bitboard = bitboard | (1ull << index);

@@ -33,7 +33,7 @@ inline void pawn_move_generator(Move*& pos, const MoveType type)
     const int8_t upshift = us == white ? 8 : -8;
     const uint64_t last_line = us == white ? 0xFF00ull : 0xFF000000000000ull;
     const uint64_t line_3 = us == white ? 0xFF00000000ull: 0xFF000000ull;
-    const uint64_t check_blocker = position.is_king_in_check_by(enemy) ? position.state->check_blocker : 0ull;
+    const uint64_t check_blocker = position.state->checker ? position.state->check_blocker : 0ull;
 
     uint64_t left_capture = (upleft_shift > 0 ? (((board & ~last_line) >> 9) & not_h_file) : (((board & ~last_line) << 9) & not_a_file)) & position.occupations[enemy];
     uint64_t right_capture = (upright_shift > 0 ? (((board & ~last_line) >> 7) & not_a_file) : (((board & ~last_line) << 7)) & not_h_file) & position.occupations[enemy];
@@ -266,7 +266,7 @@ inline MoveList legal_move_generator()
 {
     MoveList move_list;
     const bool us = position.side_to_move;
-    if (position.is_king_in_check_by(1 - us))
+    if (position.state->checker)
         pseudo_legal_move_generator(evasions, move_list.last);
     else pseudo_legal_move_generator(non_evasions, move_list.last);
 
@@ -290,10 +290,9 @@ inline MoveList capture_move_generator()
     pseudo_legal_move_generator(captures, move_list.last);
     const uint8_t king = us == white ? K : k;
     Move* current = move_list.begin();
-    const uint64_t checker = position.state->check_blocker;
     while (current != move_list.last) {
         if (Move move = *current;
-            (checker && !((1ull << move.dest()) & checker)) ||
+            (position.state->checker && !((1ull << move.dest()) & position.state->check_blocker)) ||
             (((position.state->pinned & (1ull << move.src())) || (position.piece_on[move.src()] == king) || move.flag() == ep_capture) && (!is_legal(move)))) {
             *current = *(--move_list.last);
         }

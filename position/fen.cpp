@@ -60,6 +60,7 @@ void setup_state(State& st)
     st.side_key = 0;
     st.repetition = 1;
     st.checker = 0;
+    st.check_blocker = 0;
 }
 
 int fen_parse(std::string fen)
@@ -304,8 +305,8 @@ int fen_parse(std::string fen)
     temp.occupations[black] = temp.boards[p] | temp.boards[k] | temp.boards[n] | temp.boards[q] | temp.boards[b] | temp.boards[r];
     temp.occupations[2] = temp.occupations[white] | temp.occupations[black];
     st.pinned = temp.get_pinned_board_of(temp.side_to_move);
-    if (temp.is_king_in_check_by(1 - temp.side_to_move)) {
-        st.checker = temp.get_checker_of(temp.side_to_move);
+    st.checker = temp.get_checker_of(temp.side_to_move);
+    if (st.checker) {
         st.check_blocker = temp.get_check_blocker_of(temp.side_to_move);
     }
 

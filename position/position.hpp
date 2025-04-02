@@ -43,9 +43,8 @@ struct State
 
 inline std::deque<State> states(1);
 
-class Position
+struct Position
 {
-public:
     Pieces piece_on[64]{};
     uint64_t boards[12]{};
     uint64_t occupations[3]{};

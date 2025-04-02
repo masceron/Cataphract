@@ -9,9 +9,8 @@ inline volatile bool is_search_cancelled = false;
 inline std::condition_variable cv;
 inline std::mutex timer_lock;
 
-class Timer
+struct Timer
 {
-public:
     static std::thread timer_thread;
     static volatile bool running;
     static void await()

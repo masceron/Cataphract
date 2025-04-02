@@ -11,6 +11,8 @@
 #include "../board/pieces/slider.hpp"
 #include "../board/pieces/knight.hpp"
 #include "../board/pieces/king.hpp"
+#include "../board/lines.hpp"
+#include "../board/bitboard.hpp"
 
 inline Side color_of(const Pieces piece)
 {
@@ -109,13 +111,13 @@ public:
             const Zobrist_Non_Pawn_Key rook = side_to_move == white ? z_R : z_r;
             move_piece(to + 1, to - 1);
 
-            st.non_pawn_key ^= zobrist_keys.non_pawn_keys[rook][to + 1] ^ zobrist_keys.non_pawn_keys[rook][to - 1];
+            st.non_pawn_key ^= Zobrist::non_pawn_keys[rook][to + 1] ^ Zobrist::non_pawn_keys[rook][to - 1];
         }
         else if (flag == queen_castle) {
             const Zobrist_Non_Pawn_Key rook = side_to_move == white ? z_R : z_r;
             move_piece(to - 2, to + 1);
 
-            st.non_pawn_key ^= zobrist_keys.non_pawn_keys[rook][to - 2] ^ zobrist_keys.non_pawn_keys[rook][to + 1];
+            st.non_pawn_key ^= Zobrist::non_pawn_keys[rook][to - 2] ^ Zobrist::non_pawn_keys[rook][to + 1];
         }
 
         else if (captured_piece != nil) {
@@ -124,40 +126,40 @@ public:
                     const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
                     remove_piece(captured_square);
 
-                    st.pawn_key ^= zobrist_keys.pawn_keys[1 - side_to_move][captured_square - 8];
+                    st.pawn_key ^= Zobrist::pawn_keys[1 - side_to_move][captured_square - 8];
                 }
                 else {
-                    st.pawn_key ^= zobrist_keys.pawn_keys[1 - side_to_move][to - 8];
+                    st.pawn_key ^= Zobrist::pawn_keys[1 - side_to_move][to - 8];
                     remove_piece(to);
                 }
             }
             else {
                 if (to == 0 && side_to_move == white) {
                     st.castling_rights &= ~black_queen;
-                    st.castling_key =  zobrist_keys.castling_keys[st.castling_rights];
+                    st.castling_key =  Zobrist::castling_keys[st.castling_rights];
                 }
                 else if (to == 7 && side_to_move == white) {
                     st.castling_rights &= ~black_king;
-                    st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                    st.castling_key = Zobrist::castling_keys[st.castling_rights];
                 }
                 else if (to == 56 && side_to_move == black) {
                     st.castling_rights &= ~white_queen;
-                    st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                    st.castling_key = Zobrist::castling_keys[st.castling_rights];
                 }
                 else if (to == 63 && side_to_move == black) {
                     st.castling_rights &= ~white_king;
-                    st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                    st.castling_key = Zobrist::castling_keys[st.castling_rights];
                 }
 
                 remove_piece(to);
 
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[pieces_to_zobrist_key(captured_piece)][to];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[pieces_to_zobrist_key(captured_piece)][to];
             }
             st.rule_50 = 0;
         }
 
         if (st.en_passant_square != -1) {
-            st.en_passant_key ^= zobrist_keys.en_passant_key[st.en_passant_square % 8];
+            st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
             st.en_passant_square = -1;
         }
 
@@ -167,54 +169,54 @@ public:
             if (flag == double_push &&
                 (pawn_attack_tables[side_to_move][to + (side_to_move == white ? 8 : -8)] & boards[side_to_move == white ? p : P])) {
                 st.en_passant_square = to + (side_to_move == white ? 8 : -8);
-                st.en_passant_key ^= zobrist_keys.en_passant_key[st.en_passant_square % 8];
-                st.pawn_key ^= zobrist_keys.pawn_keys[side_to_move][from - 8] ^ zobrist_keys.pawn_keys[side_to_move][to - 8];
+                st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
+                st.pawn_key ^= Zobrist::pawn_keys[side_to_move][from - 8] ^ Zobrist::pawn_keys[side_to_move][to - 8];
             }
             else if (flag >= knight_promotion) {
                 const Pieces promoted_to = move.promoted_to(side_to_move);
                 remove_piece(to);
                 put_piece(promoted_to, to);
 
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[pieces_to_zobrist_key(promoted_to)][to];
-                st.pawn_key ^= zobrist_keys.pawn_keys[side_to_move][from - 8];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[pieces_to_zobrist_key(promoted_to)][to];
+                st.pawn_key ^= Zobrist::pawn_keys[side_to_move][from - 8];
             }
 
             st.rule_50 = 0;
         }
         else {
             const Zobrist_Non_Pawn_Key key = pieces_to_zobrist_key(moving_piece);
-            st.non_pawn_key ^= zobrist_keys.non_pawn_keys[key][from]
-                                ^ zobrist_keys.non_pawn_keys[key][to];
+            st.non_pawn_key ^= Zobrist::non_pawn_keys[key][from]
+                                ^ Zobrist::non_pawn_keys[key][to];
 
             if (from == 60 && moving_piece == K) {
                 st.castling_rights &= 0b1100;
-                st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
             else if (from == 4 && moving_piece == k) {
                 st.castling_rights &= 0b0011;
-                st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
             else if (from == 7 && moving_piece == r) {
                 st.castling_rights &= ~black_king;
-                st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
             else if (from == 0 && moving_piece == r) {
                 st.castling_rights &= ~black_queen;
-                st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
             else if (from == 56 && moving_piece == R) {
                 st.castling_rights &= ~white_queen;
-                st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
             else if (from == 63 && moving_piece == R) {
                 st.castling_rights &= ~white_king;
-                st.castling_key = zobrist_keys.castling_keys[st.castling_rights];
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
         }
 
         st.captured_piece = captured_piece;
 
-        st.side_key ^= zobrist_keys.side_key;
+        st.side_key ^= Zobrist::side_key;
 
         st.key = st.pawn_key ^ st.non_pawn_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
 

@@ -1,8 +1,12 @@
 #pragma once
+
 #include <cstdint>
 #include <random>
 #include <array>
 #include <algorithm>
+
+#include "../board/bitboard.hpp"
+
 
 enum Zobrist_Non_Pawn_Key: uint8_t
 {
@@ -14,7 +18,7 @@ enum Zobrist_Pawn_key: uint8_t
     z_P, z_p
 };
 
-inline Zobrist_Non_Pawn_Key pieces_to_zobrist_key(Pieces piece)
+inline Zobrist_Non_Pawn_Key pieces_to_zobrist_key(const Pieces piece)
 {
     switch (piece) {
         case N:
@@ -42,15 +46,15 @@ inline Zobrist_Non_Pawn_Key pieces_to_zobrist_key(Pieces piece)
     }
 }
 
-struct Zobrist
+namespace Zobrist
 {
-    std::array<std::array<uint64_t, 64>, 10> non_pawn_keys{};
-    std::array<std::array<uint64_t, 48>, 2> pawn_keys{};
-    std::array<uint64_t, 16> castling_keys{};
-    std::array<uint64_t, 8> en_passant_key{};
-    uint64_t side_key;
+    inline std::array<std::array<uint64_t, 64>, 10> non_pawn_keys{};
+    inline std::array<std::array<uint64_t, 48>, 2> pawn_keys{};
+    inline std::array<uint64_t, 16> castling_keys{};
+    inline std::array<uint64_t, 8> en_passant_key{};
+    inline uint64_t side_key;
 
-    Zobrist()
+    inline void generate_keys()
     {
         std::random_device rd;
         std::mt19937_64 gnr(rd());
@@ -66,8 +70,6 @@ struct Zobrist
         std::ranges::generate(en_passant_key.begin(), en_passant_key.end(), gen);
         side_key = dis(gnr);
     }
-};
-
-inline Zobrist zobrist_keys{};
+}
 
 

@@ -3,7 +3,8 @@
 
 int main()
 {
-    initialize();
+    generate_lines();
+    Zobrist::generate_keys();
 
     UCI::process();
 }

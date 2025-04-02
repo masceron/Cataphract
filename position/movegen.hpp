@@ -148,29 +148,37 @@ inline void general_move_generator(Move*& pos, const Pieces piece, const MoveTyp
     }
     while (board) {
         const uint8_t from = least_significant_one(board);
-        uint64_t attack = 0;
+        uint64_t moveable = 0;
         switch (piece) {
             case Q:
-                attack = get_bishop_attack(from, aocc) | get_rook_attack(from, aocc);
+                moveable = get_bishop_attack(from, aocc) | get_rook_attack(from, aocc);
             break;
             case R:
-                attack = get_rook_attack(from, aocc);
+                moveable = get_rook_attack(from, aocc);
             break;
             case B:
-                attack = get_bishop_attack(from, aocc);
+                moveable = get_bishop_attack(from, aocc);
             break;
             case N:
-                attack = knight_attack_tables[from];
+                moveable = knight_attack_tables[from];
             break;
             default:
                 break;
         }
-        attack &= type == evasions ? position.state->check_blocker : (type == captures ? eocc : (~occ));
-        while (attack) {
-            if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) *(pos++) = Move(from, to, capture);
-            else *(pos++) = Move(from, to, quiet_move);
+        moveable &= type == evasions ? position.state->check_blocker : (~occ);
 
-            attack &= attack - 1;
+        uint64_t attacks = moveable & eocc;
+
+        if (type != captures) {
+            moveable = moveable & (~attacks);
+            while (moveable) {
+                *(pos++) = Move(from, least_significant_one(moveable), quiet_move);
+                moveable &= moveable - 1;
+            }
+        }
+        while (attacks) {
+            *(pos++) = Move(from, least_significant_one(attacks), capture);
+            attacks &= attacks - 1;
         }
 
         board &= board - 1;
@@ -183,7 +191,17 @@ inline void king_move_generator(Move*& pos, const MoveType type, const uint8_t k
     const uint64_t occ = position.occupations[us];
     const uint64_t eocc = position.occupations[1 - us];
     const uint64_t aocc = position.occupations[2];
+
+    uint64_t moveable = king_attack_tables[king] & (type == evasions ? ((~position.state->check_blocker & ~occ) | eocc) : ~occ);
+    uint64_t attacks = moveable & eocc;
+
     if (type != captures) {
+        moveable = moveable & ~attacks;
+        while (moveable) {
+            *(pos++) = Move(king, least_significant_one(moveable), quiet_move);
+            moveable &= moveable - 1;
+        }
+
         if (const uint8_t castling_rights = us == white ? (position.state->castling_rights & 0b11) : (position.state->castling_rights >> 2); type != evasions && castling_rights) {
             const uint64_t kp = us == white ? 0x6000000000000000ull : 0x60ull;
             const uint64_t qp = us == white ? 0xE00000000000000ull : 0xEull;
@@ -194,16 +212,12 @@ inline void king_move_generator(Move*& pos, const MoveType type, const uint8_t k
                 *(pos++) = Move(king, king - 2, queen_castle);
             }
         }
+
     }
-    uint64_t attack = king_attack_tables[king] & (type == evasions ? (lines_between[least_significant_one(position.state->checker)][king] | (~occ)) : (type == captures ? eocc : (~occ)));
-    while (attack) {
-        if (const uint8_t to = least_significant_one(attack); (1ull << to) & eocc) {
-            *(pos++) = Move(king, to , capture);
-        }
-        else {
-            *(pos++) = Move(king, to, quiet_move);
-        }
-        attack &= attack - 1;
+
+    while (attacks) {
+        *(pos++) = Move(king, least_significant_one(attacks) , capture);
+        attacks &= attacks - 1;
     }
 }
 

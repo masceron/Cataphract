@@ -84,84 +84,84 @@ int fen_parse(std::string fen)
             case 'p':
                 set_bit(temp.boards[p], cr_pts);
                 temp.piece_on[cr_pts] = p;
-                st.pawn_key ^= zobrist_keys.pawn_keys[z_p][cr_pts - 8];
+                st.pawn_key ^= Zobrist::pawn_keys[z_p][cr_pts - 8];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'r':
                 set_bit(temp.boards[r], cr_pts);
                 temp.piece_on[cr_pts] = r;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_r][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_r][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'b':
                 set_bit(temp.boards[b], cr_pts);
                 temp.piece_on[cr_pts] = b;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_b][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_b][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'n':
                 set_bit(temp.boards[n], cr_pts);
                 temp.piece_on[cr_pts] = n;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_n][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_n][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'k':
                 set_bit(temp.boards[k], cr_pts);
                 temp.piece_on[cr_pts] = k;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_k][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_k][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'q':
                 set_bit(temp.boards[q], cr_pts);
                 temp.piece_on[cr_pts] = q;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_q][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_q][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'P':
                 set_bit(temp.boards[P], cr_pts);
                 temp.piece_on[cr_pts] = P;
-                st.pawn_key ^= zobrist_keys.pawn_keys[z_P][cr_pts - 8];
+                st.pawn_key ^= Zobrist::pawn_keys[z_P][cr_pts - 8];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'R':
                 set_bit(temp.boards[R], cr_pts);
                 temp.piece_on[cr_pts] = R;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_R][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_R][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'B':
                 set_bit(temp.boards[B], cr_pts);
                 temp.piece_on[cr_pts] = B;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_B][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_B][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'N':
                 set_bit(temp.boards[N], cr_pts);
                 temp.piece_on[cr_pts] = N;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_N][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_N][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'K':
                 set_bit(temp.boards[K], cr_pts);
                 temp.piece_on[cr_pts] = K;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_K][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_K][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
             case 'Q':
                 set_bit(temp.boards[Q], cr_pts);
                 temp.piece_on[cr_pts] = Q;
-                st.non_pawn_key ^= zobrist_keys.non_pawn_keys[z_Q][cr_pts];
+                st.non_pawn_key ^= Zobrist::non_pawn_keys[z_Q][cr_pts];
                 cr_pts++;
                 cr_chars++;
             break;
@@ -221,7 +221,7 @@ int fen_parse(std::string fen)
     cr_chars++;
 
     if (temp.side_to_move == black)
-        st.side_key ^= zobrist_keys.side_key;
+        st.side_key ^= Zobrist::side_key;
 
     if (fen[cr_chars] != ' ') {
         return -1;
@@ -261,7 +261,7 @@ int fen_parse(std::string fen)
                 return -1;
         }
 
-    st.castling_key ^= zobrist_keys.castling_keys[st.castling_rights];
+    st.castling_key ^= Zobrist::castling_keys[st.castling_rights];
 
     if (fen[cr_chars] != ' ') {
         return -1;
@@ -280,7 +280,7 @@ int fen_parse(std::string fen)
 
 
     if (st.en_passant_square != -1)
-        st.en_passant_key ^= zobrist_keys.en_passant_key[st.en_passant_square % 8];
+        st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
 
 
     if (cr_chars >= fen.length()) {

@@ -4,7 +4,6 @@
 #include <iostream>
 #include <sstream>
 #include "bitboard.hpp"
-#include "lines.hpp"
 
 
 constexpr uint64_t not_a_file = 0xFEFEFEFEFEFEFEFE;
@@ -56,9 +55,4 @@ inline void print_bitboard(const uint64_t bitboard)
     }
     board << "\n";
     std::cout << board.str();
-}
-
-inline void initialize()
-{
-    generate_lines();
 }

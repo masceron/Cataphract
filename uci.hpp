@@ -57,6 +57,7 @@ namespace UCI
             }
             else if (input.starts_with("position ")) set_board(input.substr(9, std::string::npos));
             else if (input.starts_with("go perft ")) perft(input.substr(9,std::string::npos));
+            else if (input == "eval") std::cout << "Evaluation: " << eval(position) * (position.side_to_move == white ? 1 : -1) << "\n";
             else if (input != "quit") std::cout << "Unknown command.\n";
         }
 

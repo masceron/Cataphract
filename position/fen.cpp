@@ -82,6 +82,7 @@ int fen_parse(std::string fen)
     while (fen[cr_chars] != ' ') {
         switch (fen[cr_chars]) {
             case 'p':
+                if (cr_pts < 8 || cr_pts > 55) return -1;
                 set_bit(temp.boards[p], cr_pts);
                 temp.piece_on[cr_pts] = p;
                 st.pawn_key ^= Zobrist::pawn_keys[z_p][cr_pts - 8];
@@ -124,6 +125,7 @@ int fen_parse(std::string fen)
                 cr_chars++;
             break;
             case 'P':
+                if (cr_pts < 8 || cr_pts > 55) return -1;
                 set_bit(temp.boards[P], cr_pts);
                 temp.piece_on[cr_pts] = P;
                 st.pawn_key ^= Zobrist::pawn_keys[z_P][cr_pts - 8];

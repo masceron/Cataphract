@@ -9,7 +9,7 @@ inline size_t perft(const int depth)
     if (depth == 0) {
         return 1;
     }
-    const MoveList moves = legal_move_generator();
+    const MoveList moves = legal_move_generator(position);
     const int n = moves.size();
     uint64_t nodes = 0;
     if (depth == 1) {
@@ -31,7 +31,7 @@ inline void divide(const int depth)
     size_t total = 0;
 
     const auto start = std::chrono::high_resolution_clock::now();
-    const MoveList moves = legal_move_generator();
+    const MoveList moves = legal_move_generator(position);
     const int n = moves.size();
     for (int i = 0; i < n; i++) {
         State st;

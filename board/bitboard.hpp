@@ -53,7 +53,6 @@ template<Direction direction, bool side> uint64_t Shift(const uint64_t& board)
     else if constexpr (direction == Upright && side == black) {
         return (board << 7) & not_h_file;
     }
-    return board;
 }
 
 inline void set_bit(uint64_t& bitboard, const uint8_t index)

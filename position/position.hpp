@@ -335,6 +335,46 @@ struct Position
         const uint64_t checker = get_checker_of(side);
         return checker | lines_between[least_significant_one(checker)][least_significant_one(side == white ? boards[K] : boards[k])];
     }
+
+    bool is_legal(const Move& move)
+    {
+        const bool us = side_to_move;
+        const bool enemy = 1 - us;
+        const uint8_t from = move.src();
+        const uint8_t to = move.dest();
+        const uint8_t flag = move.flag();
+        const uint64_t king_board = boards[us == white ? K : k];
+        const uint8_t king = least_significant_one(king_board);
+
+        if (flag == king_castle) {
+            for (uint8_t k = from; k <= from + 2; k++) {
+                if (is_square_attacked_by(k, enemy)) return false;
+            }
+        }
+        else if (flag == queen_castle) {
+            for (uint8_t k = from; k >= from - 2; k--) {
+                if (is_square_attacked_by(k, enemy)) return false;
+            }
+        }
+        else if (flag == ep_capture) {
+            const uint64_t eq = boards[us == white ? q : Q];
+            const uint64_t eb = boards[us == white ? b : B];
+            const uint64_t er = boards[us == white ? r : R];
+            const uint64_t occ = (occupations[2] ^ (1ull << (to + (us == white ? 8 : -8))) ^ (1ull << from)) | (1ull << to);
+
+            return !((get_bishop_attack(king, occ) & (eq | eb)) | (get_rook_attack(king, occ) & (eq | er)));
+        }
+        else if (piece_on[from] == k || piece_on[from] == K) {
+            occupations[2] ^= king_board;
+            if (is_square_attacked_by(to, enemy)) {
+                occupations[2] ^= king_board;
+                return false;
+            }
+            occupations[2] ^= king_board;
+        }
+
+        return (!(state->pinned & (1ull << from)) || (lines_intersect[from][to] & king_board));
+    }
 };
 
 inline Position position;

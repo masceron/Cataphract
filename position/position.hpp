@@ -395,5 +395,5 @@ inline void print_board()
 
     std::cout << "   a b c d e f g h\n";
     for (const auto& i: lines) std::cout << i;
-    std::cout << "\n";
+    std::cout << "\nSide to move: " << (position.side_to_move == white ? "White\n" : "Black\n");
 }

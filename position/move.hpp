@@ -1,8 +1,8 @@
 #pragma once
+
 #include <cstdint>
 
 #include "../board/bitboard.hpp"
-#include "fen.hpp"
 
 enum flag: uint16_t
 {
@@ -21,6 +21,51 @@ enum flag: uint16_t
     rook_promo_capture,
     queen_promo_capture
 };
+
+inline int algebraic_to_num(const std::string &algebraic)
+{
+    if (algebraic.length() != 2) return -1;
+    int rank = 0;
+    int file = 0;
+    if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - static_cast<int>(algebraic[1] - '0');
+    else return - 1;
+    switch (algebraic[0]) {
+        case 'a':
+            file = 0;
+        break;
+        case 'b':
+            file = 1;
+        break;
+        case 'c':
+            file = 2;
+        break;
+        case 'd':
+            file = 3;
+        break;
+        case 'e':
+            file = 4;
+        break;
+        case 'f':
+            file = 5;
+        break;
+        case 'g':
+            file = 6;
+        break;
+        case 'h':
+            file = 7;
+        break;
+        default:
+            return -1;
+    }
+    return rank * 8 + file;
+}
+
+inline std::string num_to_algebraic(const uint8_t sq)
+{
+    static constexpr char files[] = "abcdefgh";
+
+    return files[sq % 8] + std::to_string(8 - sq/8);
+}
 
 struct Move
 {

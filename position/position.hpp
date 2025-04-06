@@ -284,18 +284,18 @@ struct Position
     [[nodiscard]] bool is_square_attacked_by(const uint8_t index, const bool side) const
     {
         if (!side) {
-            if (knight_attack_tables[index] & boards[N]) return true;
-            if (king_attack_tables[index] & boards[K]) return true;
-            if (pawn_attack_tables[black][index] & boards[P]) return true;
-            if (get_bishop_attack(index, occupations[2]) & (boards[B] | boards[Q])) return true;
             if (get_rook_attack(index, occupations[2]) & (boards[R] | boards[Q])) return true;
+            if (get_bishop_attack(index, occupations[2]) & (boards[B] | boards[Q])) return true;
+            if (knight_attack_tables[index] & boards[N]) return true;
+            if (pawn_attack_tables[black][index] & boards[P]) return true;
+            if (king_attack_tables[index] & boards[K]) return true;
         }
         else {
-            if (knight_attack_tables[index] & boards[n]) return true;
-            if (king_attack_tables[index] & boards[k]) return true;
-            if (pawn_attack_tables[white][index] & boards[p]) return true;
-            if (get_bishop_attack(index, occupations[2]) & (boards[b] | boards[q])) return true;
             if (get_rook_attack(index, occupations[2]) & (boards[r] | boards[q])) return true;
+            if (get_bishop_attack(index, occupations[2]) & (boards[b] | boards[q])) return true;
+            if (knight_attack_tables[index] & boards[n]) return true;
+            if (pawn_attack_tables[white][index] & boards[p]) return true;
+            if (king_attack_tables[index] & boards[k]) return true;
         }
         return false;
     }
@@ -336,7 +336,7 @@ struct Position
         return checker | lines_between[least_significant_one(checker)][least_significant_one(side == white ? boards[K] : boards[k])];
     }
 
-    bool is_legal(const Move& move)
+    [[nodiscard]] bool is_legal(const Move& move)
     {
         const bool us = side_to_move;
         const bool enemy = 1 - us;

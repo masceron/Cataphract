@@ -23,7 +23,7 @@ enum MoveType: uint8_t
 };
 
 template<bool us, MoveType type>
-void pawn_move_generator(Position& cr_pos, Move*& pos)
+void pawn_move_generator(const Position& cr_pos, Move*& pos)
 {
     const uint8_t ep_square = cr_pos.state->en_passant_square;
     static constexpr bool enemy = 1 - us;
@@ -135,7 +135,7 @@ void pawn_move_generator(Position& cr_pos, Move*& pos)
 }
 
 template<bool us, MoveType type, Pieces piece>
-void general_move_generator(Position& cr_pos, Move*& pos)
+void general_move_generator(const Position& cr_pos, Move*& pos)
 {
     uint64_t board = 0;
     const uint64_t occ = cr_pos.occupations[us];
@@ -184,7 +184,7 @@ void general_move_generator(Position& cr_pos, Move*& pos)
 }
 
 template<bool us, MoveType type>
-void king_move_generator(Position& cr_pos, Move*& pos, const uint8_t king)
+void king_move_generator(const Position& cr_pos, Move*& pos, const uint8_t king)
 {
     const uint64_t occ = cr_pos.occupations[us];
     const uint64_t eocc = cr_pos.occupations[1 - us];
@@ -230,7 +230,7 @@ void king_move_generator(Position& cr_pos, Move*& pos, const uint8_t king)
 }
 
 template<bool us, MoveType type>
-void pseudo_legal_move_generator(Position& cr_pos, Move*& last)
+void pseudo_legal_move_generator(const Position& cr_pos, Move*& last)
 {
     if (std::popcount(cr_pos.state->checker) != 2) {
         pawn_move_generator<us, type>(cr_pos, last);

@@ -25,12 +25,17 @@ inline int32_t quiesce(Position& pos, int alpha, const int beta)
     if (stand_pat >= beta) return stand_pat;
     if (stand_pat > alpha) alpha = stand_pat;
 
+    static constexpr int32_t swing = queen_weight + 200;
+
+    if (stand_pat + swing < alpha) return alpha;
+
     int best_score = stand_pat;
 
     const MoveList capture_list = capture_move_generator(pos);
 
+    State st;
     for (int i = 0; i < capture_list.size(); i++) {
-        State st;
+
         pos.make_move(capture_list.list[i], st);
         const int32_t score = -quiesce(pos, -beta, -alpha);
         pos.unmake_move(capture_list.list[i]);
@@ -86,9 +91,6 @@ inline std::string start_search(const int depth)
     std::array<int32_t, 218> scores;
     std::ranges::fill(scores, negative_infinity);
 
-    uint8_t total_max_index = 0;
-    int32_t total_max_eval = negative_infinity;
-
     node_searched = 0;
 
     const bool us = position.side_to_move;
@@ -109,18 +111,17 @@ inline std::string start_search(const int depth)
             if (is_search_cancelled) break;
         }
 
-        if (total_max_eval < scores[iteration_max]) {
-            total_max_index = iteration_max;
-            total_max_eval = scores[iteration_max];
-        }
+        const auto temp = scores[iteration_max];
+        scores[iteration_max] = scores[0];
+        scores[0] = temp;
 
-        std::cout << "Current best move at depth " << cr_depth << ": " << get_move_string(list.list[total_max_index])
-        <<" (" << total_max_eval * (us == black ? - 1 : 1) << ")"
+        std::cout << "Current best move at depth " << cr_depth << ": " << get_move_string(list.list[0])
+        <<" (" << scores[0] * (us == black ? - 1 : 1) << ")"
         << ". Node searched: " << node_searched << ".\n";
     }
 
     Timer::stop();
     Timer::timer_thread.join();
 
-    return get_move_string(list.list[total_max_index]);
+    return get_move_string(list.list[0]);
 }

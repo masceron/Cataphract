@@ -30,7 +30,6 @@ add_executable(CSEngine main.cpp
         board/pieces/rook.hpp
         board/pieces/slider.hpp
         board/pieces/slider.cpp
-        position/fen.cpp
         position/fen.hpp
         position/position.hpp
         board/lines.hpp

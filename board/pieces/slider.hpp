@@ -40,31 +40,35 @@ inline uint64_t random_uint64_few_bits()
 
 inline uint64_t get_bishop_attack(const uint8_t index, uint64_t occupancy)
 {
-    occupancy &= bishop_magics[index].mask;
-    occupancy *= bishop_magics[index].magic;
-    occupancy >>= bishop_magics[index].shift;
-    return bishop_magics[index].attacks[occupancy];
+    const auto [magic, shift, mask, attacks] = bishop_magics[index]; 
+    occupancy &= mask;
+    occupancy *= magic;
+    occupancy >>= shift;
+    return attacks[occupancy];
 }
 
 inline uint64_t get_rook_attack(const uint8_t index, uint64_t occupancy)
 {
-    occupancy &= rook_magics[index].mask;
-    occupancy *= rook_magics[index].magic;
-    occupancy >>= rook_magics[index].shift;
-    return rook_magics[index].attacks[occupancy];
+    const auto [magic, shift, mask, attacks] = rook_magics[index];
+    occupancy &= mask;
+    occupancy *= magic;
+    occupancy >>= shift;
+    return attacks[occupancy];
 }
 
 inline uint64_t get_queen_attack(const uint8_t index, uint64_t occupancy)
 {
-    auto temp = occupancy;
-    temp &= rook_magics[index].mask;
-    temp *= rook_magics[index].magic;
-    temp >>= rook_magics[index].shift;
+    const auto [magic_r, shift_r, mask_r, attacks_r] = rook_magics[index];
+    const auto [magic_b, shift_b, mask_b, attacks_b] = bishop_magics[index];
+    auto rook = occupancy;
+    rook &= mask_r;
+    rook *= magic_r;
+    rook >>= shift_r;
 
-    occupancy &= bishop_magics[index].mask;
-    occupancy *= bishop_magics[index].magic;
-    occupancy >>= bishop_magics[index].shift;
-    return rook_magics[index].attacks[temp] | bishop_magics[index].attacks[occupancy];
+    occupancy &= mask_b;
+    occupancy *= magic_b;
+    occupancy >>= shift_b;
+    return attacks_r[rook] | attacks_b[occupancy];
 }
 
 inline std::array<uint64_t, 5248> bishop_table{};

@@ -8,9 +8,8 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_STANDARD 23)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Werror -Wno-class-memaccess")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s -Wall -Wextra -Werror -Wno-class-memaccess -march=native -mtune=native")
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Werror -Wno-class-memaccess -static -pedantic -g")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -Wextra -Werror -Wno-class-memaccess -march=native -mtune=native -static -pedantic")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS_DEBUG "/W4 /wd4244 /wd4146 /std:c++latest")
     set(CMAKE_CXX_FLAGS_RELEASE "/W4 /wd4244 /wd4146 /O2 /GL /GA /std:c++latest")
@@ -38,7 +37,7 @@ add_executable(CSEngine main.cpp
         position/movegen.hpp
         position/perft.hpp
         uci.hpp
-        search/movepick.hpp
+        search/movepicker.hpp
         eval/eval.hpp
         search/search.hpp
         eval/transposition.hpp

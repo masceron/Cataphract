@@ -71,15 +71,21 @@ struct Move
 {
     uint16_t move;
     explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags) : move(src | (dest << 6) | (flags << 12)) {}
-    Move() {};
+    explicit Move(const uint16_t _move): move(_move) {}
+    Move() {}
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
     [[nodiscard]] uint16_t src() const { return move & 0b111111; }
     [[nodiscard]] uint16_t dest() const { return (move >> 6) & 0b111111; }
     [[nodiscard]] Pieces promoted_to(const bool side) const { return static_cast<Pieces>(6 * side + ((flag() & 0b11) + 1)); }
+
+    bool operator==(const Move & _move) const { return _move.move == this->move; };
 };
+
+const Move move_none(0, 0, 0);
 
 inline std::string get_move_string(const Move& move)
 {
+    if (move == move_none) return "0000";
     std::stringstream s;
     s << num_to_algebraic(move.src()) << num_to_algebraic(move.dest());
 

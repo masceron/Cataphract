@@ -19,6 +19,7 @@ inline void setup_state(State& st)
     st.side_key = 0;
     st.repetition = 1;
     st.checker = 0;
+    st.ply_from_root = 0;
     st.check_blocker = 0;
 }
 

@@ -31,6 +31,7 @@ struct State
     uint64_t en_passant_key;
     uint64_t side_key;
     uint16_t ply;
+    int8_t ply_from_root;
 
     uint64_t key = 0;
     Pieces captured_piece;
@@ -98,6 +99,7 @@ struct Position
         st.previous = state;
         st.rule_50++;
         st.ply++;
+        st.ply_from_root++;
         state = &st;
 
         const uint8_t from = move.src();
@@ -279,6 +281,7 @@ struct Position
         make_move(move, st);
         states.push_back(st);
         state = &states.back();
+        state->ply_from_root = 0;
     }
 
     [[nodiscard]] bool is_square_attacked_by(const uint8_t index, const bool side) const
@@ -298,6 +301,11 @@ struct Position
             if (king_attack_tables[index] & boards[k]) return true;
         }
         return false;
+    }
+
+    [[nodiscard]] bool is_king_in_check() const
+    {
+        return is_square_attacked_by(least_significant_one(boards[side_to_move == white ? K : k]), 1 - side_to_move);
     }
 
     [[nodiscard]] uint64_t get_pinned_board_of(const bool side) const

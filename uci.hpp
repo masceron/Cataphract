@@ -110,7 +110,7 @@ namespace UCI
     inline void go_depth(const std::string& depth)
     {
         try {
-            std::cout << "bestmove " + start_search(std::stoi(depth)) + "\n";
+            start_search(std::stoi(depth));
         } catch (...) {
             std::cout << "Unknown command.\n";
         }
@@ -125,13 +125,16 @@ namespace UCI
             const auto I = std::ranges::unique(input, [](auto lhs, auto rhs){ return lhs == rhs && lhs == ' '; } ).begin();
             input.erase(I, input.end());
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
+            else if (input == "go infinite") go_depth("128");
             else if (input == "d") print_board();
+            else if (input == "ucinewgame") Table::clear();
             else if (input == "uci") {
                 std::cout << "uciok\n";
             }
             else if (input.starts_with("position ")) set_board(input.substr(9, std::string::npos));
             else if (input.starts_with("go perft ")) perft(input.substr(9,std::string::npos));
             else if (input == "eval") std::cout << "Evaluation: " << eval(position) * (position.side_to_move == white ? 1 : -1) << "\n";
+            else if (input == "isready") std::cout << "readyok\n";
             else if (input != "quit") std::cout << "Unknown command.\n";
         }
 

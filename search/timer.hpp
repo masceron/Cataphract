@@ -13,6 +13,12 @@ struct Timer
 {
     static std::thread timer_thread;
     static volatile bool running;
+    static std::chrono::time_point<std::chrono::high_resolution_clock> begin_time;
+    static uint64_t elapsed()
+    {
+        const auto count = std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::high_resolution_clock::now() - begin_time)).count();
+        return count;
+    }
     static void await()
     {
         std::unique_lock lock(timer_lock);
@@ -25,6 +31,7 @@ struct Timer
         if (running) return;
         is_search_cancelled = false;
         running = true;
+        begin_time = std::chrono::high_resolution_clock::now();
         timer_thread = std::thread(await);
     }
     static void stop()
@@ -35,3 +42,4 @@ struct Timer
 
 volatile bool Timer::running = false;
 std::thread Timer::timer_thread;
+std::chrono::time_point<std::chrono::high_resolution_clock> Timer::begin_time;

@@ -31,7 +31,7 @@ struct State
     uint64_t en_passant_key;
     uint64_t side_key;
     uint16_t ply;
-    int8_t ply_from_root;
+    uint8_t ply_from_root;
 
     uint64_t key = 0;
     Pieces captured_piece;

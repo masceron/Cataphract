@@ -13,7 +13,7 @@
 #include "../eval/transposition.hpp"
 
 inline static uint64_t node_searched = 0;
-inline static int seldepth;
+inline static uint16_t seldepth;
 
 inline std::list<Move> principal_variation;
 
@@ -78,8 +78,6 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     const auto entry = Table::probe(pos.state->key, ok);
 
     if (ok) {
-        if (entry->best_move != move_none)
-            move_picker.set_principal(entry->best_move);
         if (entry->depth >= current_depth && pos.state->rule_50 < 40) {
             auto score = entry->score;
             switch (entry->type) {
@@ -96,9 +94,9 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             }
             if (alpha >= beta) return score;
         }
+        if (entry->best_move != move_none)
+            move_picker.set_principal(entry->best_move);
     }
-
-    int max = negative_infinity;
 
     if (picked_move == move_none) {
         return -mate_value + pos.state->ply_from_root;
@@ -106,30 +104,53 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
 
     if (depth == 0) return quiesce(pos, alpha, beta, pv);
 
+    std::list<Move> tmp;
+    State st;
+
+    pos.make_move(picked_move, st);
+    int max = -search(pos, -beta, -alpha, depth - 1, tmp);
+    pos.unmake_move(picked_move);
+
+    if (max > alpha) {
+        if (max >= beta) {
+            Table::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
+            return beta;
+        }
+        alpha = max;
+        pv.clear();
+        pv.push_back(picked_move);
+        pv.splice(pv.end(), tmp);
+    }
+
+    picked_move = move_picker.pick();
     while (picked_move != move_none) {
         if (is_search_cancelled) return 0;
 
-        State st;
         std::list<Move> local_pv;
 
         pos.make_move(picked_move, st);
-        const int score = -search(pos, -beta, -alpha, depth - 1, local_pv);
+        int16_t score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv);
+        if (score > alpha && score < beta) {
+            score = -search(pos, -beta, -alpha, depth - 1, local_pv);
+            if (score > alpha) alpha = score;
+        }
+
         pos.unmake_move(picked_move);
 
         if (score > max) {
+            if (score >= beta) {
+                max = beta;
+                break;
+            }
+
             max = score;
             depth_best_move = picked_move;
-            if (score > alpha) {
-                alpha = score;
-            }
+
             pv.clear();
             pv.push_back(picked_move);
             pv.splice(pv.end(), local_pv);
         }
-        if (score >= beta) {
-            max = beta;
-            break;
-        }
+
         picked_move = move_picker.pick();
     }
 

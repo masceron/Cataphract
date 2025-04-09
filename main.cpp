@@ -1,5 +1,6 @@
 #include "uci.hpp"
 #include "eval/transposition.hpp"
+#include "search/see.hpp"
 
 int main()
 {

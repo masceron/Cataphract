@@ -42,4 +42,5 @@ add_executable(CSEngine main.cpp
         search/search.hpp
         eval/transposition.hpp
         search/timer.hpp
+        search/see.hpp
 )

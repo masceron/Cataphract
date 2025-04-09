@@ -267,7 +267,11 @@ inline int fen_parse(std::string fen)
     temp.occupations[black] = temp.boards[p] | temp.boards[k] | temp.boards[n] | temp.boards[q] | temp.boards[b] | temp.boards[r];
     temp.occupations[2] = temp.occupations[white] | temp.occupations[black];
     st.pinned = temp.get_pinned_board_of(temp.side_to_move);
-    st.checker = temp.get_checker_of(temp.side_to_move);
+
+    if (!temp.side_to_move)
+        st.checker = temp.get_checker_of<white>();
+    else st.checker = temp.get_checker_of<black>();
+
     if (st.checker) {
         st.check_blocker = temp.get_check_blocker_of(temp.side_to_move);
     }

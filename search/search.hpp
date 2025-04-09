@@ -8,6 +8,7 @@
 #include "movegen.hpp"
 #include "movepicker.hpp"
 #include "move.hpp"
+#include "see.hpp"
 #include "timer.hpp"
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
@@ -39,7 +40,11 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
     State st;
 
     for (int i = 0; i < capture_list.size(); i++) {
+
+        if (static_exchange_evaluation(pos, capture_list.list[i]) < 0) continue;
+
         std::list<Move> local_pv;
+
         pos.make_move(capture_list.list[i], st);
         const int16_t score = -quiesce(pos, -beta, -alpha, local_pv);
         pos.unmake_move(capture_list.list[i]);
@@ -70,7 +75,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     Move depth_best_move = move_none;
 
     seldepth = pos.state->ply_from_root;
-    if (pos.state->repetition == 3 || pos.state->rule_50 >= 50 || (picked_move == move_none && !pos.is_king_in_check())) {
+    if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 50) {
         node_searched++;
         return draw;
     }
@@ -110,7 +115,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     State st;
 
     pos.make_move(picked_move, st);
-    int max = -search(pos, -beta, -alpha, depth - 1, tmp);
+    int16_t max = -search(pos, -beta, -alpha, depth - 1, tmp);
     pos.unmake_move(picked_move);
 
     if (is_search_cancelled) return 0;

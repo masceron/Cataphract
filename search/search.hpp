@@ -63,6 +63,8 @@ inline uint8_t current_depth;
 
 inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int depth, std::list<Move>& pv)
 {
+    if (is_search_cancelled) return 0;
+
     MovePicker move_picker(pos);
     Move picked_move = move_picker.pick();
     Move depth_best_move = move_none;
@@ -111,6 +113,8 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     int max = -search(pos, -beta, -alpha, depth - 1, tmp);
     pos.unmake_move(picked_move);
 
+    if (is_search_cancelled) return 0;
+
     if (max > alpha) {
         if (max >= beta) {
             Table::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
@@ -124,7 +128,6 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
 
     picked_move = move_picker.pick();
     while (picked_move != move_none) {
-        if (is_search_cancelled) return 0;
 
         std::list<Move> local_pv;
 
@@ -136,6 +139,8 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         }
 
         pos.unmake_move(picked_move);
+
+        if (is_search_cancelled) return 0;
 
         if (score > max) {
             if (score >= beta) {
@@ -202,6 +207,8 @@ inline void start_search(const int depth)
             const int16_t score = -search(position, negative_infinity, infinity, cr_depth - 1, local_pv);
             position.unmake_move(picked_move);
 
+            if (is_search_cancelled) break;
+
             if (score > max_score) {
                 best_move = picked_move;
                 max_score = score;
@@ -210,8 +217,6 @@ inline void start_search(const int depth)
                 principal_variation.push_back(picked_move);
                 principal_variation.splice(principal_variation.end(), local_pv);
             }
-
-            if (is_search_cancelled) break;
 
             picked_move = move_picker.pick();
         }

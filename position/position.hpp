@@ -40,7 +40,6 @@ struct State
     uint64_t check_blocker;
     State* previous;
     uint8_t repetition;
-    uint64_t pawn;
 };
 
 inline std::deque<State> states(1);
@@ -248,7 +247,6 @@ struct Position
                 }
             }
         }
-        state->pawn = boards[P];
     }
 
     void unmake_move(const Move &move)

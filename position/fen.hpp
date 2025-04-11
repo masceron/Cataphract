@@ -285,7 +285,6 @@ inline int fen_parse(std::string fen)
     states.push_back(st);
     temp.state = &states.back();
 
-    st.pawn = temp.boards[P];
     position = temp;
 
     return 0;

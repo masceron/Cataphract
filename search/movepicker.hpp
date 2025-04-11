@@ -46,7 +46,7 @@ struct MovePicker
     explicit MovePicker(Position& _pos, const Move& _pv)
     {
         pos = &_pos;
-        if (_pv != move_none && _pos.is_pseudo_legal(pv)) {
+        if (_pv != move_none && _pos.is_pseudo_legal(_pv)) {
             pv = _pv;
             stage = TT_moves;
         }
@@ -97,7 +97,10 @@ struct MovePicker
         Move move = pick();
         if (move == move_none) return move_none;
 
-        while (!check_move_legality(*pos, move)) move = pick();
+        while (!check_move_legality(*pos, move)) {
+            move = pick();
+            if (move == move_none) return move_none;
+        }
         return move;
     }
     template<const bool normal>

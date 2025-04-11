@@ -44,4 +44,5 @@ add_executable(CSEngine main.cpp
         search/timer.hpp
         search/see.hpp
         position/position.cpp
+        search/history.hpp
 )

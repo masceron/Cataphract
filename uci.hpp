@@ -69,17 +69,14 @@ namespace UCI
         else if (fen.starts_with("fen ")) {
             if (moves_pos == std::string::npos) {
                 if (fen_parse(fen.substr(4, std::string::npos)) == - 1) {
-                    std::cout << "Invalid FEN.\n";
                     return;
                 }
             }
             else if (fen_parse(fen.substr(4, moves_pos - 5)) == - 1) {
-                std::cout << "Invalid FEN.\n";
                 return;
             }
         }
         else {
-            std::cout << "Unknown command.\n";
             return;
         }
 
@@ -104,18 +101,14 @@ namespace UCI
     {
         try {
             divide(std::stoi(depth));
-        } catch (...) {
-            std::cout << "Unknown command.\n";
-        }
+        } catch (...) {}
     }
 
     inline void go_depth(const std::string& depth)
     {
         try {
             start_search(std::stoi(depth));
-        } catch (...) {
-            std::cout << "Unknown command.\n";
-        }
+        } catch (...) {}
     }
 
     inline void process()
@@ -129,7 +122,7 @@ namespace UCI
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
             else if (input == "go infinite") go_depth("128");
             else if (input == "d") print_board();
-            else if (input == "ucinewgame") Table::clear();
+            else if (input == "ucinewgame") TT::clear();
             else if (input == "uci") {
                 std::cout << "uciok\n";
             }
@@ -137,7 +130,6 @@ namespace UCI
             else if (input.starts_with("go perft ")) perft(input.substr(9,std::string::npos));
             else if (input == "eval") std::cout << "Evaluation: " << eval(position) * (position.side_to_move == white ? 1 : -1) << "\n";
             else if (input == "isready") std::cout << "readyok\n";
-            else if (input != "quit") std::cout << "Unknown command.\n";
         }
 
     }

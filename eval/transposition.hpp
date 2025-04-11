@@ -33,7 +33,7 @@ struct Entry
 
 constexpr uint16_t table_size_in_mb = 128;
 
-namespace Table
+namespace TT
 {
     inline auto table = new std::array<Entry, table_size_in_mb * (1024 * 1024) / sizeof(Entry)>();
     inline uint64_t size = table->size();

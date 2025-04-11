@@ -1,10 +1,12 @@
 #pragma once
 
 #include <cstdint>
-#include <list>
 #include <cmath>
+#include <forward_list>
+#include <list>
 #include <iomanip>
 
+#include "history.hpp"
 #include "movegen.hpp"
 #include "movepicker.hpp"
 #include "move.hpp"
@@ -82,7 +84,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
 
     bool ok = true;
     const int16_t o_alpha = alpha;
-    const auto entry = Table::probe(pos.state->key, ok);
+    const auto entry = TT::probe(pos.state->key, ok);
 
     Move tt_move = move_none;
 
@@ -123,6 +125,8 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     std::list<Move> tmp;
     State st;
 
+    std::forward_list<Move*> quiets_searched;
+
     pos.make_move(picked_move, st);
     int16_t max = -search(pos, -beta, -alpha, depth - 1, tmp);
     pos.unmake_move(picked_move);
@@ -131,7 +135,10 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
 
     if (max > alpha) {
         if (max >= beta) {
-            Table::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
+            if (move_picker.stage == quiet_moves) {
+                History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
+            }
+            TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
             return beta;
         }
         alpha = max;
@@ -140,6 +147,8 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         pv.push_back(picked_move);
         pv.splice(pv.end(), tmp);
     }
+
+    if (move_picker.stage == quiet_moves) quiets_searched.push_front(&picked_move);
 
     picked_move = move_picker.next_move();
     while (picked_move != move_none) {
@@ -160,6 +169,9 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         if (score > max) {
             if (score >= beta) {
                 max = beta;
+                if (move_picker.stage == quiet_moves) {
+                    History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
+                }
                 break;
             }
 
@@ -169,7 +181,13 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             pv.clear();
             pv.push_back(picked_move);
             pv.splice(pv.end(), local_pv);
+
         }
+
+        if (move_picker.stage == quiet_moves) {
+            quiets_searched.push_front(&picked_move);
+        }
+
         picked_move = move_picker.next_move();
     }
 
@@ -184,7 +202,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         else {
             type = pv_node;
         }
-        Table::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
+        TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
     }
 
     return max;

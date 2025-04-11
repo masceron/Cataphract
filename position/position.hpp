@@ -14,7 +14,7 @@
 #include "../board/lines.hpp"
 #include "../board/bitboard.hpp"
 
-inline Side color_of(const Pieces piece)
+inline bool color_of(const Pieces piece)
 {
     if (piece < 6) return white;
     return black;
@@ -40,6 +40,7 @@ struct State
     uint64_t check_blocker;
     State* previous;
     uint8_t repetition;
+    uint64_t pawn;
 };
 
 inline std::deque<State> states(1);
@@ -127,10 +128,10 @@ struct Position
                     const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
                     remove_piece(captured_square);
 
-                    st.pawn_key ^= Zobrist::pawn_keys[1 - side_to_move][captured_square - 8];
+                    st.pawn_key ^= Zobrist::pawn_keys[!side_to_move][captured_square - 8];
                 }
                 else {
-                    st.pawn_key ^= Zobrist::pawn_keys[1 - side_to_move][to - 8];
+                    st.pawn_key ^= Zobrist::pawn_keys[!side_to_move][to - 8];
                     remove_piece(to);
                 }
             }
@@ -174,7 +175,7 @@ struct Position
                 st.pawn_key ^= Zobrist::pawn_keys[side_to_move][from - 8] ^ Zobrist::pawn_keys[side_to_move][to - 8];
             }
             else if (flag >= knight_promotion) {
-                const Pieces promoted_to = move.promoted_to(side_to_move);
+                const Pieces promoted_to = side_to_move == white ? move.promoted_to<white>() : move.promoted_to<black>();
                 remove_piece(to);
                 put_piece(promoted_to, to);
 
@@ -229,10 +230,10 @@ struct Position
         }
 
         if (st.checker) {
-            st.check_blocker = get_check_blocker_of(1 - side_to_move);
+            st.check_blocker = get_check_blocker_of(!side_to_move);
         }
 
-        side_to_move = 1 - side_to_move;
+        side_to_move = !side_to_move;
 
         st.pinned = get_pinned_board_of(side_to_move);
 
@@ -247,11 +248,12 @@ struct Position
                 }
             }
         }
+        state->pawn = boards[P];
     }
 
     void unmake_move(const Move &move)
     {
-        side_to_move = 1 - side_to_move;
+        side_to_move = !side_to_move;
         const uint8_t from = move.src();
         const uint8_t to = move.dest();
         const uint8_t flag = move.flag();
@@ -313,8 +315,8 @@ struct Position
         uint64_t attacker = 0, pinned_board = 0;
         const uint8_t king_index = least_significant_one(side == white ? boards[K] : boards[k]);
 
-        attacker = (get_rook_attack(king_index, occupations[1 - side]) & (side == white ? (boards[r] | boards[q]) : (boards[R] | boards[Q])))
-                     | (get_bishop_attack(king_index, occupations[1 - side]) & (side == white ? (boards[b] | boards[q]) : (boards[B] | boards[Q])));
+        attacker = (get_rook_attack(king_index, occupations[!side]) & (side == white ? (boards[r] | boards[q]) : (boards[R] | boards[Q])))
+                     | (get_bishop_attack(king_index, occupations[!side]) & (side == white ? (boards[b] | boards[q]) : (boards[B] | boards[Q])));
 
         while (attacker) {
             const uint8_t sniper = least_significant_one(attacker);
@@ -352,45 +354,9 @@ struct Position
         return state->checker | lines_between[least_significant_one(state->checker)][least_significant_one(side == white ? boards[K] : boards[k])];
     }
 
-    [[nodiscard]] bool is_legal(const Move& move)
-    {
-        const bool us = side_to_move;
-        const bool enemy = 1 - us;
-        const uint8_t from = move.src();
-        const uint8_t to = move.dest();
-        const uint8_t flag = move.flag();
-        const uint64_t king_board = boards[us == white ? K : k];
-        const uint8_t king = least_significant_one(king_board);
+    [[nodiscard]] bool is_legal(const Move& move);
 
-        if (flag == king_castle) {
-            for (uint8_t k = from; k <= from + 2; k++) {
-                if (is_square_attacked_by(k, enemy)) return false;
-            }
-        }
-        else if (flag == queen_castle) {
-            for (uint8_t k = from; k >= from - 2; k--) {
-                if (is_square_attacked_by(k, enemy)) return false;
-            }
-        }
-        else if (flag == ep_capture) {
-            const uint64_t eq = boards[us == white ? q : Q];
-            const uint64_t eb = boards[us == white ? b : B];
-            const uint64_t er = boards[us == white ? r : R];
-            const uint64_t occ = (occupations[2] ^ (1ull << (to + (us == white ? 8 : -8))) ^ (1ull << from)) | (1ull << to);
-
-            return !((get_bishop_attack(king, occ) & (eq | eb)) | (get_rook_attack(king, occ) & (eq | er)));
-        }
-        else if (piece_on[from] == k || piece_on[from] == K) {
-            occupations[2] ^= king_board;
-            if (is_square_attacked_by(to, enemy)) {
-                occupations[2] ^= king_board;
-                return false;
-            }
-            occupations[2] ^= king_board;
-        }
-
-        return (!(state->pinned & (1ull << from)) || (lines_intersect[from][to] & king_board));
-    }
+    [[nodiscard]] bool is_pseudo_legal(const Move& move);
 };
 
 inline Position position;

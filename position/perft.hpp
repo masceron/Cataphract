@@ -9,9 +9,13 @@ inline size_t perft(const int depth)
     if (depth == 0) {
         return 1;
     }
-    const MoveList moves = legal_move_generator(position);
+
+    MoveList moves;
+    legals<captures>(position, moves);
+    legals<quiet>(position, moves);
     const int n = moves.size();
     uint64_t nodes = 0;
+
     if (depth == 1) {
         return n;
     }
@@ -29,19 +33,20 @@ inline size_t perft(const int depth)
 inline void divide(const int depth)
 {
     size_t total = 0;
+    MoveList list;
 
     const auto start = std::chrono::high_resolution_clock::now();
-    const MoveList moves = legal_move_generator(position);
-    const int n = moves.size();
+    legals<all>(position, list);
+    const int n = list.size();
 
     State st;
 
     for (int i = 0; i < n; i++) {
-        position.make_move(moves.list[i], st);
+        position.make_move(list.list[i], st);
         const size_t num = perft(depth - 1);
-        std::cout << get_move_string(moves.list[i]) << ": " << num << "\n";
+        std::cout << get_move_string(list.list[i]) << ": " << num << "\n";
         total += num;
-        position.unmake_move(moves.list[i]);
+        position.unmake_move(list.list[i]);
     }
     const auto time_taken = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start);
     std::cout << "\nNodes searched: " << total << "\n";

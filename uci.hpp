@@ -12,12 +12,13 @@ namespace UCI
     inline void process_move(const std::string& move)
     {
         if (move.length() == 4) {
-            const auto move_list = legal_move_generator(position);
+            MoveList moves;
+            legals<all>(position, moves);
             const int from = algebraic_to_num(move.substr(0, 2));
             const int to = algebraic_to_num(move.substr(2, 2));
             if (from == -1 || to == -1) return;
             const auto _move = Move(from, to, 0);
-            for (const auto& move_test : move_list.list) {
+            for (const auto& move_test : moves.list) {
                 if ((move_test.move & 0xFFF) == _move.move) {
                     position.do_move(move_test);
                     return;
@@ -46,9 +47,10 @@ namespace UCI
                     return;
             }
             flag += (abs(from - to) % 8 == 0) ? 0 : 4;
-            const auto move_list = legal_move_generator(position);
+            MoveList moves;
+            legals<all>(position, moves);
             const auto _move = Move(from, to, flag);
-            for (const auto& move_test : move_list.list) {
+            for (const auto& move_test : moves.list) {
                 if ((move_test.move) == _move.move) {
                     position.do_move(move_test);
                     return;

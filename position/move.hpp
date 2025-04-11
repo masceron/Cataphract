@@ -76,7 +76,10 @@ struct Move
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
     [[nodiscard]] uint16_t src() const { return move & 0b111111; }
     [[nodiscard]] uint16_t dest() const { return (move >> 6) & 0b111111; }
-    [[nodiscard]] Pieces promoted_to(const bool side) const { return static_cast<Pieces>(6 * side + ((flag() & 0b11) + 1)); }
+    template<const bool side> [[nodiscard]] Pieces promoted_to() const {
+        if constexpr (side == white) return static_cast<Pieces>((flag() & 0b11) + 1);
+        else return static_cast<Pieces>(6 + ((flag() & 0b11) + 1));
+    }
 
     bool operator==(const Move & _move) const { return _move.move == this->move; };
 };
@@ -90,7 +93,7 @@ inline std::string get_move_string(const Move& move)
     s << num_to_algebraic(move.src()) << num_to_algebraic(move.dest());
 
     if (move.flag() >= knight_promotion) {
-        switch (move.promoted_to(white)) {
+        switch (move.promoted_to<white>()) {
             case N:
                 s << "n";
             break;

@@ -33,7 +33,7 @@ enum Direction
     Upleft = 9,
 };
 
-template<Direction direction, bool side> uint64_t Shift(const uint64_t& board)
+template<const Direction direction, const bool side> uint64_t Shift(const uint64_t& board)
 {
     if constexpr (direction == Up && side == white) {
         return board >> 8;
@@ -52,6 +52,25 @@ template<Direction direction, bool side> uint64_t Shift(const uint64_t& board)
     }
     else if constexpr (direction == Upright && side == black) {
         return (board << 7) & not_h_file;
+    }
+}
+
+template <const Direction direction> int8_t Delta(const bool side)
+{
+    if constexpr (direction == Up) {
+        if (side == white)
+            return -8;
+        return 8;
+    }
+    if constexpr (direction == Upleft) {
+        if (side == white)
+            return -9;
+        return 9;
+    }
+    if constexpr (direction == Upright) {
+        if (side == white)
+            return -7;
+        return 7;
     }
 }
 

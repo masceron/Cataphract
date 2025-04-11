@@ -20,11 +20,11 @@ inline std::list<Move> principal_variation;
 
 inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::list<Move>& pv)
 {
+    node_searched++;
     seldepth = pos.state->ply_from_root;
     if (is_search_cancelled) return 0;
 
     const int stand_pat = eval(pos);
-    node_searched++;
 
     if (stand_pat >= beta) return stand_pat;
     if (stand_pat > alpha) alpha = stand_pat;
@@ -35,19 +35,23 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
 
     int best_score = stand_pat;
 
-    const MoveList capture_list = capture_move_generator(pos);
+    MoveList capture_moves;
+
+    legals<captures>(pos, capture_moves);
 
     State st;
 
-    for (int i = 0; i < capture_list.size(); i++) {
+    for (int i = 0; i < capture_moves.size(); i++) {
 
-        if (static_exchange_evaluation(pos, capture_list.list[i]) < 0) continue;
+        if (static_exchange_evaluation(pos, capture_moves.list[i]) < 0) continue;
 
         std::list<Move> local_pv;
 
-        pos.make_move(capture_list.list[i], st);
+        pos.make_move(capture_moves.list[i], st);
         const int16_t score = -quiesce(pos, -beta, -alpha, local_pv);
-        pos.unmake_move(capture_list.list[i]);
+        pos.unmake_move(capture_moves.list[i]);
+
+        if (is_search_cancelled) return 0;
 
         if (score >= beta) {
             return beta;
@@ -56,7 +60,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
         if (score > alpha) {
             alpha = score;
             pv.clear();
-            pv.push_back(capture_list.list[i]);
+            pv.push_back(capture_moves.list[i]);
             pv.splice(pv.end(), local_pv);
         }
     }
@@ -68,21 +72,19 @@ inline uint8_t current_depth;
 
 inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int depth, std::list<Move>& pv)
 {
+    node_searched++;
+
     if (is_search_cancelled) return 0;
 
-    MovePicker move_picker(pos);
-    Move picked_move = move_picker.pick();
     Move depth_best_move = move_none;
 
     seldepth = pos.state->ply_from_root;
-    if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 50) {
-        node_searched++;
-        return draw;
-    }
 
     bool ok = true;
     const int16_t o_alpha = alpha;
     const auto entry = Table::probe(pos.state->key, ok);
+
+    Move tt_move = move_none;
 
     if (ok) {
         if (entry->depth >= current_depth && pos.state->rule_50 < 40) {
@@ -102,7 +104,14 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             if (alpha >= beta) return score;
         }
         if (entry->best_move != move_none)
-            move_picker.set_principal(entry->best_move);
+            tt_move = entry->best_move;
+    }
+
+    MovePicker move_picker(pos, tt_move);
+    Move picked_move = move_picker.next_move();
+
+    if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 50) {
+        return draw;
     }
 
     if (picked_move == move_none) {
@@ -126,12 +135,13 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             return beta;
         }
         alpha = max;
+
         pv.clear();
         pv.push_back(picked_move);
         pv.splice(pv.end(), tmp);
     }
 
-    picked_move = move_picker.pick();
+    picked_move = move_picker.next_move();
     while (picked_move != move_none) {
 
         std::list<Move> local_pv;
@@ -160,8 +170,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             pv.push_back(picked_move);
             pv.splice(pv.end(), local_pv);
         }
-
-        picked_move = move_picker.pick();
+        picked_move = move_picker.next_move();
     }
 
     if (max != 0) {
@@ -186,27 +195,24 @@ inline void start_search(const int depth)
 {
     Timer::start();
 
-    principal_variation.clear();
     node_searched = 0;
 
     const bool us = position.side_to_move;
 
-    MovePicker move_picker(position);
-    Move best_move = move_picker.move_list.list[0];
+    MoveList moves;
+    legals<all>(position, moves);
+    Move best_move = moves.list[0];
 
     for (int cr_depth = 1; cr_depth <= depth; cr_depth++) {
         if (is_search_cancelled) break;
 
         int16_t max_score = negative_infinity;
         current_depth = cr_depth;
-        move_picker.offset = 0;
 
-        Move picked_move = move_picker.pick();
-
-        while (picked_move != move_none) {
-
+        for (int i = 0; i < moves.size(); i++) {
             State st;
             std::list<Move> local_pv;
+            Move picked_move = moves.list[i];
 
             position.make_move(picked_move, st);
             const int16_t score = -search(position, negative_infinity, infinity, cr_depth - 1, local_pv);
@@ -221,12 +227,13 @@ inline void start_search(const int depth)
                 principal_variation.clear();
                 principal_variation.push_back(picked_move);
                 principal_variation.splice(principal_variation.end(), local_pv);
+
+                const Move tmp = moves.list[0];
+                moves.list[0] = picked_move;
+                moves.list[i] = tmp;
             }
 
-            picked_move = move_picker.pick();
         }
-
-        move_picker.set_principal(best_move);
 
         const double elapsed = Timer::elapsed();
 

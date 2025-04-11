@@ -28,6 +28,8 @@ inline int fen_parse(std::string fen)
     State st;
     setup_state(st);
     Position temp;
+    temp.state = &st;
+
     fen.erase(fen.begin(), std::ranges::find_if(fen, [](const unsigned char ch) {
         return !std::isspace(ch);
     }));
@@ -283,6 +285,7 @@ inline int fen_parse(std::string fen)
     states.push_back(st);
     temp.state = &states.back();
 
+    st.pawn = temp.boards[P];
     position = temp;
 
     return 0;

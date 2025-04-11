@@ -1,6 +1,5 @@
 #include "uci.hpp"
 #include "eval/transposition.hpp"
-#include "search/see.hpp"
 
 int main()
 {
@@ -9,5 +8,4 @@ int main()
     Table::clear();
 
     UCI::process();
-
 }

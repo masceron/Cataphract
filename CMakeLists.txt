@@ -8,8 +8,8 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_STANDARD 23)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Werror -Wno-class-memaccess -static -pedantic -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s -Wall -Wextra -Werror -Wno-class-memaccess -march=native -mtune=native -static -pedantic")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Werror -Wno-class-memaccess -Wno-implicit-fallthrough -static -pedantic -g")
+    set(CMAKE_CXX_FLAGS_RELEASE "-O3 -g -Wall -Wextra -Werror -Wno-class-memaccess -Wno-implicit-fallthrough -march=native -mtune=native -static -pedantic")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     set(CMAKE_CXX_FLAGS_DEBUG "/W4 /wd4244 /wd4146 /std:c++latest")
     set(CMAKE_CXX_FLAGS_RELEASE "/W4 /wd4244 /wd4146 /O2 /GL /GA /std:c++latest")
@@ -43,4 +43,5 @@ add_executable(CSEngine main.cpp
         eval/transposition.hpp
         search/timer.hpp
         search/see.hpp
+        position/position.cpp
 )

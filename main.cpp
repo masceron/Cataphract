@@ -5,7 +5,8 @@ int main()
 {
     generate_lines();
     Zobrist::generate_keys();
-    Table::clear();
+    TT::clear();
+    History::clear();
 
     UCI::process();
 }

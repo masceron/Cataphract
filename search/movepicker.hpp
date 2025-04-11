@@ -1,5 +1,6 @@
 #pragma once
 
+#include "history.hpp"
 #include "movegen.hpp"
 #include "move.hpp"
 #include "see.hpp"
@@ -72,16 +73,19 @@ struct MovePicker
                 else return *(current++);
             case generating_quiet_moves:
                 pseudo_legals<quiet>(*pos, moves);
+                sort_history(non_captures_start, moves.last);
                 stage = quiet_moves;
             case quiet_moves:
                 if (*current == pv) current++;
                 if (current >= moves.end()) {
                     stage = bad_capture_moves;
                     current = bad_captures;
+                    sort_mvv_lva<false>(bad_captures, bad_captures_end);
                 }
-                else return *(current++);
+                else {
+                    return *(current++);
+                }
             case bad_capture_moves:
-                sort_mvv_lva<false>(bad_captures, bad_captures_end);
                 if (*current == pv) current++;
                 if (current >= bad_captures_end) {
                     stage = none;
@@ -106,6 +110,8 @@ struct MovePicker
     template<const bool normal>
     void sort_mvv_lva(Move* begin, Move*& end)
     {
+        if (begin == end) return;
+
         std::array<int16_t, 218> scores;
 
         scores[0] = mvv_lva[pos->piece_on[begin->src()]][pos->piece_on[begin->dest()]];
@@ -143,4 +149,34 @@ struct MovePicker
         }
     }
 
+    void sort_history(Move* begin, const Move* end) const
+    {
+        if (begin == end) return;
+
+        std::array<int16_t, 218> scores;
+
+        scores[0] = History::table[pos->side_to_move][begin->src()][begin->dest()];
+
+        Move* start = begin + 1;
+
+        while (start < end) {
+            int i = start - begin;
+            Move* tmpm = start;
+            scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()];
+
+            while (i > 0 && scores[i - 1] < scores[i]) {
+                const int16_t tmp = scores[i - 1];
+                scores[i - 1] = scores[i];
+                scores[i] = tmp;
+
+                const Move t = *(tmpm - 1);
+                *(tmpm - 1) = *tmpm;
+                *tmpm = t;
+
+                i--;
+                tmpm--;
+            }
+            start++;
+        }
+    }
 };

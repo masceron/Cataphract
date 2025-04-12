@@ -43,6 +43,7 @@ struct MovePicker
     Move* current;
     Move bad_captures[32];
     Move* bad_captures_end;
+    bool is_in_check;
 
     explicit MovePicker(Position& _pos, const Move& _pv)
     {
@@ -52,6 +53,7 @@ struct MovePicker
             stage = TT_moves;
         }
         bad_captures_end = bad_captures;
+        is_in_check = _pos.state->checker ? true : false;
     }
 
     Move pick()
@@ -101,9 +103,17 @@ struct MovePicker
         Move move = pick();
         if (move == move_none) return move_none;
 
-        while (!check_move_legality(*pos, move)) {
-            move = pick();
-            if (move == move_none) return move_none;
+        if (is_in_check) {
+            while (!check_move_legality<true>(*pos, move)) {
+                move = pick();
+                if (move == move_none) return move_none;
+            }
+        }
+        else {
+            while (!check_move_legality<false>(*pos, move)) {
+                move = pick();
+                if (move == move_none) return move_none;
+            }
         }
         return move;
     }

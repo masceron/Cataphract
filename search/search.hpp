@@ -37,9 +37,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
 
     int best_score = stand_pat;
 
-    MoveList capture_moves;
-
-    legals<captures>(pos, capture_moves);
+    const MoveList capture_moves = legals<captures>(pos);
 
     State st;
 
@@ -217,8 +215,7 @@ inline void start_search(const int depth)
 
     const bool us = position.side_to_move;
 
-    MoveList moves;
-    legals<all>(position, moves);
+    MoveList moves = legals<all>(position);
     Move best_move = moves.list[0];
 
     for (int cr_depth = 1; cr_depth <= depth; cr_depth++) {

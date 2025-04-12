@@ -8,7 +8,7 @@
 
 #include "move.hpp"
 
-enum Values
+enum Values: int16_t
 {
     draw = 0,
     negative_infinity = -32000,
@@ -19,7 +19,7 @@ enum Values
 
 enum NodeType: uint8_t
 {
-    pv_node = 1, all_node, cut_node
+    pv_node, all_node, cut_node
 };
 
 struct Entry

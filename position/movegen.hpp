@@ -266,14 +266,8 @@ template<const MoveType type> void pseudo_legals(Position &cr_pos, MoveList& lis
     }
 }
 
-template<const bool evasive>
-bool check_move_legality(Position& cr_pos, const Move& move)
+inline bool check_move_legality(Position& cr_pos, const Move& move)
 {
-    if constexpr (evasive) {
-        if ((cr_pos.piece_on[move.src()] != K && cr_pos.piece_on[move.src() != k])
-            && !(cr_pos.state->check_blocker & (1ull << move.dest())))
-            return false;
-    }
     if (((cr_pos.state->pinned & (1ull << move.src()))
         || (cr_pos.piece_on[move.src()] == K || cr_pos.piece_on[move.src()] == k)
         || move.flag() == ep_capture) && !cr_pos.is_legal(move)) {
@@ -290,7 +284,7 @@ MoveList legals(Position& cr_pos)
     Move* current = list.begin();
 
     while (current != list.last) {
-        if (!check_move_legality<false>(cr_pos, *current)) {
+        if (!check_move_legality(cr_pos, *current)) {
             *current = *(--list.last);
         }
         else {

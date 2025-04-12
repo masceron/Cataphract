@@ -80,20 +80,24 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
 
     seldepth = pos.state->ply_from_root;
 
-    bool ok = true;
+   bool ok = true;
     const int16_t o_alpha = alpha;
     const auto entry = TT::probe(pos.state->key, ok);
 
-    Move tt_move = move_none;
+   Move tt_move = move_none;
 
     if (ok) {
         if (entry->depth >= current_depth && pos.state->rule_50 < 40) {
-            auto score = entry->score;
+            int16_t score = entry->score;
+            if (score < -mate_bound) {
+                score += pos.state->ply_from_root;
+            }
+            if (score > mate_bound) {
+                score -= pos.state->ply_from_root;
+            }
             switch (entry->type) {
                 case pv_node:
-                    if (score < -mate_bound) score += pos.state->ply_from_root;
-                    else if (score > mate_bound) score -= pos.state->ply_from_root;
-                return score;
+                    return score;
                 case cut_node:
                     beta = std::min(beta, score);
                 break;
@@ -108,6 +112,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     }
 
     MovePicker move_picker(pos, tt_move);
+
     Move picked_move = move_picker.next_move();
 
     if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 50) {
@@ -212,10 +217,8 @@ inline void start_search(const int depth)
     Timer::start();
 
     node_searched = 0;
-
-    const bool us = position.side_to_move;
-
     MoveList moves = legals<all>(position);
+    std::vector<int16_t> scores(moves.size());
     Move best_move = moves.list[0];
 
     for (int cr_depth = 1; cr_depth <= depth; cr_depth++) {
@@ -242,30 +245,33 @@ inline void start_search(const int depth)
                 principal_variation.clear();
                 principal_variation.push_back(picked_move);
                 principal_variation.splice(principal_variation.end(), local_pv);
-
-                const Move tmp = moves.list[0];
-                moves.list[0] = picked_move;
-                moves.list[i] = tmp;
             }
+            scores[i] = score;
 
+            int j = i;
+            while (j > 0 && scores[j - 1] < scores[j]) {
+                std::swap(scores[j - 1], scores[j]);
+                std::swap(moves.list[j - 1], moves.list[j]);
+                j--;
+            }
         }
 
-        const double elapsed = Timer::elapsed();
+        if (max_score > negative_infinity) {
+            const double elapsed = Timer::elapsed();
+            std::cout << "info depth " << cr_depth << " seldepth " << seldepth << " score";
 
-        std::cout << "info depth " << cr_depth << " seldepth " << seldepth << " score";
+            if (max_score < -mate_bound) std::cout << " mate " << - std::ceil((mate_value + max_score) / 2.0);
+            else if (max_score > mate_bound) std::cout << " mate " << std::ceil((mate_value - max_score) / 2.0);
+            else std::cout << " cp " << max_score;
 
-        if (max_score < -mate_bound) std::cout << " mate " << - std::ceil((mate_value + max_score) / 2.0);
-        else if (max_score > mate_bound) std::cout << " mate " << std::ceil((mate_value - max_score) / 2.0);
-        else std::cout << " cp " << max_score * (us == white ? 1 : -1);
+            std::cout << " nodes " << node_searched
+            << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000  << " pv ";
 
-        std::cout << " nodes " << node_searched
-        << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000  << " pv ";
-
-        for (auto x : principal_variation) {
-            std::cout << get_move_string(x) << " ";
+            for (auto x : principal_variation) {
+                std::cout << get_move_string(x) << " ";
+            }
+            std::cout << "\n";
         }
-
-        std::cout << "\n";
     }
 
     Timer::stop();

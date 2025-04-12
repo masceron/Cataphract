@@ -37,23 +37,22 @@ struct MovePicker
     MoveList moves;
     Move pv;
     Move* non_captures_start;
-    uint8_t size;
     Stages stage = generating_capture_moves;
     Position* pos;
     Move* current;
     Move bad_captures[32];
     Move* bad_captures_end;
-    bool is_in_check;
 
     explicit MovePicker(Position& _pos, const Move& _pv)
     {
         pos = &_pos;
         if (_pv != move_none && _pos.is_pseudo_legal(_pv)) {
-            pv = _pv;
-            stage = TT_moves;
+            if (!_pos.state->checker || (_pos.state->check_blocker & (1ull << _pv.dest()))) {
+                pv = _pv;
+                stage = TT_moves;
+            }
         }
         bad_captures_end = bad_captures;
-        is_in_check = _pos.state->checker ? true : false;
     }
 
     Move pick()
@@ -77,9 +76,10 @@ struct MovePicker
                 pseudo_legals<quiet>(*pos, moves);
                 sort_history(non_captures_start, moves.last);
                 stage = quiet_moves;
+                current = non_captures_start;
             case quiet_moves:
                 if (*current == pv) current++;
-                if (current >= moves.end()) {
+                if (current >= moves.last) {
                     stage = bad_capture_moves;
                     current = bad_captures;
                     sort_mvv_lva<false>(bad_captures, bad_captures_end);
@@ -103,17 +103,9 @@ struct MovePicker
         Move move = pick();
         if (move == move_none) return move_none;
 
-        if (is_in_check) {
-            while (!check_move_legality<true>(*pos, move)) {
-                move = pick();
-                if (move == move_none) return move_none;
-            }
-        }
-        else {
-            while (!check_move_legality<false>(*pos, move)) {
-                move = pick();
-                if (move == move_none) return move_none;
-            }
+        while (!check_move_legality(*pos, move)) {
+            move = pick();
+            if (move == move_none) return move_none;
         }
         return move;
     }
@@ -144,13 +136,8 @@ struct MovePicker
             if (start->flag() >= knight_promo_capture) scores[0] += value_of(start->promoted_to<white>());
 
             while (i > 0 && scores[i - 1] < scores[i]) {
-                const int16_t tmp = scores[i - 1];
-                scores[i - 1] = scores[i];
-                scores[i] = tmp;
-
-                const Move t = *(tmpm - 1);
-                *(tmpm - 1) = *tmpm;
-                *tmpm = t;
+                std::swap(scores[i-1], scores[i]);
+                std::swap(*(tmpm - 1), *tmpm);
 
                 i--;
                 tmpm--;
@@ -175,13 +162,8 @@ struct MovePicker
             scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()];
 
             while (i > 0 && scores[i - 1] < scores[i]) {
-                const int16_t tmp = scores[i - 1];
-                scores[i - 1] = scores[i];
-                scores[i] = tmp;
-
-                const Move t = *(tmpm - 1);
-                *(tmpm - 1) = *tmpm;
-                *tmpm = t;
+                std::swap(scores[i-1], scores[i]);
+                std::swap(*(tmpm - 1), *tmpm);
 
                 i--;
                 tmpm--;

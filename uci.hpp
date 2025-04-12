@@ -120,7 +120,10 @@ namespace UCI
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
             else if (input == "go infinite") go_depth("128");
             else if (input == "d") print_board();
-            else if (input == "ucinewgame") TT::clear();
+            else if (input == "ucinewgame") {
+                TT::clear();
+                History::clear();
+            }
             else if (input == "uci") {
                 std::cout << "uciok\n";
             }

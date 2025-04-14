@@ -77,14 +77,15 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     if (is_search_cancelled) return 0;
 
     Move depth_best_move = move_none;
-
     seldepth = pos.state->ply_from_root;
 
-   bool ok = true;
+    bool ok = true;
     const int16_t o_alpha = alpha;
-    const auto entry = TT::probe(pos.state->key, ok);
+    const auto result = TT::probe(pos.state->key, ok);
 
-   Move tt_move = move_none;
+    Move tt_move = move_none;
+    Bucket* bucket = std::get<0>(result);
+    Entry* entry = std::get<1>(result);
 
     if (ok) {
         if (entry->depth >= current_depth && pos.state->rule_50 < 40) {
@@ -95,7 +96,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             if (score > mate_bound) {
                 score -= pos.state->ply_from_root;
             }
-            switch (entry->type) {
+            switch (entry->age_type & 0b11) {
                 case pv_node:
                     return score;
                 case cut_node:
@@ -104,11 +105,14 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
                 case all_node:
                     alpha = std::max(alpha, score);
                 break;
+                default:
+                    break;
             }
             if (alpha >= beta) return score;
+
+            if (entry->best_move != move_none)
+                tt_move = entry->best_move;
         }
-        if (entry->best_move != move_none)
-            tt_move = entry->best_move;
     }
 
     MovePicker move_picker(pos, tt_move);
@@ -141,7 +145,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             if (move_picker.stage == quiet_moves) {
                 History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
             }
-            TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
+            TT::write(bucket, entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
             return beta;
         }
         alpha = max;
@@ -205,7 +209,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         else {
             type = pv_node;
         }
-        TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
+        TT::write(bucket, entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
     }
 
     return max;
@@ -217,6 +221,8 @@ inline void start_search(const int depth)
     Timer::start();
 
     node_searched = 0;
+
+    TT::age += age_delta;
     MoveList moves = legals<all>(position);
     std::vector<int16_t> scores(moves.size());
     Move best_move = moves.list[0];

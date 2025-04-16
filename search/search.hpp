@@ -70,7 +70,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
 
 inline uint8_t current_depth;
 
-inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int depth, std::list<Move>& pv)
+inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int depth, std::list<Move>& pv, const bool allow_null)
 {
     node_searched++;
 
@@ -81,14 +81,12 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
 
     bool ok = true;
     const int16_t o_alpha = alpha;
-    const auto result = TT::probe(pos.state->key, ok);
+    const auto entry = TT::probe(pos.state->key, ok);
 
     Move tt_move = move_none;
-    Bucket* bucket = std::get<0>(result);
-    Entry* entry = std::get<1>(result);
 
     if (ok) {
-        if (entry->depth >= current_depth && pos.state->rule_50 < 40) {
+        if (entry->depth >= current_depth && pos.state->rule_50 < 90) {
             int16_t score = entry->score;
             if (score < -mate_bound) {
                 score += pos.state->ply_from_root;
@@ -96,7 +94,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             if (score > mate_bound) {
                 score -= pos.state->ply_from_root;
             }
-            switch (entry->age_type & 0b11) {
+            switch (entry->type) {
                 case pv_node:
                     return score;
                 case cut_node:
@@ -105,21 +103,18 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
                 case all_node:
                     alpha = std::max(alpha, score);
                 break;
-                default:
-                    break;
             }
             if (alpha >= beta) return score;
-
-            if (entry->best_move != move_none)
-                tt_move = entry->best_move;
         }
+        if (entry->best_move != move_none)
+            tt_move = entry->best_move;
     }
 
     MovePicker move_picker(pos, tt_move);
 
     Move picked_move = move_picker.next_move();
 
-    if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 50) {
+    if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 100) {
         return draw;
     }
 
@@ -127,7 +122,17 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         return -mate_value + pos.state->ply_from_root;
     }
 
-    if (depth == 0) return quiesce(pos, alpha, beta, pv);
+    if (depth <= 0) return quiesce(pos, alpha, beta, pv);
+
+    if (allow_null && !pos.state->checker && depth > 3 && tt_move == move_none
+        && (std::popcount(pos.occupations[pos.side_to_move]) - std::popcount(pos.boards[pos.side_to_move == white ? P : p])) > 1) {
+        State st;
+        const int reduction = 1 + depth / 3;
+        pos.make_null_move(st);
+        const int16_t score = -search(pos, -beta, -(beta - 1), depth - 1 - reduction, pv, false);
+        pos.unmake_null_move();
+        if (score >= beta) return beta;
+    }
 
     std::list<Move> tmp;
     State st;
@@ -135,7 +140,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     std::forward_list<Move*> quiets_searched;
 
     pos.make_move(picked_move, st);
-    int16_t max = -search(pos, -beta, -alpha, depth - 1, tmp);
+    int16_t max = -search(pos, -beta, -alpha, depth - 1, tmp, true);
     pos.unmake_move(picked_move);
 
     if (is_search_cancelled) return 0;
@@ -145,7 +150,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
             if (move_picker.stage == quiet_moves) {
                 History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
             }
-            TT::write(bucket, entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
+            TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
             return beta;
         }
         alpha = max;
@@ -163,9 +168,9 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         std::list<Move> local_pv;
 
         pos.make_move(picked_move, st);
-        int16_t score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv);
+        int16_t score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv, true);
         if (score > alpha && score < beta) {
-            score = -search(pos, -beta, -alpha, depth - 1, local_pv);
+            score = -search(pos, -beta, -alpha, depth - 1, local_pv, true);
             if (score > alpha) alpha = score;
         }
 
@@ -209,7 +214,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         else {
             type = pv_node;
         }
-        TT::write(bucket, entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
+        TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
     }
 
     return max;
@@ -222,7 +227,6 @@ inline void start_search(const int depth)
 
     node_searched = 0;
 
-    TT::age += age_delta;
     MoveList moves = legals<all>(position);
     std::vector<int16_t> scores(moves.size());
     Move best_move = moves.list[0];
@@ -239,7 +243,7 @@ inline void start_search(const int depth)
             Move picked_move = moves.list[i];
 
             position.make_move(picked_move, st);
-            const int16_t score = -search(position, negative_infinity, infinity, cr_depth - 1, local_pv);
+            const int16_t score = -search(position, negative_infinity, infinity, cr_depth - 1, local_pv, true);
             position.unmake_move(picked_move);
 
             if (is_search_cancelled) break;

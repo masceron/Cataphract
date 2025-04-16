@@ -280,6 +280,36 @@ struct Position
         state->ply_from_root = 0;
     }
 
+    void make_null_move(State& st)
+    {
+        memcpy(&st, state, sizeof(State));
+
+        st.previous = state;
+        st.repetition = 1;
+        st.ply_from_root++;
+        st.ply++;
+        st.rule_50 = 0;
+        st.key ^= st.side_key;
+        st.side_key ^= Zobrist::side_key;
+
+        if (st.en_passant_square != -1) {
+            st.en_passant_square = -1;
+            st.en_passant_key = 0;
+            st.key ^= st.en_passant_key;
+        }
+
+        side_to_move = !side_to_move;
+
+        st.pinned = get_pinned_board_of(side_to_move);
+        state = &st;
+    }
+
+    void unmake_null_move()
+    {
+        state = state->previous;
+        side_to_move = !side_to_move;
+    }
+
     [[nodiscard]] bool is_square_attacked_by(const uint8_t index, const bool side) const
     {
         if (!side) {

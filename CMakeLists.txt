@@ -45,4 +45,5 @@ add_executable(CSEngine main.cpp
         search/see.hpp
         position/position.cpp
         search/history.hpp
+        eval/phase.hpp
 )

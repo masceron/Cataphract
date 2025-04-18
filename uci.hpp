@@ -105,8 +105,17 @@ namespace UCI
     inline void go_depth(const std::string& depth)
     {
         try {
-            start_search(std::stoi(depth));
+            start_search(std::stoi(depth), -1);
         } catch (...) {}
+    }
+
+    inline void go_time(const std::string& time)
+    {
+        try {
+            const std::string time_num = time.substr(12, std::string::npos);
+            start_search(0, std::stoi(time_num));
+        }
+        catch (...) {}
     }
 
     inline void process()
@@ -119,6 +128,7 @@ namespace UCI
             input.erase(I, input.end());
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
             else if (input == "go infinite") go_depth("128");
+            else if (input.starts_with("go movetime ")) go_time(input);
             else if (input == "d") print_board();
             else if (input == "ucinewgame") {
                 TT::clear();

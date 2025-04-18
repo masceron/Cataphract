@@ -1,6 +1,5 @@
 #pragma once
 
-#include <cstdint>
 #include <cmath>
 #include <forward_list>
 #include <list>
@@ -33,6 +32,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
 
     static constexpr int16_t swing = queen_weight + 200;
 
+    //Delta pruning: https://www.chessprogramming.org/Delta_Pruning
     if (stand_pat + swing < alpha) return alpha;
 
     int best_score = stand_pat;
@@ -42,7 +42,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
     State st;
 
     for (int i = 0; i < capture_moves.size(); i++) {
-
+        //Do not consider moves in which the exchange is not at least even: https://www.chessprogramming.org/Static_Exchange_Evaluation
         if (static_exchange_evaluation(pos, capture_moves.list[i]) < 0) continue;
 
         std::list<Move> local_pv;
@@ -68,9 +68,8 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
     return best_score;
 }
 
-inline uint8_t current_depth;
 
-inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int depth, std::list<Move>& pv, const bool allow_null)
+inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t depth, std::list<Move>& pv, const bool allow_null)
 {
     node_searched++;
 
@@ -79,81 +78,82 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     Move depth_best_move = move_none;
     seldepth = pos.state->ply_from_root;
 
-    bool ok = true;
-    const int16_t o_alpha = alpha;
-    const auto entry = TT::probe(pos.state->key, ok);
+    //Mate Distance Pruning: https://www.chessprogramming.org/Mate_Distance_Pruning
+    alpha = std::max(alpha, static_cast<int16_t>(-mate_value + pos.state->ply_from_root));
+    beta = std::min(beta, static_cast<int16_t>(mate_value - pos.state->ply_from_root));
+    if (alpha >= beta) return alpha;
 
-    Move tt_move = move_none;
-
-    if (ok) {
-        if (entry->depth >= current_depth && pos.state->rule_50 < 90) {
-            int16_t score = entry->score;
-            if (score < -mate_bound) {
-                score += pos.state->ply_from_root;
-            }
-            if (score > mate_bound) {
-                score -= pos.state->ply_from_root;
-            }
-            switch (entry->type) {
-                case pv_node:
-                    return score;
-                case cut_node:
-                    beta = std::min(beta, score);
-                break;
-                case all_node:
-                    alpha = std::max(alpha, score);
-                break;
-            }
-            if (alpha >= beta) return score;
-        }
-        if (entry->best_move != move_none)
-            tt_move = entry->best_move;
+    //If depth <= 0 call quiescence search: https://www.chessprogramming.org/Quiescence_Search
+    if (depth <= 0) {
+        return quiesce(pos, alpha, beta, pv);
     }
 
-    MovePicker move_picker(pos, tt_move);
-
+    MovePicker move_picker(pos);
     Move picked_move = move_picker.next_move();
 
-    if (pos.state->repetition == 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 100) {
+    //Checking for draw.
+    if (pos.state->repetition >= 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 100) {
         return draw;
     }
-
+    //Checking for mate.
     if (picked_move == move_none) {
         return -mate_value + pos.state->ply_from_root;
     }
 
-    if (depth <= 0) return quiesce(pos, alpha, beta, pv);
+    bool ok = false;
+    int16_t score;
+    const int16_t old_alpha = alpha;
 
-    if (allow_null && !pos.state->checker && depth > 3 && tt_move == move_none
+    // Probe the transposition table: https://www.chessprogramming.org/Transposition_Table
+    const auto [bucket, entry] = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, score);
+
+    //Even when the depth of the entry is not sufficient to return the score, we can still recover the best move.
+    if (entry != nullptr) {
+        move_picker.set_pv(entry->best_move);
+    }
+    //If the score is usable, i.e. from an identical position with enough depth, return immediately.
+    if (ok) return score;
+
+    //Set up conditions for futility pruning: https://www.chessprogramming.org/Futility_Pruning
+    bool futility_pruning_allowed = false;
+    if (!pos.state->checker && depth > 0) {
+        static constexpr int16_t futility_margin_base = knight_weight + pawn_weight * 0.5;
+        static constexpr int16_t futility_margin_multiplier = pawn_weight * 2;
+        if (eval(pos) + futility_margin_base + ((depth - 1) * futility_margin_multiplier) < alpha)
+            futility_pruning_allowed = true;
+    }
+
+    //Null move pruning: https://www.chessprogramming.org/Null_Move_Pruning
+    if (allow_null && !pos.state->checker && depth > 3 && move_picker.pv == move_none
         && (std::popcount(pos.occupations[pos.side_to_move]) - std::popcount(pos.boards[pos.side_to_move == white ? P : p])) > 1) {
         State st;
         const int reduction = 1 + depth / 3;
         pos.make_null_move(st);
-        const int16_t score = -search(pos, -beta, -(beta - 1), depth - 1 - reduction, pv, false);
+        score = -search(pos, -beta, -beta + 1, depth - 1 - reduction, pv, false);
         pos.unmake_null_move();
         if (score >= beta) return beta;
     }
 
-    std::list<Move> tmp;
-    State st;
-
+    //A list of quiet moves searched, to apply the penalty to the history table when a quiet move fail high.
     std::forward_list<Move*> quiets_searched;
 
+    //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
+    std::list<Move> tmp;
+    State st;
     pos.make_move(picked_move, st);
-    int16_t max = -search(pos, -beta, -alpha, depth - 1, tmp, true);
+    score = -search(pos, -beta, -alpha, depth - 1, tmp, true);
     pos.unmake_move(picked_move);
 
     if (is_search_cancelled) return 0;
 
-    if (max > alpha) {
-        if (max >= beta) {
+    if (score > alpha) {
+        if (score >= beta) {
             if (move_picker.stage == quiet_moves) {
                 History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
             }
-            TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, cut_node);
             return beta;
         }
-        alpha = max;
+        alpha = score;
 
         pv.clear();
         pv.push_back(picked_move);
@@ -163,37 +163,42 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
     if (move_picker.stage == quiet_moves) quiets_searched.push_front(&picked_move);
 
     picked_move = move_picker.next_move();
+
     while (picked_move != move_none) {
+        if (futility_pruning_allowed) {
+            if (move_picker.stage == quiet_moves && !pos.does_move_give_check(picked_move)) {
+                picked_move = move_picker.next_move();
+                continue;
+            }
+        }
 
         std::list<Move> local_pv;
 
         pos.make_move(picked_move, st);
-        int16_t score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv, true);
+        score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv, true);
         if (score > alpha && score < beta) {
             score = -search(pos, -beta, -alpha, depth - 1, local_pv, true);
             if (score > alpha) alpha = score;
         }
-
         pos.unmake_move(picked_move);
 
         if (is_search_cancelled) return 0;
 
-        if (score > max) {
+        if (score > alpha) {
             if (score >= beta) {
-                max = beta;
                 if (move_picker.stage == quiet_moves) {
+                    //History heuristic: https://www.chessprogramming.org/History_Heuristic
                     History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
                 }
-                break;
+                TT::write(bucket, entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, beta, lower_bound);
+                return beta;
             }
-
-            max = score;
+            alpha = score;
             depth_best_move = picked_move;
 
             pv.clear();
             pv.push_back(picked_move);
             pv.splice(pv.end(), local_pv);
-
         }
 
         if (move_picker.stage == quiet_moves) {
@@ -203,39 +208,34 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int dept
         picked_move = move_picker.next_move();
     }
 
-    if (max != 0) {
-        NodeType type;
-        if (max <= o_alpha) {
-            type = cut_node;
-        }
-        else if (max >= beta) {
-            type = all_node;
-        }
-        else {
-            type = pv_node;
-        }
-        TT::write(entry, pos.state->key, depth_best_move, pos.state->ply_from_root, max, type);
-    }
+    if (old_alpha < alpha)
+        TT::write(bucket, entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, alpha, exact);
+    else TT::write(bucket, entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, alpha, upper_bound);
 
-    return max;
+    return alpha;
 }
 
 
-inline void start_search(const int depth)
+inline void start_search(int depth, const int time)
 {
-    Timer::start();
+    if (time != - 1) {
+        depth = 128;
+        Timer::start(time - 500);
+    }
+    else Timer::start(9500);
 
     node_searched = 0;
+    TT::age += age_delta;
 
     MoveList moves = legals<all>(position);
     std::vector<int16_t> scores(moves.size());
     Move best_move = moves.list[0];
 
+    //Iterative deepening: https://www.chessprogramming.org/Iterative_Deepening
     for (int cr_depth = 1; cr_depth <= depth; cr_depth++) {
         if (is_search_cancelled) break;
 
         int16_t max_score = negative_infinity;
-        current_depth = cr_depth;
 
         for (int i = 0; i < moves.size(); i++) {
             State st;
@@ -243,10 +243,13 @@ inline void start_search(const int depth)
             Move picked_move = moves.list[i];
 
             position.make_move(picked_move, st);
+            //Negamax: https://www.chessprogramming.org/Negamax
             const int16_t score = -search(position, negative_infinity, infinity, cr_depth - 1, local_pv, true);
             position.unmake_move(picked_move);
 
-            if (is_search_cancelled) break;
+            if (is_search_cancelled) {
+                break;
+            }
 
             if (score > max_score) {
                 best_move = picked_move;
@@ -258,11 +261,13 @@ inline void start_search(const int depth)
             }
             scores[i] = score;
 
-            int j = i;
-            while (j > 0 && scores[j - 1] < scores[j]) {
-                std::swap(scores[j - 1], scores[j]);
-                std::swap(moves.list[j - 1], moves.list[j]);
-                j--;
+            if (i >= 1) {
+                int j = i;
+                while (j > 0 && scores[j - 1] < scores[j]) {
+                    std::swap(scores[j - 1], scores[j]);
+                    std::swap(moves.list[j - 1], moves.list[j]);
+                    j--;
+                }
             }
         }
 

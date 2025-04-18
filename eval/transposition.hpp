@@ -1,11 +1,6 @@
 #pragma once
 
 #include <cstdint>
-
-#ifdef _MSC_VER
-#include <intrin.h>
-#endif
-
 #include "move.hpp"
 
 enum Values: int16_t
@@ -19,51 +14,96 @@ enum Values: int16_t
 
 enum NodeType: uint8_t
 {
-    pv_node, all_node, cut_node
+    exact, lower_bound, upper_bound
 };
+
+inline constexpr uint8_t age_delta = 4;
 
 struct Entry
 {
-    uint64_t key;
+    uint16_t key;
     Move best_move;
-    uint8_t depth;
+    int8_t depth;
     int16_t score;
-    NodeType type;
+    uint8_t age_type;
+};
+
+struct Bucket
+{
+    Entry entries[3];
 };
 
 static constexpr uint64_t table_size = 8388608;
 
 namespace TT
 {
-    inline auto table = new std::array<Entry, table_size>();
-    inline uint64_t size = table->size();
+    inline auto table = new std::array<Bucket, table_size>();
+    inline uint8_t age = 0;
 
     inline uint64_t index_of(const uint64_t& key)
     {
-        static constexpr uint64_t multiplier = 0x9e3779b97f4a7c15ull;
-        return (key * multiplier) & (table_size - 1);
+        return key & (table_size - 1);
     }
 
-    inline Entry* probe(const uint64_t key, bool& ok)
+    inline std::pair<Bucket*, Entry*> probe(const uint64_t key, bool& ok, const int8_t depth, const uint8_t ply, const int16_t alpha, const int16_t beta, int16_t& score)
     {
-        const uint64_t index = index_of(key);
-
-        if ((*table)[index].key != key) {
-            ok = false;
+        Bucket* bucket =  &(*table)[index_of(key)];
+        const auto entry_key = static_cast<uint16_t>(key);
+        Entry* _entry = nullptr;
+        for (auto& entry : bucket->entries) {
+            if (entry.key == entry_key) {
+                if (entry.depth >= depth) {
+                    score = entry.score;
+                    if (score < -mate_bound) {
+                        score += ply;
+                    }
+                    else if (score > mate_bound) {
+                        score -= ply;
+                    }
+                    switch (entry.age_type & 0b11) {
+                        case exact:
+                            if (alpha + 1 == beta) {
+                                ok = true;
+                                _entry = &entry;
+                            }
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                break;
+            }
         }
-        return &(*table)[index];
+        return {bucket, _entry};
     }
 
-    inline void write(Entry* entry, const uint64_t key, const Move best_move, const uint8_t depth, int16_t score, const NodeType type)
+    inline void write(Bucket* bucket, Entry* entry, const uint64_t key, const Move best_move, const int8_t depth, const uint8_t ply, int16_t score, const NodeType type)
     {
-        if (score < -mate_bound) score -= depth;
-        else if (score > mate_bound) score += depth;
+        if (score < -mate_bound) score -= ply;
+        else if (score > mate_bound) score += ply;
 
-        *entry = Entry(key, best_move, depth, score, type);
+        const auto entry_key = static_cast<uint16_t>(key);
+        if (entry != nullptr) {
+            *entry = Entry(entry_key, best_move, depth, score, type + age);
+            return;
+        }
+
+        uint8_t shallowest = 0;
+
+        for (int8_t i = 0; i < 3; i++) {
+            if ((bucket->entries[i].age_type & 252) != age) {
+                bucket->entries[i] = Entry(entry_key, best_move, depth, score, type + age);
+                return;
+            }
+            if (bucket->entries[i].depth < bucket->entries[shallowest].depth) shallowest = i;
+        }
+
+        bucket->entries[shallowest] = Entry(entry_key, best_move, depth, score, type + age);
     }
 
     inline void clear()
     {
-        std::memset(&(*table)[0], 0, table->size() * sizeof(Entry));
+        age = 0;
+        memset(&table[0], 0, table_size * sizeof(Bucket));
     }
 }

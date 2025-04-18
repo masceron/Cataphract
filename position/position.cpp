@@ -106,3 +106,20 @@ bool Position::is_legal(const Move &move)
 
     return (!(state->pinned & (1ull << from)) || (lines_intersect[from][to] & king_board));
 }
+
+uint64_t Position::construct_zobrist_key() const
+{
+    uint64_t key = 0;
+    for (int8_t piece = 0; piece < 12; piece++) {
+        uint64_t board = boards[piece];
+        while (board) {
+            key ^= Zobrist::piece_keys[piece][least_significant_one(board)];
+            board &= board - 1;
+        }
+    }
+    if (side_to_move) key ^= Zobrist::side_key;
+    if (state->en_passant_square != -1) key ^= Zobrist::en_passant_key[state->en_passant_square % 8];
+    key ^= Zobrist::castling_keys[state->castling_rights];
+
+    return key;
+}

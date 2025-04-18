@@ -19,20 +19,20 @@ struct Timer
         const auto count = std::chrono::duration_cast<std::chrono::microseconds>((std::chrono::high_resolution_clock::now() - begin_time)).count();
         return count;
     }
-    static void await()
+    static void await(const int time)
     {
         std::unique_lock lock(timer_lock);
-        cv.wait_for(lock, std::chrono::milliseconds(9500));
+        cv.wait_for(lock, std::chrono::milliseconds(time));
         running = false;
         is_search_cancelled = true;
     }
-    static void start()
+    static void start(const int time)
     {
         if (running) return;
         is_search_cancelled = false;
         running = true;
         begin_time = std::chrono::high_resolution_clock::now();
-        timer_thread = std::thread(await);
+        timer_thread = std::thread(await, time);
     }
     static void stop()
     {

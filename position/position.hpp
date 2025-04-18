@@ -154,7 +154,7 @@ struct Position
         }
 
         if (st.en_passant_square != -1) {
-            st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
+            st.en_passant_key = 0;
             st.en_passant_square = -1;
         }
 
@@ -289,13 +289,13 @@ struct Position
         st.ply_from_root++;
         st.ply++;
         st.rule_50 = 0;
-        st.key ^= st.side_key;
+        st.key ^= Zobrist::side_key;
         st.side_key ^= Zobrist::side_key;
 
         if (st.en_passant_square != -1) {
             st.en_passant_square = -1;
-            st.en_passant_key = 0;
             st.key ^= st.en_passant_key;
+            st.en_passant_key = 0;
         }
 
         side_to_move = !side_to_move;
@@ -376,6 +376,22 @@ struct Position
     [[nodiscard]] bool is_legal(const Move& move);
 
     [[nodiscard]] bool is_pseudo_legal(const Move& move);
+
+    [[nodiscard]] bool does_move_give_check(const Move& move)
+    {
+        const uint16_t from = move.src();
+        const uint16_t to = move.dest();
+
+        move_piece(from, to);
+        if (is_square_attacked_by(least_significant_one(boards[side_to_move == white ? k : K]), side_to_move)) {
+            move_piece(to, from);
+            return true;
+        }
+        move_piece(to, from);
+        return false;
+    }
+
+    [[nodiscard]] uint64_t construct_zobrist_key() const;
 };
 
 inline Position position;

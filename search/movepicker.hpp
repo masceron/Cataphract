@@ -35,7 +35,7 @@ enum Stages: uint8_t
 struct MovePicker
 {
     MoveList moves;
-    Move pv;
+    Move pv = move_none;
     Move* non_captures_start;
     Stages stage = generating_capture_moves;
     Position* pos;
@@ -43,16 +43,19 @@ struct MovePicker
     Move bad_captures[32];
     Move* bad_captures_end;
 
-    explicit MovePicker(Position& _pos, const Move& _pv)
+    explicit MovePicker(Position& _pos): pos(&_pos)
     {
-        pos = &_pos;
-        if (_pv != move_none && _pos.is_pseudo_legal(_pv)) {
-            if (!_pos.state->checker || (_pos.state->check_blocker & (1ull << _pv.dest()))) {
+        bad_captures_end = bad_captures;
+    }
+
+    void set_pv(const Move& _pv)
+    {
+        if (_pv != move_none && pos->is_pseudo_legal(_pv)) {
+            if (!pos->state->checker || (pos->state->check_blocker & (1ull << _pv.dest()))) {
                 pv = _pv;
                 stage = TT_moves;
             }
         }
-        bad_captures_end = bad_captures;
     }
 
     Move pick()

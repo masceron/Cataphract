@@ -26,7 +26,6 @@ enum Stages: uint8_t
     TT_moves,
     generating_capture_moves,
     good_capture_moves,
-    generating_quiet_moves,
     quiet_moves,
     bad_capture_moves,
     none,
@@ -73,13 +72,15 @@ struct MovePicker
                 current = moves.begin();
             case good_capture_moves:
                 if (*current == pv) current++;
-                if (current >= non_captures_start) stage = generating_quiet_moves;
-                else return *(current++);
-            case generating_quiet_moves:
-                pseudo_legals<quiet>(*pos, moves);
-                sort_history(non_captures_start, moves.last);
-                stage = quiet_moves;
-                current = non_captures_start;
+                if (current >= non_captures_start) {
+                    pseudo_legals<quiet>(*pos, moves);
+                    sort_history(non_captures_start, moves.last);
+                    stage = quiet_moves;
+                    current = non_captures_start;
+                }
+                else {
+                    return *(current++);
+                }
             case quiet_moves:
                 if (*current == pv) current++;
                 if (current >= moves.last) {
@@ -95,7 +96,9 @@ struct MovePicker
                 if (current >= bad_captures_end) {
                     stage = none;
                 }
-                else return *(current++);
+                else {
+                    return *(current++);
+                }
             case none: default:
                 return move_none;
         }

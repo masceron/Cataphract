@@ -20,9 +20,9 @@ inline size_t perft(const int depth)
 
     State st;
     for (int i = 0; i < n; i++) {
-        position.make_move(moves.list[i], st);
+        position.make_move(moves[i], st);
         nodes += perft(depth - 1);
-        position.unmake_move(moves.list[i]);
+        position.unmake_move(moves[i]);
     }
 
     return nodes;
@@ -39,11 +39,11 @@ inline void divide(const int depth)
     State st;
 
     for (int i = 0; i < n; i++) {
-        position.make_move(list.list[i], st);
+        position.make_move(list[i], st);
         const size_t num = perft(depth - 1);
-        std::cout << get_move_string(list.list[i]) << ": " << num << "\n";
+        std::cout << get_move_string(list[i]) << ": " << num << "\n";
         total += num;
-        position.unmake_move(list.list[i]);
+        position.unmake_move(list[i]);
     }
     const auto time_taken = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start);
     std::cout << "\nNodes searched: " << total << "\n";

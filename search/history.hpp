@@ -33,13 +33,13 @@ namespace History
         table[side][from][to] += clamped_bonus - table[side][from][to] * abs(clamped_bonus) / max_bonus;
     }
 
-    inline void update(const std::forward_list<Move*>& searched, const bool side, const uint8_t from, const uint8_t to, const uint8_t depth)
+    inline void update(const std::forward_list<Move>& searched, const bool side, const uint8_t from, const uint8_t to, const uint8_t depth)
     {
         const int16_t bonus = depth * depth;
         apply(side, from, to, bonus);
 
-        for (const Move* move: searched) {
-            apply(side, move->src(), move->dest(), -bonus);
+        for (const Move& move: searched) {
+            apply(side, move.src(), move.dest(), -bonus);
         }
         if (table[side][from][to] == max_bonus) scale_down();
     }

@@ -14,6 +14,7 @@ struct MoveList
     [[nodiscard]] Move* begin() { return list; }
     [[nodiscard]] Move* end() const { return last; }
     [[nodiscard]] int64_t size() const { return last - list; }
+    Move operator[](const uint8_t index) const {return list[index];}
     MoveList(): list(), last(list) {}
 };
 

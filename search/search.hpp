@@ -19,8 +19,6 @@ inline static uint16_t seldepth;
 
 inline static constexpr uint8_t max_ply = 32;
 
-inline std::list<Move> principal_variation;
-
 inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::list<Move>& pv)
 {
     node_searched++;
@@ -157,10 +155,12 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     if (is_search_cancelled) return 0;
 
     if (score > alpha) {
+        depth_best_move = picked_move;
         if (score >= beta) {
             if (move_picker.stage == quiet_moves) {
                 History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
             }
+            TT::write(bucket, entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, beta, lower_bound);
             return beta;
         }
         alpha = score;
@@ -195,7 +195,6 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         score = -search(pos, -alpha - 1, -alpha, depth - 1 + extension - reduction, local_pv, true);
         if (score > alpha && beta - alpha > 1) {
             score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
-            if (score > alpha) alpha = score;
         }
         pos.unmake_move(picked_move);
         move_searched++;
@@ -203,6 +202,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         if (is_search_cancelled) return 0;
 
         if (score > alpha) {
+            depth_best_move = picked_move;
             if (score >= beta) {
                 if (move_picker.stage == quiet_moves) {
                     //History heuristic: https://www.chessprogramming.org/History_Heuristic
@@ -212,7 +212,6 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
                 return beta;
             }
             alpha = score;
-            depth_best_move = picked_move;
 
             pv.clear();
             pv.push_back(picked_move);
@@ -244,71 +243,62 @@ inline void start_search(int depth, const int time)
 
     node_searched = 0;
     TT::age += age_delta;
+    std::list<Move> principal_variation;
+    Move best_move = move_none;
 
-    MoveList moves = legals<all>(position);
-    std::vector<int16_t> scores(moves.size());
-    Move best_move = moves.list[0];
+    int16_t alpha = negative_infinity;
+    int16_t beta = infinity;
 
+    int16_t window = pawn_weight / 2;
     //Iterative deepening: https://www.chessprogramming.org/Iterative_Deepening
     for (int cr_depth = 1; cr_depth <= depth; cr_depth++) {
         if (is_search_cancelled) break;
 
-        int16_t max_score = negative_infinity;
+        int16_t score;
 
-        for (int i = 0; i < moves.size(); i++) {
-            State st;
-            std::list<Move> local_pv;
-            Move picked_move = moves.list[i];
-
-            position.make_move(picked_move, st);
-            //Negamax: https://www.chessprogramming.org/Negamax
-            const int16_t score = -search(position, negative_infinity, infinity, cr_depth - 1, local_pv, true);
-            position.unmake_move(picked_move);
-
-            if (is_search_cancelled) {
+        //Negamax: https://www.chessprogramming.org/Negamax
+        while (true) {
+            //Aspiration Windows: https://www.chessprogramming.org/Aspiration_Windows
+            score = search(position, alpha, beta, cr_depth, principal_variation, true);
+            if (score <= alpha) {
+                beta = (alpha + beta) / 2;
+                alpha = std::max(static_cast<int16_t>(score - window), static_cast<int16_t>(negative_infinity));
+            }
+            else if (score >= beta) {
+                beta = std::min(static_cast<int16_t>(score + window), static_cast<int16_t>(infinity));
+            }
+            else {
                 break;
             }
+            window += window / 2;
 
-            if (score > max_score) {
-                best_move = picked_move;
-                max_score = score;
-
-                principal_variation.clear();
-                principal_variation.push_back(picked_move);
-                principal_variation.splice(principal_variation.end(), local_pv);
-            }
-            scores[i] = score;
-
-            if (i >= 1) {
-                int j = i;
-                while (j > 0 && scores[j - 1] < scores[j]) {
-                    std::swap(scores[j - 1], scores[j]);
-                    std::swap(moves.list[j - 1], moves.list[j]);
-                    j--;
-                }
-            }
+            if (is_search_cancelled) break;
         }
 
-        if (max_score > negative_infinity) {
-            const double elapsed = Timer::elapsed();
-            std::cout << "info depth " << cr_depth << " seldepth " << seldepth << " score";
+        if (is_search_cancelled) break;
 
-            if (max_score < -mate_bound) std::cout << " mate " << - std::ceil((mate_value + max_score) / 2.0);
-            else if (max_score > mate_bound) std::cout << " mate " << std::ceil((mate_value - max_score) / 2.0);
-            else std::cout << " cp " << max_score;
+        const double elapsed = Timer::elapsed();
+        std::cout << "info depth " << cr_depth << " seldepth " << seldepth << " score";
 
-            std::cout << " nodes " << node_searched
-            << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000  << " pv ";
+        if (score < -mate_bound) std::cout << " mate " << - std::ceil((mate_value + score) / 2.0);
+        else if (score > mate_bound) std::cout << " mate " << std::ceil((mate_value - score) / 2.0);
+        else std::cout << " cp " << score;
 
-            for (auto x : principal_variation) {
-                std::cout << get_move_string(x) << " ";
-            }
-            std::cout << "\n";
+        std::cout << " nodes " << node_searched
+        << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000  << " pv ";
+
+        for (auto x : principal_variation) {
+            std::cout << get_move_string(x) << " ";
         }
+        std::cout << "\n";
+
+        best_move = principal_variation.front();
     }
 
     Timer::stop();
     Timer::timer_thread.join();
+
+    if (best_move == move_none) best_move = legals<all>(position).list[0];
 
     std::cout << "bestmove " << get_move_string(best_move) << "\n";
 }

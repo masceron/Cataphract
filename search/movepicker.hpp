@@ -112,6 +112,7 @@ struct MovePicker
         }
         return move;
     }
+
     template<const bool normal>
     void sort_mvv_lva(Move* begin, Move*& end)
     {

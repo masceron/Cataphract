@@ -17,6 +17,8 @@
 inline static uint64_t node_searched = 0;
 inline static uint16_t seldepth;
 
+inline static constexpr uint8_t max_ply = 32;
+
 inline std::list<Move> principal_variation;
 
 inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::list<Move>& pv)
@@ -88,6 +90,10 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         return quiesce(pos, alpha, beta, pv);
     }
 
+    if (pos.state->ply_from_root > max_ply) {
+        return eval(pos);
+    }
+
     MovePicker move_picker(pos);
     Move picked_move = move_picker.next_move();
 
@@ -107,12 +113,13 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     // Probe the transposition table: https://www.chessprogramming.org/Transposition_Table
     const auto [bucket, entry] = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, score);
 
+    //If the score is usable, i.e. from an identical position with enough depth, return immediately.
+    if (ok) return score;
+
     //Even when the depth of the entry is not sufficient to return the score, we can still recover the best move.
     if (entry != nullptr) {
         move_picker.set_pv(entry->best_move);
     }
-    //If the score is usable, i.e. from an identical position with enough depth, return immediately.
-    if (ok) return score;
 
     //Set up conditions for futility pruning: https://www.chessprogramming.org/Futility_Pruning
     bool futility_pruning_allowed = false;
@@ -137,11 +144,14 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     //A list of quiet moves searched, to apply the penalty to the history table when a quiet move fail high.
     std::forward_list<Move*> quiets_searched;
 
+    //Check extension: https://www.chessprogramming.org/Check_Extensions
+    const int8_t extension = pos.state->checker ? 1 : 0;
+
     //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
     std::list<Move> tmp;
     State st;
     pos.make_move(picked_move, st);
-    score = -search(pos, -beta, -alpha, depth - 1, tmp, true);
+    score = -search(pos, -beta, -alpha, depth - 1 + extension, tmp, true);
     pos.unmake_move(picked_move);
 
     if (is_search_cancelled) return 0;
@@ -164,6 +174,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
 
     picked_move = move_picker.next_move();
 
+    uint8_t move_searched = 0;
     while (picked_move != move_none) {
         if (futility_pruning_allowed) {
             if (move_picker.stage == quiet_moves && !pos.does_move_give_check(picked_move)) {
@@ -174,13 +185,20 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
 
         std::list<Move> local_pv;
 
+        static constexpr int8_t reduction_limit = 3;
+        static constexpr int8_t full_depth = 4;
+
+        //Late move reductions: https://www.chessprogramming.org/Late_Move_Reductions
+        const int8_t reduction = (move_searched >= full_depth && depth >= reduction_limit) ? 1 : 0;
+
         pos.make_move(picked_move, st);
-        score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv, true);
-        if (score > alpha && score < beta) {
-            score = -search(pos, -beta, -alpha, depth - 1, local_pv, true);
+        score = -search(pos, -alpha - 1, -alpha, depth - 1 + extension - reduction, local_pv, true);
+        if (score > alpha && beta - alpha > 1) {
+            score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
             if (score > alpha) alpha = score;
         }
         pos.unmake_move(picked_move);
+        move_searched++;
 
         if (is_search_cancelled) return 0;
 

@@ -30,11 +30,6 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
     if (stand_pat >= beta) return stand_pat;
     if (stand_pat > alpha) alpha = stand_pat;
 
-    static constexpr int16_t swing = queen_weight + 200;
-
-    //Delta pruning: https://www.chessprogramming.org/Delta_Pruning
-    if (stand_pat + swing < alpha) return alpha;
-
     int best_score = stand_pat;
 
     const MoveList capture_moves = legals<captures>(pos);
@@ -42,14 +37,17 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
     State st;
 
     for (int i = 0; i < capture_moves.size(); i++) {
+        //Delta pruning: https://www.chessprogramming.org/Delta_Pruning
+        if (capture_moves[i].flag() < knight_promotion && stand_pat + value_of(pos.piece_on[capture_moves[i].dest()]) + 300 < alpha) continue;
+
         //Do not consider moves in which the exchange is not at least even: https://www.chessprogramming.org/Static_Exchange_Evaluation
-        if (static_exchange_evaluation(pos, capture_moves.list[i]) < 0) continue;
+        if (static_exchange_evaluation(pos, capture_moves[i]) < 0) continue;
 
         std::list<Move> local_pv;
 
-        pos.make_move(capture_moves.list[i], st);
+        pos.make_move(capture_moves[i], st);
         const int16_t score = -quiesce(pos, -beta, -alpha, local_pv);
-        pos.unmake_move(capture_moves.list[i]);
+        pos.unmake_move(capture_moves[i]);
 
         if (is_search_cancelled) return 0;
 
@@ -140,7 +138,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     }
 
     //A list of quiet moves searched, to apply the penalty to the history table when a quiet move fail high.
-    std::forward_list<Move*> quiets_searched;
+    std::forward_list<Move> quiets_searched;
 
     //Check extension: https://www.chessprogramming.org/Check_Extensions
     const int8_t extension = pos.state->checker ? 1 : 0;
@@ -170,7 +168,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         pv.splice(pv.end(), tmp);
     }
 
-    if (move_picker.stage == quiet_moves) quiets_searched.push_front(&picked_move);
+    if (move_picker.stage == quiet_moves) quiets_searched.push_front(picked_move);
 
     picked_move = move_picker.next_move();
 
@@ -219,7 +217,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         }
 
         if (move_picker.stage == quiet_moves) {
-            quiets_searched.push_front(&picked_move);
+            quiets_searched.push_front(picked_move);
         }
 
         picked_move = move_picker.next_move();

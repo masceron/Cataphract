@@ -81,13 +81,7 @@ inline void set_bit(uint64_t& bitboard, const uint8_t index)
 
 inline uint8_t least_significant_one(const uint64_t bitboard)
 {
-#ifdef __GNUC__
     return static_cast<uint8_t>(__builtin_ctzll(bitboard));
-#elif _MSC_VER
-    unsigned long index;
-    _BitScanForward64(&index, bitboard);
-    return static_cast<uint8_t>(index);
-#endif
 }
 
 inline void print_bitboard(const uint64_t bitboard)

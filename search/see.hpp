@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-#include "position.hpp"
+#include "../position/position.hpp"
 #include "../eval/eval.hpp"
 
 inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64_t occ)

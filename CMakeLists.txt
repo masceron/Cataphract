@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
 project(CSEngine)
-include_directories(./board, ./board/pieces, ./position)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -8,17 +7,15 @@ endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_STANDARD 23)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Wno-class-memaccess -Wno-implicit-fallthrough -static -pedantic -g")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Wno-class-memaccess -Wno-implicit-fallthrough -static -pedantic -g -march=native")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s -Wall -Wextra -Wno-class-memaccess -Wno-implicit-fallthrough -march=native -mtune=native -static -pedantic")
-elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-    set(CMAKE_CXX_FLAGS_DEBUG "/W4 /wd4244 /wd4146 /std:c++latest")
-    set(CMAKE_CXX_FLAGS_RELEASE "/W4 /wd4244 /wd4146 /O2 /GL /GA /std:c++latest")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_STANDARD 23)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wextra -g")
-    set(CMAKE_CXX_FLAGS_RELEASE "-march=native -mtune=native -O3")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wextra -g -static -march=native")
+    set(CMAKE_CXX_FLAGS_RELEASE "-march=native -mtune=native -O3 -static")
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
+    message(FATAL_ERROR "MSVC not supported.")
 endif()
-
 
 add_executable(CSEngine main.cpp
         board/bitboard.hpp
@@ -46,4 +43,8 @@ add_executable(CSEngine main.cpp
         position/position.cpp
         search/history.hpp
         eval/phase.hpp
+        eval/nnue.hpp
+        eval/incbin.h
+        eval/accumulators.hpp
+        eval/nnue.cpp
 )

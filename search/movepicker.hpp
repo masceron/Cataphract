@@ -1,8 +1,8 @@
 #pragma once
 
 #include "history.hpp"
-#include "movegen.hpp"
-#include "move.hpp"
+#include "../position/movegen.hpp"
+#include "../position/move.hpp"
 #include "see.hpp"
 
 static constexpr int16_t mvv_lva[12][12] = {
@@ -41,8 +41,9 @@ struct MovePicker
     Move* current;
     Move bad_captures[32];
     Move* bad_captures_end;
+    bool capture_only;
 
-    explicit MovePicker(Position& _pos): pos(&_pos)
+    explicit MovePicker(Position& _pos, const bool _capture_only): pos(&_pos), capture_only(_capture_only)
     {
         bad_captures_end = bad_captures;
     }
@@ -73,10 +74,15 @@ struct MovePicker
             case good_capture_moves:
                 if (*current == pv) current++;
                 if (current >= non_captures_start) {
-                    pseudo_legals<quiet>(*pos, moves);
-                    sort_history(non_captures_start, moves.last);
-                    stage = quiet_moves;
-                    current = non_captures_start;
+                    if (!capture_only) {
+                        pseudo_legals<quiet>(*pos, moves);
+                        sort_history(non_captures_start, moves.last);
+                        stage = quiet_moves;
+                        current = non_captures_start;
+                    }
+                    else {
+                        stage = none;
+                    }
                 }
                 else {
                     return *(current++);
@@ -124,7 +130,7 @@ struct MovePicker
         std::array<int16_t, 218> scores;
 
         scores[0] = mvv_lva[pos->piece_on[begin->src()]][pos->piece_on[begin->dest()]];
-        if (begin->flag() >= knight_promo_capture) scores[0] += value_of(begin->promoted_to<white>());
+        if (begin->flag() >= knight_promo_capture) scores[0] += value_of(begin->promoted_to<false>());
 
         Move* start = begin + 1;
 
@@ -140,7 +146,7 @@ struct MovePicker
 
             Move* tmpm = start;
             scores[i] = mvv_lva[pos->piece_on[start->src()]][pos->piece_on[start->dest()]];
-            if (start->flag() >= knight_promo_capture) scores[0] += value_of(start->promoted_to<white>());
+            if (start->flag() >= knight_promo_capture) scores[0] += value_of(start->promoted_to<false>());
 
             while (i > 0 && scores[i - 1] < scores[i]) {
                 std::swap(scores[i-1], scores[i]);

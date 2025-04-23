@@ -1,6 +1,194 @@
 #include "position.hpp"
 #include "movegen.hpp"
 
+void Position::make_move(const Move& move, State& st)
+{
+    memcpy(&st, state, offsetof(State, key));
+    st.previous = state;
+    st.rule_50++;
+    st.ply++;
+    st.ply_from_root++;
+    state = &st;
+
+    const uint8_t from = move.src();
+    const uint8_t to = move.dest();
+    const uint8_t flag = move.flag();
+    const Pieces moving_piece = piece_on[from];
+    const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
+
+    if (flag == king_castle) {
+        move_piece(to + 1, to - 1);
+        const Pieces rook = side_to_move == white ? R : r;
+
+        st.piece_key ^= Zobrist::piece_keys[rook][to + 1] ^ Zobrist::piece_keys[rook][to - 1];
+    }
+    else if (flag == queen_castle) {
+        const Pieces rook = side_to_move == white ? R : r;
+
+        move_piece(to - 2, to + 1);
+
+        st.piece_key ^= Zobrist::piece_keys[rook][to - 2] ^ Zobrist::piece_keys[rook][to + 1];
+    }
+
+    else if (captured_piece != nil) {
+        if ((captured_piece == P || captured_piece == p) && flag == ep_capture) {
+                const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
+                remove_piece(captured_square);
+
+                st.piece_key ^= Zobrist::piece_keys[captured_piece][captured_square];
+        }
+        else {
+            if (to == 0 && side_to_move == white) {
+                st.castling_rights &= ~black_queen;
+                st.castling_key =  Zobrist::castling_keys[st.castling_rights];
+            }
+            else if (to == 7 && side_to_move == white) {
+                st.castling_rights &= ~black_king;
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
+            }
+            else if (to == 56 && side_to_move == black) {
+                st.castling_rights &= ~white_queen;
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
+            }
+            else if (to == 63 && side_to_move == black) {
+                st.castling_rights &= ~white_king;
+                st.castling_key = Zobrist::castling_keys[st.castling_rights];
+            }
+
+            remove_piece(to);
+
+            st.piece_key ^= Zobrist::piece_keys[captured_piece][to];
+        }
+        st.rule_50 = 0;
+    }
+
+    if (st.en_passant_square != -1) {
+        st.en_passant_key = 0;
+        st.en_passant_square = -1;
+    }
+
+    move_piece(from, to);
+
+    if (moving_piece == P || moving_piece == p) {
+        if (flag == double_push &&
+            (pawn_attack_tables[side_to_move][to + (side_to_move == white ? 8 : -8)] & boards[side_to_move == white ? p : P])) {
+            st.en_passant_square = to + (side_to_move == white ? 8 : -8);
+
+            st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
+        }
+        else if (flag >= knight_promotion) {
+            const Pieces promoted_to = move.promoted_to<true>(side_to_move);
+            remove_piece(to);
+            put_piece(promoted_to, to);
+
+            st.piece_key ^= Zobrist::piece_keys[promoted_to][to] ^ Zobrist::piece_keys[moving_piece][to];
+        }
+
+        st.rule_50 = 0;
+    }
+    else {
+        if (from == 60 && moving_piece == K) {
+            st.castling_rights &= 0b1100;
+            st.castling_key = Zobrist::castling_keys[st.castling_rights];
+        }
+        else if (from == 4 && moving_piece == k) {
+            st.castling_rights &= 0b0011;
+            st.castling_key = Zobrist::castling_keys[st.castling_rights];
+        }
+        else if (from == 7 && moving_piece == r) {
+            st.castling_rights &= ~black_king;
+            st.castling_key = Zobrist::castling_keys[st.castling_rights];
+        }
+        else if (from == 0 && moving_piece == r) {
+            st.castling_rights &= ~black_queen;
+            st.castling_key = Zobrist::castling_keys[st.castling_rights];
+        }
+        else if (from == 56 && moving_piece == R) {
+            st.castling_rights &= ~white_queen;
+            st.castling_key = Zobrist::castling_keys[st.castling_rights];
+        }
+        else if (from == 63 && moving_piece == R) {
+            st.castling_rights &= ~white_king;
+            st.castling_key = Zobrist::castling_keys[st.castling_rights];
+        }
+    }
+
+    st.captured_piece = captured_piece;
+
+    st.piece_key ^= Zobrist::piece_keys[moving_piece][from] ^ Zobrist::piece_keys[moving_piece][to];
+
+    st.side_key ^= Zobrist::side_key;
+
+    st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
+
+    if (!side_to_move) {
+        st.checker = get_checker_of<black>();
+    }
+    else {
+        st.checker = get_checker_of<white>();
+    }
+
+    if (st.checker) {
+        st.check_blocker = get_check_blocker_of(!side_to_move);
+    }
+
+    side_to_move = !side_to_move;
+
+    st.pinned = get_pinned_board_of(side_to_move);
+
+    st.repetition = 1;
+    if (const uint16_t cutoff = std::min(st.rule_50, st.ply); cutoff >= 4) {
+        const State* tst = st.previous->previous;
+        for (int cr = 4; cr <= cutoff; cr += 2) {
+            tst = tst->previous->previous;
+            if (st.key == tst->key) {
+                st.repetition = tst->repetition + 1;
+                break;
+            }
+        }
+    }
+}
+
+void Position::do_move(const Move& move)
+{
+    State st;
+    make_move(move, st);
+    states.push_back(st);
+    state = &states.back();
+    state->ply_from_root = 0;
+}
+
+void Position::unmake_move(const Move &move)
+{
+    side_to_move = !side_to_move;
+    const uint8_t from = move.src();
+    const uint8_t to = move.dest();
+    const uint8_t flag = move.flag();
+
+    if (flag >= knight_promotion) {
+        remove_piece(to);
+        put_piece(side_to_move == white ? P : p, to);
+    }
+    else if (flag == king_castle) {
+        move_piece(to - 1, to + 1);
+    }
+    else if (flag == queen_castle) {
+        move_piece(to + 1, to - 2);
+    }
+
+    move_piece(to, from);
+    if (state->captured_piece != nil) {
+        uint8_t captured_square = to;
+        if (flag == ep_capture) {
+            captured_square += side_to_move == white ? 8 : -8;
+        }
+
+        put_piece(state->captured_piece, captured_square);
+    }
+
+    state = state->previous;
+}
+
 bool Position::is_pseudo_legal(const Move &move)
 {
     if (const uint16_t flag = move.flag(); flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle) {
@@ -23,27 +211,27 @@ bool Position::is_pseudo_legal(const Move &move)
 
     static constexpr uint64_t rank18 = 0xFF000000000000FFull;
     if (moved_piece == P || moved_piece == p) {
-        if (rank18 & boards[moved_piece]) return false;
+        if (rank18 & to_board) return false;
 
         if (!(pawn_attack_tables[side_to_move][from] & occupations[!side_to_move] & to_board)
             && !(from + Delta<Up>(side_to_move) == to && piece_on[to] == nil)
-            && (from + 2 * Delta<Up>(side_to_move) == to && abs(from - to) == 16 && piece_on[to] != nil && piece_on[to - Delta<Up>(side_to_move)] == nil))
+            && !(from + 2 * Delta<Up>(side_to_move) == to && abs(from - to) == 16 && piece_on[to] != nil && piece_on[to - Delta<Up>(side_to_move)] == nil))
             return false;
     }
     else if (moved_piece == N || moved_piece == n) {
-        if (!(knight_attack_tables[from] & to_board)) return false;
+        if (!(knight_attack_tables[from] & to_board & !occupations[side_to_move])) return false;
     }
     else if (moved_piece == R || moved_piece == r) {
-        if (!(get_rook_attack(from, occupations[2]) & to_board)) return false;
+        if (!(get_rook_attack(from, occupations[2]) & to_board & !occupations[side_to_move])) return false;
     }
     else if (moved_piece == B || moved_piece == b) {
-        if (!(get_bishop_attack(from, occupations[2]) & to_board)) return false;
+        if (!(get_bishop_attack(from, occupations[2]) & to_board & !occupations[side_to_move])) return false;
     }
     else if (moved_piece == Q || moved_piece == q) {
-        if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board)) return false;
+        if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board & !occupations[side_to_move])) return false;
     }
     else if (moved_piece == K || moved_piece == k) {
-        if (!(king_attack_tables[from] & to_board)) return false;
+        if (!(king_attack_tables[from] & to_board & !occupations[side_to_move])) return false;
     }
 
     if (state->checker) {

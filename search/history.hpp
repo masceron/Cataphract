@@ -4,6 +4,7 @@
 #include <forward_list>
 #include <algorithm>
 #include <array>
+#include <cstring>
 
 namespace History
 {

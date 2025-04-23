@@ -244,10 +244,10 @@ void move_generator(const Position& cr_pos, Move*& last)
 {
     if (std::popcount(cr_pos.state->checker) != 2) {
         pawn_move_generator<us, type, evasive>(cr_pos, last);
-        general_move_generator<us, type, Q, evasive>(cr_pos, last);
-        general_move_generator<us, type, R, evasive>(cr_pos, last);
-        general_move_generator<us, type, B, evasive>(cr_pos, last);
         general_move_generator<us, type, N, evasive>(cr_pos, last);
+        general_move_generator<us, type, B, evasive>(cr_pos, last);
+        general_move_generator<us, type, R, evasive>(cr_pos, last);
+        general_move_generator<us, type, Q, evasive>(cr_pos, last);
     }
     constexpr uint8_t king = us == white ? K : k;
     king_move_generator<us, type, evasive>(cr_pos, last, least_significant_one(cr_pos.boards[king]));

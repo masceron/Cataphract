@@ -3,6 +3,7 @@
 #include <string>
 #include <iostream>
 
+#include "eval/nnue.hpp"
 #include "position/fen.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
@@ -78,21 +79,23 @@ namespace UCI
             return;
         }
 
-        if (moves_pos == std::string::npos) return;
+        if (moves_pos != std::string::npos) {
+            std::string moves = fen.substr(moves_pos + 6, std::string::npos);
+            std::ranges::transform(moves, moves.begin(), [](const unsigned char c){ return std::tolower(c); });
 
-        std::string moves = fen.substr(moves_pos + 6, std::string::npos);
-        std::ranges::transform(moves, moves.begin(), [](const unsigned char c){ return std::tolower(c); });
-
-        auto limiter = moves.find(' ');
-        size_t begin = 0;
-        while (begin != std::string::npos) {
-            process_move(moves.substr(begin, limiter - begin));
-            if (limiter != std::string::npos) {
-                begin = limiter + 1;
-                limiter = moves.find(' ', begin);
+            auto limiter = moves.find(' ');
+            size_t begin = 0;
+            while (begin != std::string::npos) {
+                process_move(moves.substr(begin, limiter - begin));
+                if (limiter != std::string::npos) {
+                    begin = limiter + 1;
+                    limiter = moves.find(' ', begin);
+                }
+                else begin = std::string::npos;
             }
-            else begin = std::string::npos;
         }
+
+        NNUE::refresh_accumulators(&root_accumulators, position);
     }
 
     inline void perft(const std::string& depth)
@@ -120,7 +123,9 @@ namespace UCI
 
     inline void process()
     {
+        std::ios_base::sync_with_stdio(false);
         fen_parse("startpos");
+        NNUE::refresh_accumulators(&root_accumulators, position);
         std::string input;
         while (input != "quit") {
             std::getline(std::cin, input);
@@ -139,7 +144,11 @@ namespace UCI
             }
             else if (input.starts_with("position ")) set_board(input.substr(9, std::string::npos));
             else if (input.starts_with("go perft ")) perft(input.substr(9,std::string::npos));
-            else if (input == "eval") std::cout << "Evaluation: " << eval(position) * (position.side_to_move == white ? 1 : -1) << "\n";
+            else if (input == "eval") {
+                std::cout << "NNUE evaluation: "
+                << NNUE::evaluate(position, &root_accumulators) * (position.side_to_move == white ? 1 : -1)
+                << " (white side)\n";
+            }
             else if (input == "isready") std::cout << "readyok\n";
         }
 

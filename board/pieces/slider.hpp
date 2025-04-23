@@ -38,37 +38,25 @@ inline uint64_t random_uint64_few_bits()
     return generate_random_number() & generate_random_number() & generate_random_number();
 }
 
-inline uint64_t get_bishop_attack(const uint8_t index, uint64_t occupancy)
+inline uint64_t get_bishop_attack(const uint8_t index, const uint64_t occupancy)
 {
-    const auto [magic, shift, mask, attacks] = bishop_magics[index]; 
-    occupancy &= mask;
-    occupancy *= magic;
-    occupancy >>= shift;
-    return attacks[occupancy];
+    const auto [magic, shift, mask, attacks] = bishop_magics[index];
+    return attacks[((occupancy & mask) * magic) >> shift];
 }
 
-inline uint64_t get_rook_attack(const uint8_t index, uint64_t occupancy)
+inline uint64_t get_rook_attack(const uint8_t index, const uint64_t occupancy)
 {
     const auto [magic, shift, mask, attacks] = rook_magics[index];
-    occupancy &= mask;
-    occupancy *= magic;
-    occupancy >>= shift;
-    return attacks[occupancy];
+    return attacks[((occupancy & mask) * magic) >> shift];
 }
 
-inline uint64_t get_queen_attack(const uint8_t index, uint64_t occupancy)
+inline uint64_t get_queen_attack(const uint8_t index, const uint64_t occupancy)
 {
     const auto [magic_r, shift_r, mask_r, attacks_r] = rook_magics[index];
     const auto [magic_b, shift_b, mask_b, attacks_b] = bishop_magics[index];
-    auto rook = occupancy;
-    rook &= mask_r;
-    rook *= magic_r;
-    rook >>= shift_r;
+    const auto rook = occupancy;
 
-    occupancy &= mask_b;
-    occupancy *= magic_b;
-    occupancy >>= shift_b;
-    return attacks_r[rook] | attacks_b[occupancy];
+    return attacks_r[((rook & mask_r) * magic_r) >> shift_r] | attacks_b[((occupancy & mask_b) * magic_b) >> shift_b];
 }
 
 inline std::array<uint64_t, 5248> bishop_table{};

@@ -50,5 +50,5 @@ inline void divide(const int depth)
     std::cout << "Time taken: " << std::chrono::duration_cast<std::chrono::milliseconds>(time_taken) << "\n";
     std::cout << "Average: " << std::fixed << std::setprecision(2)
               << total / (std::chrono::duration_cast<std::chrono::nanoseconds>(time_taken).count() /1000000000.0)
-              << " nodes per second.\n\n";
+              << " nodes per second.\n" << std::endl;
 }

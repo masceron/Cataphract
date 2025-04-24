@@ -123,7 +123,6 @@ namespace UCI
 
     inline void process()
     {
-        std::ios_base::sync_with_stdio(false);
         fen_parse("startpos");
         NNUE::refresh_accumulators(&root_accumulators, position);
         std::string input;
@@ -140,16 +139,16 @@ namespace UCI
                 History::clear();
             }
             else if (input == "uci") {
-                std::cout << "uciok\n";
+                std::cout << "uciok" << std::endl;
             }
             else if (input.starts_with("position ")) set_board(input.substr(9, std::string::npos));
             else if (input.starts_with("go perft ")) perft(input.substr(9,std::string::npos));
             else if (input == "eval") {
                 std::cout << "NNUE evaluation: "
                 << NNUE::evaluate(position, &root_accumulators) * (position.side_to_move == white ? 1 : -1)
-                << " (white side)\n";
+                << " (white side)" << std::endl;
             }
-            else if (input == "isready") std::cout << "readyok\n";
+            else if (input == "isready") std::cout << "readyok" << std::endl;
         }
 
     }

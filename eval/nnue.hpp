@@ -10,13 +10,14 @@ static constexpr uint8_t QB = 64;
 static constexpr int16_t eval_scale = 400;
 #define hl_size 512
 #define input_size 768
+#define output_buckets 8
 
 struct Network
 {
     int16_t accumulator_weights[input_size][hl_size];
     int16_t accumulator_biases[hl_size];
-    int16_t output_weights[2 * hl_size];
-    int16_t output_bias;
+    int16_t output_weights[output_buckets][2 * hl_size];
+    int16_t output_bias[output_buckets];
 };
 
 struct Accumulators
@@ -85,7 +86,7 @@ struct Accumulator_entry
 
 namespace NNUE
 {
-    int32_t forward(int16_t* stm, int16_t* nstm);
+    int32_t forward(int16_t* stm, int16_t* nstm, uint8_t bucket);
     void update_accumulators();
     void refresh_accumulators(Accumulators* accumulators, const Position& pos);
     int16_t evaluate(const Position& pos, Accumulators* accumulator_pair);

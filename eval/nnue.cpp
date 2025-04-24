@@ -14,15 +14,15 @@ extern "C" {
     inline auto network = reinterpret_cast<const Network*>(nnue_data);
 }
 
-int32_t NNUE::forward(int16_t* stm, int16_t* nstm)
+int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
     {
         static const __m256i vec_zero = _mm256_setzero_si256();
         static const __m256i vec_QA = _mm256_set1_epi16(QA);
 
         auto to_move = reinterpret_cast<__m256i*>(stm);
         auto not_to_move = reinterpret_cast<__m256i*>(nstm);
-        auto move_weights = reinterpret_cast<const __m256i*>(&network->output_weights);
-        auto non_move_weights = reinterpret_cast<const __m256i*>(&network->output_weights[hl_size]);
+        auto move_weights = reinterpret_cast<const __m256i*>(&network->output_weights[bucket]);
+        auto non_move_weights = reinterpret_cast<const __m256i*>(&network->output_weights[bucket][hl_size]);
 
         __m256i sum = vec_zero;
 
@@ -53,9 +53,11 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm)
 
 int16_t NNUE::evaluate(const Position& pos, Accumulators* accumulator_pair)
 {
-    const int32_t eval = forward((*accumulator_pair)[pos.side_to_move], (*accumulator_pair)[!pos.side_to_move]);
+    static constexpr uint8_t divisor = (32 + output_buckets - 1) / output_buckets;
+    const uint8_t bucket = (std::popcount(pos.occupations[2]) - 2) / divisor;
+    const int32_t eval = forward((*accumulator_pair)[pos.side_to_move], (*accumulator_pair)[!pos.side_to_move], bucket);
 
-    return static_cast<int16_t>((eval / QA + network->output_bias) * eval_scale / (QA * QB));
+    return static_cast<int16_t>((eval / QA + network->output_bias[bucket]) * eval_scale / (QA * QB));
 }
 void NNUE::update_accumulators()
 {

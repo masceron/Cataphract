@@ -123,9 +123,11 @@ void Position::make_move(const Move& move, State& st)
 
     if (!side_to_move) {
         st.checker = get_checker_of<black>();
+        st.pinned = get_pinned_board_of<black>();
     }
     else {
         st.checker = get_checker_of<white>();
+        st.pinned = get_pinned_board_of<white>();
     }
 
     if (st.checker) {
@@ -133,8 +135,6 @@ void Position::make_move(const Move& move, State& st)
     }
 
     side_to_move = !side_to_move;
-
-    st.pinned = get_pinned_board_of(side_to_move);
 
     st.repetition = 1;
     if (const uint16_t cutoff = std::min(st.rule_50, st.ply); cutoff >= 4) {

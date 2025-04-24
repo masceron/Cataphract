@@ -119,7 +119,8 @@ struct Position
 
         side_to_move = !side_to_move;
 
-        st.pinned = get_pinned_board_of(side_to_move);
+        if (side_to_move == white) st.pinned = get_pinned_board_of<white>();
+        else st.pinned = get_pinned_board_of<black>();
         state = &st;
     }
 
@@ -148,13 +149,19 @@ struct Position
         return false;
     }
 
-    [[nodiscard]] uint64_t get_pinned_board_of(const bool side) const
+    template <const bool side>
+    [[nodiscard]] uint64_t get_pinned_board_of() const
     {
         uint64_t attacker = 0, pinned_board = 0;
-        const uint8_t king_index = least_significant_one(side == white ? boards[K] : boards[k]);
+        static constexpr uint8_t king = side == white ? K : k;
+        static constexpr uint8_t rook = side == white ? r : R;
+        static constexpr uint8_t bishop = side == white ? b : B;
+        static constexpr uint8_t queen = side == white ? q : Q;
 
-        attacker = (get_rook_attack(king_index, occupations[!side]) & (side == white ? (boards[r] | boards[q]) : (boards[R] | boards[Q])))
-                     | (get_bishop_attack(king_index, occupations[!side]) & (side == white ? (boards[b] | boards[q]) : (boards[B] | boards[Q])));
+        const uint8_t king_index = least_significant_one(boards[king]);
+
+        attacker = (get_rook_attack(king_index, occupations[!side]) & (boards[rook] | boards[queen]))
+                     | (get_bishop_attack(king_index, occupations[!side]) & (boards[bishop] | boards[queen]));
 
         while (attacker) {
             const uint8_t sniper = least_significant_one(attacker);

@@ -10,6 +10,19 @@
 
 namespace UCI
 {
+    inline void new_game()
+    {
+        TT::clear();
+        History::clear();
+        Killers::clear();
+    }
+
+    inline void start()
+    {
+        generate_lines();
+        Zobrist::generate_keys();
+        new_game();
+    }
     inline void process_move(const std::string& move)
     {
         if (move.length() == 4) {
@@ -131,13 +144,10 @@ namespace UCI
             const auto I = std::ranges::unique(input, [](auto lhs, auto rhs){ return lhs == rhs && lhs == ' '; } ).begin();
             input.erase(I, input.end());
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
-            else if (input == "go infinite") go_depth("128");
+            else if (input == "go infinite") go_depth("127");
             else if (input.starts_with("go movetime ")) go_time(input);
             else if (input == "d") print_board();
-            else if (input == "ucinewgame") {
-                TT::clear();
-                History::clear();
-            }
+            else if (input == "ucinewgame") new_game();
             else if (input == "uci") {
                 std::cout << "uciok" << std::endl;
             }

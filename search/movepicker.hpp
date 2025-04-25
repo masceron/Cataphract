@@ -137,12 +137,13 @@ struct MovePicker
         while (start < end) {
             int i = start - begin;
 
-            if constexpr (normal)
+            if constexpr (normal) {
                 if (static_exchange_evaluation(*pos, *start) < 0) {
                     *(bad_captures_end++) = *start;
                     *start = *(--end);
                     continue;
                 }
+            }
 
             Move* tmpm = start;
             scores[i] = mvv_lva[pos->piece_on[start->src()]][pos->piece_on[start->dest()]];
@@ -165,14 +166,16 @@ struct MovePicker
 
         std::array<int16_t, 218> scores;
 
-        scores[0] = History::table[pos->side_to_move][begin->src()][begin->dest()];
+        if (Killers::find(*begin, pos->state->ply_from_root)) scores[0] = INT16_MAX;
+        else scores[0] = History::table[pos->side_to_move][begin->src()][begin->dest()];
 
         Move* start = begin + 1;
 
         while (start < end) {
             int i = start - begin;
             Move* tmpm = start;
-            scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()];
+            if (Killers::find(*tmpm, pos->state->ply_from_root)) scores[i] = INT16_MAX;
+            else scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()];
 
             while (i > 0 && scores[i - 1] < scores[i]) {
                 std::swap(scores[i-1], scores[i]);

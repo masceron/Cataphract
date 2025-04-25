@@ -14,12 +14,25 @@
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
 
+inline std::array<std::array<uint8_t, 64>, 128> reductions_cals()
+{
+    std::array<std::array<uint8_t, 64>, 128> r;
+    for (int depth = 0; depth < 128; depth++) {
+        for (int numMoves = 0 ; numMoves < 64; numMoves++) {
+            r[depth][numMoves] = std::floor(0.5 + std::log(depth) * std::log(numMoves) / 3.15);
+        }
+    }
+    return r;
+}
+
+inline std::array<std::array<uint8_t, 64>, 128> reductions = reductions_cals();
+
 inline static uint64_t node_searched = 0;
 inline static uint16_t seldepth;
 
 inline static constexpr uint8_t max_ply = 32;
 
-inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::list<Move>& pv)
+inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 {
     node_searched++;
     seldepth = pos.state->ply_from_root;
@@ -45,11 +58,9 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
             continue;
         }
 
-        std::list<Move> local_pv;
-
         accumulator_stack.emplace_back(pos, picked_move);
         pos.make_move(picked_move, st);
-        const int16_t score = -quiesce(pos, -beta, -alpha, local_pv);
+        const int16_t score = -quiesce(pos, -beta, -alpha);
         accumulator_stack.pop_back();
         pos.unmake_move(picked_move);
 
@@ -59,12 +70,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta, std::li
             return beta;
         }
         if (score >= best_score) best_score = score;
-        if (score > alpha) {
-            alpha = score;
-            pv.clear();
-            pv.push_back(picked_move);
-            pv.splice(pv.end(), local_pv);
-        }
+        if (score > alpha) alpha = score;
         picked_move = move_picker.next_move();
     }
 
@@ -83,7 +89,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
 
     //If depth <= 0 call quiescence search: https://www.chessprogramming.org/Quiescence_Search
     if (depth <= 0) {
-        return quiesce(pos, alpha, beta, pv);
+        return quiesce(pos, alpha, beta);
     }
 
     if (pos.state->ply_from_root > max_ply) {
@@ -100,8 +106,10 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     MovePicker move_picker(pos, false);
     Move picked_move = move_picker.next_move();
 
+    const bool not_in_check = !pos.state->checker;
+
     //Checking for draw.
-    if (pos.state->repetition >= 3 || (picked_move == move_none && !pos.state->checker) || pos.state->rule_50 >= 100) {
+    if (pos.state->repetition >= 3 || (picked_move == move_none && not_in_check) || pos.state->rule_50 >= 100) {
         return draw;
     }
     //Checking for mate.
@@ -113,56 +121,69 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     int16_t score;
     const int16_t old_alpha = alpha;
 
+    const bool is_pv = beta - alpha > 1;
+
     // Probe the transposition table: https://www.chessprogramming.org/Transposition_Table
     const auto entry = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, score);
 
-    //If the score is usable, i.e. from an identical position with enough depth, return immediately.
     if (ok) return score;
 
     move_picker.set_pv(entry->best_move);
 
-    //Null move pruning: https://www.chessprogramming.org/Null_Move_Pruning
-    if (allow_null && !pos.state->checker && depth > 3 && move_picker.pv == move_none
-        && (std::popcount(pos.occupations[pos.side_to_move]) - std::popcount(pos.boards[pos.side_to_move == white ? P : p])) > 1) {
-        State st;
-        const int reduction = 1 + depth / 3;
-        pos.make_null_move(st);
-        score = -search(pos, -beta, -beta + 1, depth - 1 - reduction, pv, false);
-        pos.unmake_null_move();
-        if (score >= beta) return beta;
-    }
-
-    //Reverse futility pruning: https://www.chessprogramming.org/Reverse_Futility_Pruning
-    const int16_t static_eval = eval(pos);
-    if (const int16_t margin = 150 * depth;
-        depth <= 6
-        && move_picker.pv != move_none
-        && static_eval >= beta + margin
-        && !pos.state->checker
-        && (alpha + 1 != beta)) {
-        return static_eval;
-    }
-
-    //Set up conditions for futility pruning: https://www.chessprogramming.org/Futility_Pruning
     bool futility_pruning_allowed = false;
-    if (!pos.state->checker && (alpha < -mate_bound && beta > mate_bound)) {
-        static constexpr int16_t futility_margin_multiplier = pawn_weight;
-        if (static_eval + depth * futility_margin_multiplier < alpha)
-            futility_pruning_allowed = true;
+
+    if (pos.state->ply_from_root && !is_pv && not_in_check) {
+        int16_t static_eval = negative_infinity;
+        //Reverse futility pruning: https://www.chessprogramming.org/Reverse_Futility_Pruning
+        if (depth <= 9) {
+            const int16_t margin = 120 * depth;
+            static_eval = eval(pos);
+            if (static_eval < mate_bound && static_eval - margin >= beta)
+                return beta + (static_eval - beta) / 3;
+        }
+
+        //Razoring: https://www.chessprogramming.org/Razoring
+        if (depth <= 5) {
+            if (static_eval == negative_infinity) static_eval = eval(pos);
+            if (static_eval + 230 * depth <= alpha) {
+                if (quiesce(pos, alpha, beta) < alpha) return alpha;
+            }
+        }
+
+        //Null move pruning: https://www.chessprogramming.org/Null_Move_Pruning
+        if (allow_null && depth >= 3 &&
+        std::popcount(pos.occupations[2]) - std::popcount(pos.boards[P]) - std::popcount(pos.boards[p]) > 2) {
+            if (static_eval == negative_infinity) static_eval = eval(pos);
+            if (static_eval > beta) {
+                const uint8_t r = std::min((static_eval - beta) / 232, 6) + depth / 3 + 5;
+                State st;
+                std::list<Move> local_pv;
+                pos.make_null_move(st);
+                score = -search(pos, -beta, -beta + 1, depth - r, local_pv, false);
+                pos.unmake_null_move();
+
+                if (is_search_cancelled) return 0;
+                if (score >= beta) return beta;
+            }
+        }
+
+        if (depth <= 9) {
+            if (static_eval == negative_infinity) static_eval = eval(pos);
+            if (static_eval + 140 * depth <= alpha) futility_pruning_allowed = true;
+        }
     }
 
     //A list of quiet moves searched, to apply the penalty to the history table when a quiet move fail high.
     std::forward_list<Move> quiets_searched;
 
     //Check extension: https://www.chessprogramming.org/Check_Extensions
-    const int8_t extension = pos.state->checker ? 1 : 0;
-
-    //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
+    const int8_t extension = not_in_check ? 0 : 1;
 
     uint8_t move_searched = 0;
+
     while (picked_move != move_none) {
         if (futility_pruning_allowed) {
-            if (move_picker.stage == quiet_moves && !pos.does_move_give_check(picked_move)) {
+            if (move_picker.stage == quiet_moves) {
                 picked_move = move_picker.next_move();
                 continue;
             }
@@ -170,16 +191,14 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
 
         std::list<Move> local_pv;
 
-        static constexpr int8_t reduction_limit = 3;
-        static constexpr int8_t full_depth = 4;
+        accumulator_stack.emplace_back(pos, picked_move);
 
         //Late move reductions: https://www.chessprogramming.org/Late_Move_Reductions
-        const int8_t reduction = (move_searched >= full_depth && depth >= reduction_limit) ? 1 : 0;
-
-        accumulator_stack.emplace_back(pos, picked_move);
+        const int8_t reduction = (picked_move.flag() < knight_promotion) ? reductions[depth][move_searched] : 0;
 
         State st;
         pos.make_move(picked_move, st);
+        //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
         if (move_searched == 0) {
             score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
         }
@@ -201,6 +220,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
             if (score >= beta) {
                 if (move_picker.stage == quiet_moves) {
                     //History heuristic: https://www.chessprogramming.org/History_Heuristic
+                    Killers::insert(picked_move, pos.state->ply_from_root);
                     History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
                 }
                 TT::write(entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, beta, lower_bound);
@@ -297,5 +317,5 @@ inline void start_search(int depth, const int time)
 
     if (best_move == move_none) best_move = legals<all>(position).list[0];
 
-    std::cout << "bestmove " << get_move_string(best_move) << "\n";
+    std::cout << "bestmove " << get_move_string(best_move) << std::endl;
 }

@@ -65,7 +65,7 @@ inline int16_t static_exchange_evaluation(const Position& pos, const Move& captu
 {
     bool side = pos.side_to_move;
     int8_t depth = 0;
-    int gains[32];
+    int16_t gains[32];
     const uint8_t to = capture.dest();
     const uint8_t from = capture.src();
     uint64_t from_set = 1ull << from;
@@ -93,7 +93,7 @@ inline int16_t static_exchange_evaluation(const Position& pos, const Move& captu
     } while (from_set);
 
     while (--depth) {
-        gains[depth - 1] = -std::max(-gains[depth - 1], gains[depth]);
+        gains[depth - 1] = -std::max(static_cast<int16_t>(-gains[depth - 1]), gains[depth]);
     }
     
     return gains[0];

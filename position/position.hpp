@@ -222,7 +222,7 @@ struct Position
 
 inline Position position;
 
-inline void print_board()
+inline void print_board(const Position& pos)
 {
     std::string lines[8];
     for (int rank = 0; rank < 8; rank++) {
@@ -232,11 +232,11 @@ inline void print_board()
         }
         lines[rank] += "\n";
     }
-    for (int pos = 0; pos < 64; pos++) {
-        lines[pos / 8][3 + (pos % 8) * 2] = piece_icons[position.piece_on[pos]];
+    for (int _pos = 0; _pos < 64; _pos++) {
+        lines[_pos / 8][3 + (_pos % 8) * 2] = piece_icons[pos.piece_on[_pos]];
     }
 
     std::cout << "   a b c d e f g h\n";
     for (const auto& i: lines) std::cout << i;
-    std::cout << "\nSide to move: " << (position.side_to_move == white ? "White\n" : "Black\n");
+    std::cout << "\nSide to move: " << (pos.side_to_move == white ? "White\n" : "Black\n");
 }

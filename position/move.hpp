@@ -27,7 +27,7 @@ inline int algebraic_to_num(const std::string &algebraic)
     if (algebraic.length() != 2) return -1;
     int rank = 0;
     int file = 0;
-    if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - static_cast<int>(algebraic[1] - '0');
+    if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - (algebraic[1] - '0');
     else return - 1;
     switch (algebraic[0]) {
         case 'a':

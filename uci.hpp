@@ -146,7 +146,7 @@ namespace UCI
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
             else if (input == "go infinite") go_depth("127");
             else if (input.starts_with("go movetime ")) go_time(input);
-            else if (input == "d") print_board();
+            else if (input == "d") print_board(position);
             else if (input == "ucinewgame") new_game();
             else if (input == "uci") {
                 std::cout << "uciok" << std::endl;

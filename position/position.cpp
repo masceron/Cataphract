@@ -200,7 +200,7 @@ bool Position::is_pseudo_legal(const Move &move)
         return false;
     }
     const int8_t from = move.src();
-    const int8_t to = move.flag();
+    const int8_t to = move.dest();
     const Pieces moved_piece = piece_on[from];
 
     if (moved_piece == nil || color_of(moved_piece) != side_to_move) return false;
@@ -215,23 +215,23 @@ bool Position::is_pseudo_legal(const Move &move)
 
         if (!(pawn_attack_tables[side_to_move][from] & occupations[!side_to_move] & to_board)
             && !(from + Delta<Up>(side_to_move) == to && piece_on[to] == nil)
-            && !(from + 2 * Delta<Up>(side_to_move) == to && abs(from - to) == 16 && piece_on[to] != nil && piece_on[to - Delta<Up>(side_to_move)] == nil))
+            && !(from + 2 * Delta<Up>(side_to_move) == to && piece_on[to] == nil && piece_on[to - Delta<Up>(side_to_move)] == nil))
             return false;
     }
     else if (moved_piece == N || moved_piece == n) {
-        if (!(knight_attack_tables[from] & to_board & !occupations[side_to_move])) return false;
+        if (!(knight_attack_tables[from] & to_board & ~occupations[side_to_move])) return false;
     }
     else if (moved_piece == R || moved_piece == r) {
-        if (!(get_rook_attack(from, occupations[2]) & to_board & !occupations[side_to_move])) return false;
+        if (!(get_rook_attack(from, occupations[2]) & to_board & ~occupations[side_to_move])) return false;
     }
     else if (moved_piece == B || moved_piece == b) {
-        if (!(get_bishop_attack(from, occupations[2]) & to_board & !occupations[side_to_move])) return false;
+        if (!(get_bishop_attack(from, occupations[2]) & to_board & ~occupations[side_to_move])) return false;
     }
     else if (moved_piece == Q || moved_piece == q) {
-        if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board & !occupations[side_to_move])) return false;
+        if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board & ~occupations[side_to_move])) return false;
     }
     else if (moved_piece == K || moved_piece == k) {
-        if (!(king_attack_tables[from] & to_board & !occupations[side_to_move])) return false;
+        if (!(king_attack_tables[from] & to_board & ~occupations[side_to_move])) return false;
     }
 
     if (state->checker) {

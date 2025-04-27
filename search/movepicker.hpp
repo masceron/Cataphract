@@ -5,20 +5,20 @@
 #include "../position/move.hpp"
 #include "see.hpp"
 
-static constexpr int16_t mvv_lva[12][12] = {
-    105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605,
-    104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604,
-    103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603,
-    102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602,
-    101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601,
-    100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600,
+static constexpr int16_t mvv_lva[12][13] = {
+    105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605, 105,
+    104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604, 105,
+    103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603, 105,
+    102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602, 105,
+    101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601, 105,
+    100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600, 105,
 
-    105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605,
-    104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604,
-    103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603,
-    102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602,
-    101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601,
-    100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600
+    105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605, 105,
+    104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604, 105,
+    103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603, 105,
+    102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602, 105,
+    101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601, 105,
+    100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600, 105
 };
 
 enum Stages: uint8_t
@@ -26,6 +26,7 @@ enum Stages: uint8_t
     TT_moves,
     generating_capture_moves,
     good_capture_moves,
+    generating_quiet_moves,
     quiet_moves,
     bad_capture_moves,
     none,
@@ -43,7 +44,7 @@ struct MovePicker
     Move* bad_captures_end;
     bool capture_only;
 
-    explicit MovePicker(Position& _pos, const bool _capture_only): pos(&_pos), capture_only(_capture_only)
+    explicit MovePicker(Position* _pos, const bool _capture_only): pos(_pos), capture_only(_capture_only)
     {
         bad_captures_end = bad_captures;
     }
@@ -51,7 +52,7 @@ struct MovePicker
     void set_pv(const Move& _pv)
     {
         if (_pv != move_none && pos->is_pseudo_legal(_pv)) {
-            if (!pos->state->checker || (pos->state->check_blocker & (1ull << _pv.dest()))) {
+            if (!pos->state->checker || pos->state->check_blocker & 1ull << _pv.dest()) {
                 pv = _pv;
                 stage = TT_moves;
             }
@@ -66,33 +67,41 @@ struct MovePicker
                 return pv;
             case generating_capture_moves:
                 pseudo_legals<captures>(*pos, moves);
+                sort_mvv_lva(moves.begin(), moves.last);
                 non_captures_start = moves.last;
-                sort_mvv_lva<true>(moves.begin(), non_captures_start);
-                moves.last = non_captures_start;
                 stage = good_capture_moves;
                 current = moves.begin();
             case good_capture_moves:
                 if (*current == pv) current++;
                 if (current >= non_captures_start) {
-                    if (!capture_only) {
-                        pseudo_legals<quiet>(*pos, moves);
-                        sort_history(non_captures_start, moves.last);
-                        stage = quiet_moves;
-                        current = non_captures_start;
-                    }
-                    else {
-                        stage = none;
-                    }
+                    stage = generating_quiet_moves;
                 }
                 else {
-                    return *(current++);
+                    Move picked;
+                    int16_t last_sse = -1;
+                    while (current < non_captures_start && (last_sse = static_exchange_evaluation(*pos, picked = *current++)) < 0) {
+                        *bad_captures_end++ = picked;
+                    }
+                    if (last_sse >= 0)
+                        return picked;
+                    stage = generating_quiet_moves;
+                }
+            case generating_quiet_moves:
+                if (!capture_only) {
+                    pseudo_legals<quiet>(*pos, moves);
+                    sort_history(non_captures_start, moves.last);
+                    stage = quiet_moves;
+                    current = non_captures_start;
+                }
+                else {
+                    stage = none;
+                    return move_none;
                 }
             case quiet_moves:
                 if (*current == pv) current++;
                 if (current >= moves.last) {
                     stage = bad_capture_moves;
                     current = bad_captures;
-                    sort_mvv_lva<false>(bad_captures, bad_captures_end);
                 }
                 else {
                     return *(current++);
@@ -122,8 +131,7 @@ struct MovePicker
         return move;
     }
 
-    template<const bool normal>
-    void sort_mvv_lva(Move* begin, Move*& end)
+    void sort_mvv_lva(Move* begin, Move*& end) const
     {
         if (begin == end) return;
 
@@ -136,14 +144,6 @@ struct MovePicker
 
         while (start < end) {
             int i = start - begin;
-
-            if constexpr (normal) {
-                if (static_exchange_evaluation(*pos, *start) < 0) {
-                    *(bad_captures_end++) = *start;
-                    *start = *(--end);
-                    continue;
-                }
-            }
 
             Move* tmpm = start;
             scores[i] = mvv_lva[pos->piece_on[start->src()]][pos->piece_on[start->dest()]];

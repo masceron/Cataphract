@@ -14,18 +14,18 @@
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
 
-inline std::array<std::array<uint8_t, 64>, 128> reductions_cals()
+inline std::array<std::array<uint8_t, 63>, 127> reductions_cals()
 {
-    std::array<std::array<uint8_t, 64>, 128> r;
-    for (int depth = 0; depth < 128; depth++) {
-        for (int numMoves = 0 ; numMoves < 64; numMoves++) {
-            r[depth][numMoves] = std::floor(0.5 + std::log(depth) * std::log(numMoves) / 3.15);
+    std::array<std::array<uint8_t, 63>, 127> r;
+    for (int depth = 0; depth < 127; depth++) {
+        for (int numMoves = 0 ; numMoves < 63; numMoves++) {
+            r[depth][numMoves] = std::floor(0.5 + std::log(depth + 1) * std::log(numMoves + 1) / 3.15);
         }
     }
     return r;
 }
 
-inline std::array<std::array<uint8_t, 64>, 128> reductions = reductions_cals();
+inline std::array<std::array<uint8_t, 63>, 127> reductions = reductions_cals();
 
 inline static uint64_t node_searched = 0;
 inline static uint16_t seldepth;
@@ -35,7 +35,10 @@ inline static constexpr uint8_t max_ply = 32;
 inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 {
     node_searched++;
-    seldepth = pos.state->ply_from_root;
+    if (pos.state->ply_from_root > seldepth) {
+        seldepth = pos.state->ply_from_root;
+    }
+
     if (is_search_cancelled) return 0;
 
     const int stand_pat = eval(pos);
@@ -46,12 +49,12 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 
     int best_score = stand_pat;
 
-    MovePicker move_picker(pos, true);
-    auto picked_move = move_picker.next_move();
+    MovePicker move_picker(&pos, true);
+    Move picked_move;
 
     State st;
-    
-    while (picked_move != move_none) {
+
+    while ((picked_move = move_picker.next_move()) != move_none) {
         //Delta pruning: https://www.chessprogramming.org/Delta_Pruning
         if (picked_move.flag() < knight_promotion && stand_pat + value_of(pos.piece_on[picked_move.dest()]) + 200 < alpha) {
             picked_move = move_picker.next_move();
@@ -85,7 +88,10 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     if (is_search_cancelled) return 0;
 
     Move depth_best_move = move_none;
-    seldepth = pos.state->ply_from_root;
+
+    if (pos.state->ply_from_root > seldepth) {
+        seldepth = pos.state->ply_from_root;
+    }
 
     //If depth <= 0 call quiescence search: https://www.chessprogramming.org/Quiescence_Search
     if (depth <= 0) {
@@ -97,13 +103,13 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     }
 
     //Mate Distance Pruning: https://www.chessprogramming.org/Mate_Distance_Pruning
-    if (pos.state->ply_from_root > 0) {
+    if (pos.state->ply_from_root) {
         alpha = std::max(alpha, static_cast<int16_t>(-mate_value + pos.state->ply_from_root));
         beta = std::min(beta, static_cast<int16_t>(mate_value - pos.state->ply_from_root - 1));
         if (alpha >= beta) return alpha;
     }
 
-    MovePicker move_picker(pos, false);
+    MovePicker move_picker(&pos, false);
     Move picked_move = move_picker.next_move();
 
     const bool not_in_check = !pos.state->checker;
@@ -193,9 +199,6 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
 
         accumulator_stack.emplace_back(pos, picked_move);
 
-        //Late move reductions: https://www.chessprogramming.org/Late_Move_Reductions
-        const int8_t reduction = (picked_move.flag() < knight_promotion) ? reductions[depth][move_searched] : 0;
-
         State st;
         pos.make_move(picked_move, st);
         //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
@@ -203,6 +206,8 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
             score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
         }
         else {
+            //Late move reductions: https://www.chessprogramming.org/Late_Move_Reductions
+            const int8_t reduction = (picked_move.flag() < knight_promotion) ? reductions[depth - 1][move_searched - 1] : 0;
             score = -search(pos, -alpha - 1, -alpha, depth - 1 + extension - reduction, local_pv, true);
             if (score > alpha && beta - alpha > 1) {
                 score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
@@ -211,9 +216,8 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         accumulator_stack.pop_back();
         pos.unmake_move(picked_move);
 
-        move_searched++;
-
         if (is_search_cancelled) return 0;
+        move_searched++;
 
         if (score > alpha) {
             depth_best_move = picked_move;

@@ -44,21 +44,9 @@ namespace TT
         if (entry->key == key) {
             if (ply > 0 && entry->depth >= depth && beta - alpha == 1) {
                 score = entry->score;
-
                 if (score < -mate_bound) score += ply;
                 else if (score > mate_bound) score -= ply;
-
-                if (entry->type == exact) {
-                    ok = true;
-                }
-                else if (entry->type == lower_bound && score >= beta) {
-                    score = beta;
-                    ok = true;
-                }
-                else if (entry->type == upper_bound && score <= alpha) {
-                    score = alpha;
-                    ok = true;
-                }
+                ok = true;
             }
         }
         return entry;

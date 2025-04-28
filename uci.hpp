@@ -15,6 +15,8 @@ namespace UCI
         TT::clear();
         History::clear();
         Killers::clear();
+        Capture::clear();
+        Corrections::clear();
     }
 
     inline void start()

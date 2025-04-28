@@ -19,7 +19,7 @@ inline std::array<std::array<uint8_t, 63>, 127> reductions_cals()
     std::array<std::array<uint8_t, 63>, 127> r;
     for (int depth = 0; depth < 127; depth++) {
         for (int numMoves = 0 ; numMoves < 63; numMoves++) {
-            r[depth][numMoves] = std::floor(0.5 + std::log(depth + 1) * std::log(numMoves + 1) / 3.15);
+            r[depth][numMoves] = std::floor(0.5 + std::log(depth + 1) * std::log(numMoves + 1) / 3.0);
         }
     }
     return r;
@@ -41,10 +41,16 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 
     if (is_search_cancelled) return 0;
 
-    const int stand_pat = eval(pos);
+    int16_t saved_eval;
+    bool ok = false;
+    const auto entry = TT::probe(pos.state->key, ok, 0, pos.state->ply_from_root, alpha, beta, saved_eval);
+
+    int stand_pat = eval(pos);
+    if (ok && !((stand_pat > saved_eval && entry->type == lower_bound)
+        || (stand_pat < saved_eval && entry->type == upper_bound)))
+        stand_pat = saved_eval;
 
     if (stand_pat >= beta) return stand_pat;
-
     if (stand_pat > alpha) alpha = stand_pat;
 
     int best_score = stand_pat;
@@ -54,10 +60,12 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 
     State st;
 
+    NodeType type = upper_bound;
+    Move best_move = move_none;
+
     while ((picked_move = move_picker.next_move()) != move_none) {
         //Delta pruning: https://www.chessprogramming.org/Delta_Pruning
         if (picked_move.flag() < knight_promotion && stand_pat + value_of(pos.piece_on[picked_move.dest()]) + 200 < alpha) {
-            picked_move = move_picker.next_move();
             continue;
         }
 
@@ -69,17 +77,25 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 
         if (is_search_cancelled) return 0;
 
-        if (score >= beta) {
-            return beta;
+        if (score > best_score) {
+            best_score = score;
+            best_move = picked_move;
+            if (score > alpha) {
+                if (score >= beta) {
+                    type = lower_bound;
+                    break;
+                }
+                alpha = score;
+            }
         }
-        if (score >= best_score) best_score = score;
-        if (score > alpha) alpha = score;
-        picked_move = move_picker.next_move();
     }
+
+    TT::write(entry, pos.state->key, best_move, 0, pos.state->ply_from_root, best_score, type);
 
     return best_score;
 }
 
+inline Move best_move;
 
 inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t depth, std::list<Move>& pv, const bool allow_null)
 {
@@ -124,33 +140,35 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     }
 
     bool ok = false;
-    int16_t score;
-    const int16_t old_alpha = alpha;
 
     const bool is_pv = beta - alpha > 1;
 
+    int16_t saved_eval;
     // Probe the transposition table: https://www.chessprogramming.org/Transposition_Table
-    const auto entry = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, score);
+    const auto entry = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, saved_eval);
+    if (ok) {
+        if (entry->type == exact || (entry->type == lower_bound && saved_eval >= beta) || (entry->type == upper_bound && saved_eval <= alpha))
+            return saved_eval;
+    }
 
-    if (ok) return score;
+    int16_t static_eval = eval(pos);
+    if (ok && !((static_eval > saved_eval && entry->type == lower_bound) || (static_eval < saved_eval && entry->type == upper_bound)))
+        static_eval = saved_eval;
 
-    move_picker.set_pv(entry->best_move);
+    move_picker.set_pv(pos.state->ply_from_root ? entry->best_move : best_move);
 
     bool futility_pruning_allowed = false;
 
     if (pos.state->ply_from_root && !is_pv && not_in_check) {
-        int16_t static_eval = negative_infinity;
         //Reverse futility pruning: https://www.chessprogramming.org/Reverse_Futility_Pruning
         if (depth <= 9) {
             const int16_t margin = 120 * depth;
-            static_eval = eval(pos);
             if (static_eval < mate_bound && static_eval - margin >= beta)
                 return beta + (static_eval - beta) / 3;
         }
 
         //Razoring: https://www.chessprogramming.org/Razoring
         if (depth <= 5) {
-            if (static_eval == negative_infinity) static_eval = eval(pos);
             if (static_eval + 230 * depth <= alpha) {
                 if (quiesce(pos, alpha, beta) < alpha) return alpha;
             }
@@ -159,17 +177,16 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         //Null move pruning: https://www.chessprogramming.org/Null_Move_Pruning
         if (allow_null && depth >= 3 &&
         std::popcount(pos.occupations[2]) - std::popcount(pos.boards[P]) - std::popcount(pos.boards[p]) > 2) {
-            if (static_eval == negative_infinity) static_eval = eval(pos);
             if (static_eval > beta) {
                 const uint8_t r = std::min((static_eval - beta) / 232, 6) + depth / 3 + 5;
                 State st;
                 std::list<Move> local_pv;
                 pos.make_null_move(st);
-                score = -search(pos, -beta, -beta + 1, depth - r, local_pv, false);
+                const int16_t null_score = -search(pos, -beta, -beta + 1, depth - r, local_pv, false);
                 pos.unmake_null_move();
 
                 if (is_search_cancelled) return 0;
-                if (score >= beta) return beta;
+                if (null_score >= beta) return beta;
             }
         }
 
@@ -179,13 +196,15 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         }
     }
 
-    //A list of quiet moves searched, to apply the penalty to the history table when a quiet move fail high.
     std::forward_list<Move> quiets_searched;
+    std::forward_list<CaptureEntry> capture_searched;
 
     //Check extension: https://www.chessprogramming.org/Check_Extensions
     const int8_t extension = not_in_check ? 0 : 1;
 
     uint8_t move_searched = 0;
+    int16_t best_score = negative_infinity;
+    NodeType type = upper_bound;
 
     while (picked_move != move_none) {
         if (futility_pruning_allowed) {
@@ -199,6 +218,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
 
         accumulator_stack.emplace_back(pos, picked_move);
 
+        int16_t score;
         State st;
         pos.make_move(picked_move, st);
         //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
@@ -219,36 +239,56 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         if (is_search_cancelled) return 0;
         move_searched++;
 
-        if (score > alpha) {
+        if (score > best_score) {
+            best_score = score;
             depth_best_move = picked_move;
-            if (score >= beta) {
-                if (move_picker.stage == quiet_moves) {
-                    //History heuristic: https://www.chessprogramming.org/History_Heuristic
-                    Killers::insert(picked_move, pos.state->ply_from_root);
-                    History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), pos.state->ply_from_root);
+            if (score > alpha) {
+                type = exact;
+                if (score >= beta) {
+                    if (picked_move.flag() == capture || picked_move.flag() >= knight_promo_capture) {
+                        Pieces captured = pos.piece_on[picked_move.dest()];
+                        if (captured == nil) captured = pos.side_to_move ? P : p;
+                        Capture::update(capture_searched, pos.piece_on[picked_move.src()], captured, picked_move.dest(), depth);
+                    }
+                    else {
+                        //History heuristic: https://www.chessprogramming.org/History_Heuristic
+                        Killers::insert(picked_move, pos.state->ply_from_root);
+                        History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), depth);
+                    }
+                    type = lower_bound;
+                    break;
                 }
-                TT::write(entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, beta, lower_bound);
-                return beta;
-            }
-            alpha = score;
 
-            pv.clear();
-            pv.push_back(picked_move);
-            pv.splice(pv.end(), local_pv);
+                alpha = score;
+                pv.clear();
+                pv.push_back(picked_move);
+                pv.splice(pv.end(), local_pv);
+            }
         }
 
-        if (move_picker.stage == quiet_moves) {
+        if (picked_move.flag() == capture || picked_move.flag() >= knight_promo_capture) {
+            Pieces captured = pos.piece_on[picked_move.dest()];
+            if (captured == nil) captured = pos.side_to_move ? P : p;
+            capture_searched.emplace_front(pos.piece_on[picked_move.src()], captured, picked_move.dest());
+        }
+        else {
             quiets_searched.push_front(picked_move);
         }
 
         picked_move = move_picker.next_move();
     }
 
-    if (old_alpha < alpha)
-        TT::write(entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, alpha, exact);
-    else TT::write(entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, alpha, upper_bound);
+    TT::write(entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, best_score, type);
 
-    return alpha;
+    if (const int16_t delta = best_score - static_eval;
+        not_in_check &&
+        ((depth_best_move.flag() != capture && depth_best_move.flag() < knight_promo_capture) || depth_best_move == move_none)
+        && !(type == lower_bound && delta < 0)
+        && !(type == upper_bound && delta > 0)) {
+        Corrections::update(delta, pos, depth);
+    }
+
+    return best_score;
 }
 
 
@@ -258,11 +298,11 @@ inline void start_search(int depth, const int time)
         depth = 128;
         Timer::start(time - 500);
     }
-    else Timer::start(9500);
+    else Timer::start(60000);
 
     node_searched = 0;
+    best_move = move_none;
     std::list<Move> principal_variation;
-    Move best_move = move_none;
 
     accumulator_stack.clear();
     accumulator_stack.emplace_back(root_accumulators);

@@ -5,20 +5,8 @@
 #include "../position/move.hpp"
 #include "see.hpp"
 
-static constexpr int16_t mvv_lva[12][13] = {
-    105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605, 105,
-    104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604, 105,
-    103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603, 105,
-    102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602, 105,
-    101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601, 105,
-    100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600, 105,
-
-    105, 205, 305, 405, 505, 605,  105, 205, 305, 405, 505, 605, 105,
-    104, 204, 304, 404, 504, 604,  104, 204, 304, 404, 504, 604, 105,
-    103, 203, 303, 403, 503, 603,  103, 203, 303, 403, 503, 603, 105,
-    102, 202, 302, 402, 502, 602,  102, 202, 302, 402, 502, 602, 105,
-    101, 201, 301, 401, 501, 601,  101, 201, 301, 401, 501, 601, 105,
-    100, 200, 300, 400, 500, 600,  100, 200, 300, 400, 500, 600, 105
+static constexpr int16_t mvv[12] = {
+    105, 205, 305, 405, 505, 605, 105, 205, 305, 405, 505, 605
 };
 
 enum Stages: uint8_t
@@ -67,7 +55,7 @@ struct MovePicker
                 return pv;
             case generating_capture_moves:
                 pseudo_legals<captures>(*pos, moves);
-                sort_mvv_lva(moves.begin(), moves.last);
+                sort_mvv_capthist(moves.begin(), moves.last);
                 non_captures_start = moves.last;
                 stage = good_capture_moves;
                 current = moves.begin();
@@ -131,13 +119,17 @@ struct MovePicker
         return move;
     }
 
-    void sort_mvv_lva(Move* begin, Move*& end) const
+    void sort_mvv_capthist(Move* begin, Move*& end) const
     {
         if (begin == end) return;
 
         std::array<int16_t, 218> scores;
 
-        scores[0] = mvv_lva[pos->piece_on[begin->src()]][pos->piece_on[begin->dest()]];
+        Pieces moved = pos->piece_on[begin->src()];
+        Pieces captured = pos->piece_on[begin->dest()];
+        if (captured == nil) captured = pos->side_to_move ? P : p;
+
+        scores[0] = mvv[captured] + Capture::table[moved][captured][begin->dest()];
         if (begin->flag() >= knight_promo_capture) scores[0] += value_of(begin->promoted_to<false>());
 
         Move* start = begin + 1;
@@ -146,8 +138,13 @@ struct MovePicker
             int i = start - begin;
 
             Move* tmpm = start;
-            scores[i] = mvv_lva[pos->piece_on[start->src()]][pos->piece_on[start->dest()]];
-            if (start->flag() >= knight_promo_capture) scores[0] += value_of(start->promoted_to<false>());
+
+            moved = pos->piece_on[start->src()];
+            captured = pos->piece_on[start->dest()];
+            if (captured == nil) captured = pos->side_to_move ? P : p;
+
+            scores[i] = mvv[captured] + Capture::table[moved][captured][start->dest()];
+            if (start->flag() >= knight_promo_capture) scores[i] += value_of(start->promoted_to<false>());
 
             while (i > 0 && scores[i - 1] < scores[i]) {
                 std::swap(scores[i-1], scores[i]);

@@ -17,6 +17,7 @@ namespace UCI
         Killers::clear();
         Capture::clear();
         Corrections::clear();
+        Continuation::clear();
     }
 
     inline void start()
@@ -33,8 +34,8 @@ namespace UCI
             const int to = algebraic_to_num(move.substr(2, 2));
             if (from == -1 || to == -1) return;
             const auto _move = Move(from, to, 0);
-            for (const auto& move_test : moves.list) {
-                if ((move_test.move & 0xFFF) == _move.move) {
+            for (int i = 0; i < moves.size(); i++) {
+                if (const auto move_test = moves[i]; (move_test.move & 0xFFF) == _move.move) {
                     position.do_move(move_test);
                     return;
                 }
@@ -148,7 +149,7 @@ namespace UCI
             if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
             else if (input == "go infinite") go_depth("127");
             else if (input.starts_with("go movetime ")) go_time(input);
-            else if (input == "d") print_board(position);
+            else if (input == "d") position.print_board();
             else if (input == "ucinewgame") new_game();
             else if (input == "uci") {
                 std::cout << "uciok" << std::endl;

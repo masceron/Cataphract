@@ -32,14 +32,10 @@ struct MovePicker
     Move* bad_captures_end;
     bool capture_only;
 
-    explicit MovePicker(Position* _pos, const bool _capture_only): pos(_pos), capture_only(_capture_only)
+    explicit MovePicker(Position* _pos, const bool _capture_only, const Move& _pv): pos(_pos), capture_only(_capture_only)
     {
         bad_captures_end = bad_captures;
-    }
-
-    void set_pv(const Move& _pv)
-    {
-        if (_pv != move_none && pos->is_pseudo_legal(_pv)) {
+        if (_pv != move_none && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture)) {
             if (!pos->state->checker || pos->state->check_blocker & 1ull << _pv.dest()) {
                 pv = _pv;
                 stage = TT_moves;
@@ -54,10 +50,10 @@ struct MovePicker
                 stage = generating_capture_moves;
                 return pv;
             case generating_capture_moves:
+                stage = good_capture_moves;
                 pseudo_legals<captures>(*pos, moves);
                 sort_mvv_capthist(moves.begin(), moves.last);
                 non_captures_start = moves.last;
-                stage = good_capture_moves;
                 current = moves.begin();
             case good_capture_moves:
                 if (*current == pv) current++;
@@ -67,8 +63,10 @@ struct MovePicker
                 else {
                     Move picked;
                     int16_t last_sse = -1;
-                    while (current < non_captures_start && (last_sse = static_exchange_evaluation(*pos, picked = *current++)) < 0) {
-                        *bad_captures_end++ = picked;
+                    while (current < non_captures_start && ((last_sse = static_exchange_evaluation(*pos, picked = *current++) < 0))) {
+                        if (*current != pv)
+                            *bad_captures_end++ = picked;
+                        else current++;
                     }
                     if (last_sse >= 0)
                         return picked;
@@ -111,7 +109,6 @@ struct MovePicker
     {
         Move move = pick();
         if (move == move_none) return move_none;
-
         while (!check_move_legality(*pos, move)) {
             move = pick();
             if (move == move_none) return move_none;
@@ -125,11 +122,15 @@ struct MovePicker
 
         std::array<int16_t, 218> scores;
 
-        Pieces moved = pos->piece_on[begin->src()];
-        Pieces captured = pos->piece_on[begin->dest()];
-        if (captured == nil) captured = pos->side_to_move ? P : p;
+        const bool stm = pos->side_to_move;
+        uint8_t moved = pos->piece_on[begin->src()];
+        uint8_t captured = pos->piece_on[begin->dest()];
 
-        scores[0] = mvv[captured] + Capture::table[moved][captured][begin->dest()];
+        if (captured == nil) captured = P;
+        if (moved >= 6) moved -= 6;
+        if (captured >= 6) captured -= 6;
+
+        scores[0] = mvv[captured] + Capture::table[stm][moved][captured][begin->dest()];
         if (begin->flag() >= knight_promo_capture) scores[0] += value_of(begin->promoted_to<false>());
 
         Move* start = begin + 1;
@@ -141,9 +142,12 @@ struct MovePicker
 
             moved = pos->piece_on[start->src()];
             captured = pos->piece_on[start->dest()];
-            if (captured == nil) captured = pos->side_to_move ? P : p;
 
-            scores[i] = mvv[captured] + Capture::table[moved][captured][start->dest()];
+            if (captured == nil) captured = P;
+            if (moved >= 6) moved -= 6;
+            if (captured >= 6) captured -= 6;
+
+            scores[i] = mvv[captured] + Capture::table[stm][moved][captured][start->dest()];
             if (start->flag() >= knight_promo_capture) scores[i] += value_of(start->promoted_to<false>());
 
             while (i > 0 && scores[i - 1] < scores[i]) {
@@ -162,18 +166,34 @@ struct MovePicker
         if (begin == end) return;
 
         std::array<int16_t, 218> scores;
+        uint8_t moved;
+
+        const auto prev = !Continuation::search_stack.empty() ? Continuation::search_stack.back() : 0;
+        const auto prev2 = Continuation::search_stack.size() >= 2 ? Continuation::search_stack[Continuation::search_stack.size() - 2] : 0;
 
         if (Killers::find(*begin, pos->state->ply_from_root)) scores[0] = INT16_MAX;
-        else scores[0] = History::table[pos->side_to_move][begin->src()][begin->dest()];
+        else {
+            moved = pos->piece_on[begin->src()];
+            if (moved >= 6) moved -= 6;
+            scores[0] = History::table[pos->side_to_move][begin->src()][begin->dest()] +
+            2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->dest()]
+            + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->dest()];
+        }
 
         Move* start = begin + 1;
 
         while (start < end) {
             int i = start - begin;
             Move* tmpm = start;
-            if (Killers::find(*tmpm, pos->state->ply_from_root)) scores[i] = INT16_MAX;
-            else scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()];
 
+            if (Killers::find(*tmpm, pos->state->ply_from_root)) scores[i] = INT16_MAX;
+            else {
+                moved = pos->piece_on[tmpm->src()];
+                if (moved >= 6) moved -= 6;
+                scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()] +
+                2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->dest()]
+                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->dest()];
+            }
             while (i > 0 && scores[i - 1] < scores[i]) {
                 std::swap(scores[i-1], scores[i]);
                 std::swap(*(tmpm - 1), *tmpm);

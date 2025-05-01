@@ -253,7 +253,7 @@ void move_generator(const Position& cr_pos, Move*& last)
     king_move_generator<us, type, evasive>(cr_pos, last, least_significant_one(cr_pos.boards[king]));
 }
 
-template<const MoveType type> void pseudo_legals(Position &cr_pos, MoveList& list)
+template<const MoveType type> void pseudo_legals(const Position &cr_pos, MoveList& list)
 {
     const bool us = cr_pos.side_to_move;
 

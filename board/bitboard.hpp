@@ -95,6 +95,6 @@ inline void print_bitboard(const uint64_t bitboard)
         }
         board << "\n";
     }
-    board << "\n";
+    board << std::endl;
     std::cout << board.str();
 }

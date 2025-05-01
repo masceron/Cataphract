@@ -86,33 +86,33 @@ struct Move
     }
 
     bool operator==(const Move & _move) const { return _move.move == this->move; };
+
+    std::string get_move_string() const
+    {
+        if (move == 0) return "0000";
+        std::stringstream s;
+        s << num_to_algebraic(src()) << num_to_algebraic(dest());
+
+        if (flag() >= knight_promotion) {
+            switch (promoted_to<false>()) {
+                case N:
+                    s << "n";
+                break;
+                case B:
+                    s << "b";
+                break;
+                case R:
+                    s << "r";
+                break;
+                case Q:
+                    s << "q";
+                break;
+                default:
+                    break;
+            }
+        }
+        return s.str();
+    }
 };
 
 const Move move_none(0, 0, 0);
-
-inline std::string get_move_string(const Move& move)
-{
-    if (move == move_none) return "0000";
-    std::stringstream s;
-    s << num_to_algebraic(move.src()) << num_to_algebraic(move.dest());
-
-    if (move.flag() >= knight_promotion) {
-        switch (move.promoted_to<false>()) {
-            case N:
-                s << "n";
-            break;
-            case B:
-                s << "b";
-            break;
-            case R:
-                s << "r";
-            break;
-            case Q:
-                s << "q";
-            break;
-            default:
-                break;
-        }
-    }
-    return s.str();
-}

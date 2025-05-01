@@ -6,11 +6,11 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    set(CMAKE_CXX_STANDARD 23)
+    set(CMAKE_CXX_STANDARD 26)
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Wno-class-memaccess -Wno-implicit-fallthrough -static -pedantic -g -march=native")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -flto=auto -fipa-pta -s -Wall -Wextra -Wno-class-memaccess -Wno-implicit-fallthrough -march=native -mtune=native -static -pedantic")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(CMAKE_CXX_STANDARD 23)
+    set(CMAKE_CXX_STANDARD 26)
     set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wextra -fsanitize=undefined -g -static -march=native")
     set(CMAKE_CXX_FLAGS_RELEASE "-flto=auto -march=native -mtune=native -O3 -static")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
@@ -43,7 +43,6 @@ add_executable(CSEngine main.cpp
         position/position.cpp
         search/history.hpp
         eval/nnue.hpp
-        eval/incbin.h
         eval/accumulators.hpp
         eval/nnue.cpp
 )

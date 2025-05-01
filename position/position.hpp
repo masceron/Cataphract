@@ -25,7 +25,7 @@ struct State
 {
     uint16_t rule_50;
     uint8_t castling_rights;
-    int en_passant_square;
+    int8_t en_passant_square;
     uint64_t piece_key;
     uint64_t castling_key;
     uint64_t en_passant_key;
@@ -218,25 +218,9 @@ struct Position
     }
 
     [[nodiscard]] uint64_t construct_zobrist_key() const;
+
+    void print_board() const;
+    std::string to_fen() const;
 };
 
 inline Position position;
-
-inline void print_board(const Position& pos)
-{
-    std::string lines[8];
-    for (int rank = 0; rank < 8; rank++) {
-        lines[rank] += std::to_string(8-rank) + "  ";
-        for (int file = 0; file < 8; file++) {
-            lines[rank] += ". ";
-        }
-        lines[rank] += "\n";
-    }
-    for (int _pos = 0; _pos < 64; _pos++) {
-        lines[_pos / 8][3 + (_pos % 8) * 2] = piece_icons[pos.piece_on[_pos]];
-    }
-
-    std::cout << "   a b c d e f g h\n";
-    for (const auto& i: lines) std::cout << i;
-    std::cout << "\nSide to move: " << (pos.side_to_move == white ? "White\n" : "Black\n");
-}

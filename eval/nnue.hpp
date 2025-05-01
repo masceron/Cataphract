@@ -2,13 +2,12 @@
 
 #include <cstdint>
 
-#include "../board/bitboard.hpp"
 #include "../position/position.hpp"
 
 static constexpr uint8_t QA = 255;
 static constexpr uint8_t QB = 64;
 static constexpr int16_t eval_scale = 400;
-#define hl_size 512
+#define hl_size 1024
 #define input_size 768
 #define output_buckets 8
 
@@ -31,56 +30,24 @@ struct Accumulator_entry
 {
     Accumulators accumulators;
     bool is_dirty;
+    std::pair<bool, bool> is_mirrored;
     std::pair<uint8_t, int16_t> adds[2] = {{0, -1}, {0, -1}};
     std::pair<uint8_t, int16_t> subs[2] = {{0, -1}, {0, -1}};
 
-    Accumulator_entry() = delete;
+    void accumulator_flip(bool side, const Position &pos);
+    void mark_changes(Position& pos, const Move& move);
 
-    explicit Accumulator_entry(const Position& pos, const Move& move): is_dirty(true)
+    Accumulator_entry() = delete;
+    explicit Accumulator_entry(Position& pos, const Move& move, const std::pair<bool, bool>& before)
+    : is_dirty(true), is_mirrored(before)
     {
         mark_changes(pos, move);
     }
 
-    explicit Accumulator_entry(const Accumulators& _accumulators): is_dirty(false)
+    explicit Accumulator_entry(const Accumulators& _accumulators, const Position& pos): is_dirty(false)
     {
         memcpy(&accumulators, &_accumulators, 2 * hl_size * sizeof(int16_t));
-    }
-
-    void mark_changes(const Position& pos, const Move& move)
-    {
-        const uint8_t from = move.src();
-        const uint8_t to = move.dest();
-        const uint8_t flag = move.flag();
-        const uint8_t moved_piece = pos.piece_on[from];
-
-        if (flag <= knight_promotion) {
-            adds[0] = {moved_piece, to};
-            subs[0] = {moved_piece, from};
-            if (flag == capture) {
-                subs[1] = { pos.piece_on[to], to};
-            }
-            else if (flag == ep_capture) {
-                const uint8_t captured_sq = to - Delta<Up>(pos.side_to_move);
-                subs[1] = {pos.piece_on[captured_sq], captured_sq};
-            }
-            else if (flag == king_castle) {
-                auto rook = pos.side_to_move == white ? R : r;
-                adds[1] = {rook, to - 1};
-                subs[1] = {rook, to + 1};
-            }
-            else if (flag == queen_castle) {
-                auto rook = pos.side_to_move == white ? R : r;
-                adds[1] = {rook, to + 1};
-                subs[1] = {rook, to - 2};
-            }
-        }
-        else {
-            subs[0] = {moved_piece, from};
-            adds[0] = {move.promoted_to<true>(pos.side_to_move), to};
-            if (flag >= knight_promo_capture) {
-                subs[1] = {pos.piece_on[to], to};
-            }
-        }
+        is_mirrored = {least_significant_one(pos.boards[K]) % 8 >= 4, least_significant_one(pos.boards[k]) % 8 >= 4};
     }
 };
 

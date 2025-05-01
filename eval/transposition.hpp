@@ -38,10 +38,11 @@ namespace TT
         return key & (table_size - 1);
     }
 
-    inline Entry* probe(const uint64_t key, bool& ok, const int8_t depth, const uint8_t ply, const int16_t alpha, const int16_t beta, int16_t& score)
+    inline Entry* probe(const uint64_t key, bool& ok, const int8_t depth, const uint8_t ply, const int16_t alpha, const int16_t beta, int16_t& score, Move& saved_move)
     {
         Entry* entry = &(*table)[index_of(key)];
         if (entry->key == key) {
+            saved_move = entry->best_move;
             if (ply > 0 && entry->depth >= depth && beta - alpha == 1) {
                 score = entry->score;
                 if (score < -mate_bound) score += ply;

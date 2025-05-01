@@ -25,7 +25,7 @@ inline std::array<std::array<uint8_t, 63>, 127> reductions_cals()
     return r;
 }
 
-inline std::array<std::array<uint8_t, 63>, 127> reductions = reductions_cals();
+inline auto reductions = reductions_cals();
 
 inline static uint64_t node_searched = 0;
 inline static uint16_t seldepth;
@@ -39,11 +39,12 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
         seldepth = pos.state->ply_from_root;
     }
 
-    if (is_search_cancelled) return 0;
+    if (is_search_cancelled) return alpha;
 
     int16_t saved_eval;
     bool ok = false;
-    const auto entry = TT::probe(pos.state->key, ok, 0, pos.state->ply_from_root, alpha, beta, saved_eval);
+    Move saved_move = move_none;
+    const auto entry = TT::probe(pos.state->key, ok, 0, pos.state->ply_from_root, alpha, beta, saved_eval, saved_move);
 
     int stand_pat = eval(pos);
     if (ok && !((stand_pat > saved_eval && entry->type == lower_bound)
@@ -55,7 +56,7 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 
     int best_score = stand_pat;
 
-    MovePicker move_picker(&pos, true);
+    MovePicker move_picker(&pos, true, saved_move);
     Move picked_move;
 
     State st;
@@ -69,13 +70,13 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
             continue;
         }
 
-        accumulator_stack.emplace_back(pos, picked_move);
+        accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
         pos.make_move(picked_move, st);
         const int16_t score = -quiesce(pos, -beta, -alpha);
         accumulator_stack.pop_back();
         pos.unmake_move(picked_move);
 
-        if (is_search_cancelled) return 0;
+        if (is_search_cancelled) return alpha;
 
         if (score > best_score) {
             best_score = score;
@@ -97,13 +98,10 @@ inline int16_t quiesce(Position& pos, int16_t alpha, const int16_t beta)
 
 inline Move best_move;
 
-inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t depth, std::list<Move>& pv, const bool allow_null)
+inline int16_t search(Position& pos, int16_t alpha, int16_t beta, int8_t depth, std::list<Move>& pv, const bool allow_null)
 {
     node_searched++;
-
-    if (is_search_cancelled) return 0;
-
-    Move depth_best_move = move_none;
+    if (is_search_cancelled) return alpha;
 
     if (pos.state->ply_from_root > seldepth) {
         seldepth = pos.state->ply_from_root;
@@ -125,27 +123,16 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         if (alpha >= beta) return alpha;
     }
 
-    MovePicker move_picker(&pos, false);
-    Move picked_move = move_picker.next_move();
+    if (pos.state->repetition >= 3 || pos.state->rule_50 >= 100) return draw;
 
     const bool not_in_check = !pos.state->checker;
-
-    //Checking for draw.
-    if (pos.state->repetition >= 3 || (picked_move == move_none && not_in_check) || pos.state->rule_50 >= 100) {
-        return draw;
-    }
-    //Checking for mate.
-    if (picked_move == move_none) {
-        return -mate_value + pos.state->ply_from_root;
-    }
-
+    const bool is_pv = beta - alpha > 1;
     bool ok = false;
 
-    const bool is_pv = beta - alpha > 1;
-
     int16_t saved_eval;
+    Move saved_move = move_none;
     // Probe the transposition table: https://www.chessprogramming.org/Transposition_Table
-    const auto entry = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, saved_eval);
+    const auto entry = TT::probe(pos.state->key, ok, depth, pos.state->ply_from_root, alpha, beta, saved_eval, saved_move);
     if (ok) {
         if (entry->type == exact || (entry->type == lower_bound && saved_eval >= beta) || (entry->type == upper_bound && saved_eval <= alpha))
             return saved_eval;
@@ -155,15 +142,12 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     if (ok && !((static_eval > saved_eval && entry->type == lower_bound) || (static_eval < saved_eval && entry->type == upper_bound)))
         static_eval = saved_eval;
 
-    move_picker.set_pv(pos.state->ply_from_root ? entry->best_move : best_move);
-
     bool futility_pruning_allowed = false;
 
-    if (pos.state->ply_from_root && !is_pv && not_in_check) {
+    if (not_in_check && pos.state->ply_from_root && !is_pv) {
         //Reverse futility pruning: https://www.chessprogramming.org/Reverse_Futility_Pruning
         if (depth <= 9) {
-            const int16_t margin = 120 * depth;
-            if (static_eval < mate_bound && static_eval - margin >= beta)
+            if (static_eval < mate_bound && static_eval - (120 * depth) >= beta)
                 return beta + (static_eval - beta) / 3;
         }
 
@@ -185,7 +169,7 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
                 const int16_t null_score = -search(pos, -beta, -beta + 1, depth - r, local_pv, false);
                 pos.unmake_null_move();
 
-                if (is_search_cancelled) return 0;
+                if (is_search_cancelled) return alpha;
                 if (null_score >= beta) return beta;
             }
         }
@@ -199,44 +183,49 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     std::forward_list<Move> quiets_searched;
     std::forward_list<CaptureEntry> capture_searched;
 
-    //Check extension: https://www.chessprogramming.org/Check_Extensions
-    const int8_t extension = not_in_check ? 0 : 1;
-
     uint8_t move_searched = 0;
     int16_t best_score = negative_infinity;
     NodeType type = upper_bound;
+    Move picked_move;
+    Move depth_best_move = move_none;
+    MovePicker move_picker(&pos, false, pos.state->ply_from_root > 0 ? saved_move : best_move);
 
-    while (picked_move != move_none) {
+    if (!not_in_check) depth += 1;
+    if (is_pv && move_picker.pv == move_none && depth >= 4) depth -= 1;
+    const uint16_t late_move_margin = 5 + depth * depth;
+
+    while ((picked_move = move_picker.next_move()) != move_none) {
+        if (move_searched >= late_move_margin && depth <= 4 && not_in_check && move_picker.stage >= quiet_moves && abs(mate_value) - abs(best_score) > 128) break;
+
         if (futility_pruning_allowed) {
             if (move_picker.stage == quiet_moves) {
-                picked_move = move_picker.next_move();
                 continue;
             }
         }
 
         std::list<Move> local_pv;
 
-        accumulator_stack.emplace_back(pos, picked_move);
+        accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
 
         int16_t score;
         State st;
         pos.make_move(picked_move, st);
         //Principal variation search: https://www.chessprogramming.org/Principal_Variation_Search
         if (move_searched == 0) {
-            score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
+            score = -search(pos, -beta, -alpha, depth - 1, local_pv, true);
         }
         else {
             //Late move reductions: https://www.chessprogramming.org/Late_Move_Reductions
             const int8_t reduction = (picked_move.flag() < knight_promotion) ? reductions[depth - 1][move_searched - 1] : 0;
-            score = -search(pos, -alpha - 1, -alpha, depth - 1 + extension - reduction, local_pv, true);
+            score = -search(pos, -alpha - 1, -alpha, depth - 1 - reduction, local_pv, true);
             if (score > alpha && beta - alpha > 1) {
-                score = -search(pos, -beta, -alpha, depth - 1 + extension, local_pv, true);
+                score = -search(pos, -beta, -alpha, depth - 1, local_pv, true);
             }
         }
         accumulator_stack.pop_back();
         pos.unmake_move(picked_move);
 
-        if (is_search_cancelled) return 0;
+        if (is_search_cancelled) return alpha;
         move_searched++;
 
         if (score > best_score) {
@@ -247,13 +236,14 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
                 if (score >= beta) {
                     if (picked_move.flag() == capture || picked_move.flag() >= knight_promo_capture) {
                         Pieces captured = pos.piece_on[picked_move.dest()];
-                        if (captured == nil) captured = pos.side_to_move ? P : p;
-                        Capture::update(capture_searched, pos.piece_on[picked_move.src()], captured, picked_move.dest(), depth);
+                        if (captured == nil) captured = P;
+                        Capture::update(capture_searched, pos.side_to_move, pos.piece_on[picked_move.src()], captured, picked_move.dest(), depth);
                     }
                     else {
                         //History heuristic: https://www.chessprogramming.org/History_Heuristic
                         Killers::insert(picked_move, pos.state->ply_from_root);
                         History::update(quiets_searched, pos.side_to_move, picked_move.src(), picked_move.dest(), depth);
+                        Continuation::update(pos, quiets_searched, picked_move, depth);
                     }
                     type = lower_bound;
                     break;
@@ -267,15 +257,24 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
         }
 
         if (picked_move.flag() == capture || picked_move.flag() >= knight_promo_capture) {
-            Pieces captured = pos.piece_on[picked_move.dest()];
-            if (captured == nil) captured = pos.side_to_move ? P : p;
-            capture_searched.emplace_front(pos.piece_on[picked_move.src()], captured, picked_move.dest());
+            uint8_t captured = pos.piece_on[picked_move.dest()];
+            if (captured == nil) captured = P;
+            if (captured >= 6) captured -= 6;
+
+            uint8_t moved = pos.piece_on[picked_move.src()];
+            if (moved >= 6) moved -= 6;
+            capture_searched.emplace_front(moved, captured, picked_move.dest());
         }
         else {
             quiets_searched.push_front(picked_move);
         }
+    }
 
-        picked_move = move_picker.next_move();
+    if (move_searched == 0) {
+        if (not_in_check) {
+            return draw;
+        }
+        return -mate_value + pos.state->ply_from_root;
     }
 
     TT::write(entry, pos.state->key, depth_best_move, depth, pos.state->ply_from_root, best_score, type);
@@ -291,12 +290,11 @@ inline int16_t search(Position& pos, int16_t alpha, int16_t beta, const int8_t d
     return best_score;
 }
 
-
 inline void start_search(int depth, const int time)
 {
     if (time != - 1) {
         depth = 128;
-        Timer::start(time - 500);
+        Timer::start(time);
     }
     else Timer::start(60000);
 
@@ -305,7 +303,7 @@ inline void start_search(int depth, const int time)
     std::list<Move> principal_variation;
 
     accumulator_stack.clear();
-    accumulator_stack.emplace_back(root_accumulators);
+    accumulator_stack.emplace_back(root_accumulators, position);
 
     int16_t alpha = negative_infinity;
     int16_t beta = infinity;
@@ -321,6 +319,9 @@ inline void start_search(int depth, const int time)
         while (true) {
             //Aspiration Windows: https://www.chessprogramming.org/Aspiration_Windows
             score = search(position, alpha, beta, cr_depth, principal_variation, true);
+
+            if (is_search_cancelled) break;
+
             if (score <= alpha) {
                 beta = (alpha + beta) / 2;
                 alpha = std::max(static_cast<int16_t>(score - window), static_cast<int16_t>(negative_infinity));
@@ -332,11 +333,9 @@ inline void start_search(int depth, const int time)
                 break;
             }
             window += window / 2;
-
-            if (is_search_cancelled) break;
         }
 
-        if (is_search_cancelled) break;
+        if (score == negative_infinity) continue;
 
         const double elapsed = Timer::elapsed();
         std::cout << "info depth " << cr_depth << " seldepth " << seldepth << " score";
@@ -346,10 +345,12 @@ inline void start_search(int depth, const int time)
         else std::cout << " cp " << score;
 
         std::cout << " nodes " << node_searched
-        << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000  << " pv ";
+        << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000
+        << " time " << elapsed / 1000
+        << " pv ";
 
         for (auto x : principal_variation) {
-            std::cout << get_move_string(x) << " ";
+            std::cout << x.get_move_string() << " ";
         }
         std::cout << std::endl;
 
@@ -361,5 +362,5 @@ inline void start_search(int depth, const int time)
 
     if (best_move == move_none) best_move = legals<all>(position).list[0];
 
-    std::cout << "bestmove " << get_move_string(best_move) << std::endl;
+    std::cout << "bestmove " << best_move.get_move_string() << std::endl;
 }

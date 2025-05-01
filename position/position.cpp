@@ -1,5 +1,8 @@
+#include <sstream>
+
 #include "position.hpp"
 #include "movegen.hpp"
+#include "../search/history.hpp"
 
 void Position::make_move(const Move& move, State& st)
 {
@@ -15,6 +18,8 @@ void Position::make_move(const Move& move, State& st)
     const uint8_t flag = move.flag();
     const Pieces moving_piece = piece_on[from];
     const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
+
+    Continuation::search_stack.push_back(((moving_piece >= p ? moving_piece - 6 : moving_piece) << 6) + to);
 
     if (flag == king_castle) {
         move_piece(to + 1, to - 1);
@@ -160,6 +165,7 @@ void Position::do_move(const Move& move)
 
 void Position::unmake_move(const Move &move)
 {
+    Continuation::search_stack.pop_back();
     side_to_move = !side_to_move;
     const uint8_t from = move.src();
     const uint8_t to = move.dest();
@@ -180,7 +186,7 @@ void Position::unmake_move(const Move &move)
     if (state->captured_piece != nil) {
         uint8_t captured_square = to;
         if (flag == ep_capture) {
-            captured_square += side_to_move == white ? 8 : -8;
+            captured_square -= Delta<Up>(side_to_move);
         }
 
         put_piece(state->captured_piece, captured_square);
@@ -191,7 +197,8 @@ void Position::unmake_move(const Move &move)
 
 bool Position::is_pseudo_legal(const Move &move)
 {
-    if (const uint16_t flag = move.flag(); flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle) {
+    const uint16_t flag = move.flag();
+    if (flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle) {
         MoveList list;
         pseudo_legals<all>(*this, list);
         for (int i = 0; i < list.size(); i++) {
@@ -204,6 +211,7 @@ bool Position::is_pseudo_legal(const Move &move)
     const Pieces moved_piece = piece_on[from];
 
     if (moved_piece == nil || color_of(moved_piece) != side_to_move) return false;
+    if ((flag == capture && piece_on[to] == nil) || (flag != capture && piece_on[to] != nil)) return false;
 
     const uint64_t to_board = 1ull << to;
 
@@ -310,4 +318,61 @@ uint64_t Position::construct_zobrist_key() const
     key ^= Zobrist::castling_keys[state->castling_rights];
 
     return key;
+}
+
+void Position::print_board() const
+{
+    std::string lines[8];
+    for (int rank = 0; rank < 8; rank++) {
+        lines[rank] += std::to_string(8-rank) + "  ";
+        for (int file = 0; file < 8; file++) {
+            lines[rank] += ". ";
+        }
+        lines[rank] += "\n";
+    }
+    for (int _pos = 0; _pos < 64; _pos++) {
+        lines[_pos / 8][3 + (_pos % 8) * 2] = piece_icons[piece_on[_pos]];
+    }
+
+    std::cout << "   a b c d e f g h\n";
+    for (const auto& i: lines) std::cout << i;
+    std::cout << "FEN: " << to_fen();
+}
+
+std::string Position::to_fen() const
+{
+    std::stringstream fen;
+    for (int row = 0; row < 8; row++) {
+        int empty = 0;
+        for (int col = 0; col < 8; col++) {
+            if (piece_on[row * 8 + col] != nil) {
+                if (empty) {
+                    fen << empty;
+                    empty = 0;
+                }
+                fen << piece_icons[piece_on[row * 8 + col]];
+            }
+            else empty++;
+        }
+        if (empty) fen << empty;
+        fen << "/";
+    }
+    fen.seekp(-1, std::stringstream::cur);
+    fen << " " << (side_to_move ? "b " : "w ");
+
+    if (!state->castling_rights) fen << "-";
+    else {
+        static constexpr char rights[] = {'K', 'Q', 'k', 'q'};
+        for (int i = 0; i < 4; i++) {
+            if (state->castling_rights >> i & 1) fen << rights[i];
+        }
+    }
+    fen << " ";
+
+    if (state->en_passant_square == -1) fen << "-";
+    else fen << num_to_algebraic(state->en_passant_square);
+
+    fen << " " << state->rule_50 << " " << std::max((state->ply + 1) / 2, 1);
+    fen << std::endl;
+    return fen.str();
 }

@@ -3,7 +3,7 @@
 #include "nnue.hpp"
 
 inline Accumulators root_accumulators;
-inline std::deque<Accumulator_entry> accumulator_stack;
+inline std::vector<Accumulator_entry> accumulator_stack;
 
 inline uint8_t flip_color(const uint8_t piece)
 {

@@ -41,7 +41,7 @@ inline void divide(const int depth)
     for (int i = 0; i < n; i++) {
         position.make_move(list[i], st);
         const size_t num = perft(depth - 1);
-        std::cout << list[i].get_move_string() << ": " << num << "\n";
+        std::cout << list[i].get_move_string() << ": " << num << std::endl;
         total += num;
         position.unmake_move(list[i]);
     }

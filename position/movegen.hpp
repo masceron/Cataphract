@@ -267,7 +267,7 @@ template<const MoveType type> void pseudo_legals(const Position &cr_pos, MoveLis
     }
 }
 
-inline bool check_move_legality(Position& cr_pos, const Move& move)
+inline bool check_move_legality(Position& cr_pos, const Move move)
 {
     if (((cr_pos.state->pinned & (1ull << move.src()))
         || (cr_pos.piece_on[move.src()] == K || cr_pos.piece_on[move.src()] == k)

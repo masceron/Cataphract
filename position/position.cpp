@@ -1,10 +1,49 @@
 #include <sstream>
 
 #include "position.hpp"
+
+#include "cuckoo.hpp"
 #include "movegen.hpp"
 #include "../search/history.hpp"
 
-void Position::make_move(const Move& move, State& st)
+void Position::new_game()
+{
+    std::fill_n(piece_on, 64, nil);
+    std::fill_n(boards, 12, 0);
+    std::fill_n(occupations, 3, 0);
+}
+
+void Position::move_piece(const uint8_t from, const uint8_t to)
+{
+    const Pieces piece = piece_on[from];
+    const uint64_t ft = (1ull << from) | (1ull << to);
+    boards[piece] ^= ft;
+    occupations[color_of(piece)] ^= ft;
+    occupations[2] ^= ft;
+    piece_on[to] = piece;
+    piece_on[from] = nil;
+}
+
+void Position::put_piece(const Pieces piece, const uint8_t sq)
+{
+    piece_on[sq] = piece;
+    const uint64_t board = 1ull << sq;
+    occupations[color_of(piece)] |= board;
+    occupations[2] |= board;
+    boards[piece] |= board;
+}
+
+void Position::remove_piece(const uint8_t sq)
+{
+    const Pieces piece = piece_on[sq];
+    const uint64_t board = 1ull << sq;
+    piece_on[sq] = nil;
+    occupations[color_of(piece)] ^= board;
+    occupations[2] ^= board;
+    boards[piece] ^= board;
+}
+
+void Position::make_move(const Move move, State& st)
 {
     memcpy(&st, state, offsetof(State, key));
     st.previous = state;
@@ -142,7 +181,7 @@ void Position::make_move(const Move& move, State& st)
     side_to_move = !side_to_move;
 
     st.repetition = 1;
-    if (const uint16_t cutoff = std::min(st.rule_50, st.ply); cutoff >= 4) {
+    if (const uint16_t cutoff = std::min(static_cast<uint16_t>(st.rule_50), st.ply); cutoff >= 4) {
         const State* tst = st.previous->previous;
         for (int cr = 4; cr <= cutoff; cr += 2) {
             tst = tst->previous->previous;
@@ -154,7 +193,7 @@ void Position::make_move(const Move& move, State& st)
     }
 }
 
-void Position::do_move(const Move& move)
+void Position::do_move(const Move move)
 {
     State st;
     make_move(move, st);
@@ -195,7 +234,7 @@ void Position::unmake_move(const Move &move)
     state = state->previous;
 }
 
-bool Position::is_pseudo_legal(const Move &move)
+bool Position::is_pseudo_legal(const Move move)
 {
     const uint16_t flag = move.flag();
     if (flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle) {
@@ -263,7 +302,7 @@ bool Position::is_pseudo_legal(const Move &move)
     return true;
 }
 
-bool Position::is_legal(const Move &move)
+bool Position::is_legal(const Move move)
 {
     const bool us = side_to_move;
     const bool enemy = !us;
@@ -320,6 +359,94 @@ uint64_t Position::construct_zobrist_key() const
     return key;
 }
 
+void Position::make_null_move(State& st)
+{
+    memcpy(&st, state, sizeof(State));
+
+    st.previous = state;
+    st.repetition = 1;
+    st.ply_from_root++;
+    st.ply = 0;
+    st.key ^= Zobrist::side_key;
+    st.side_key ^= Zobrist::side_key;
+
+    if (st.en_passant_square != -1) {
+        st.en_passant_square = -1;
+        st.key ^= st.en_passant_key;
+        st.en_passant_key = 0;
+    }
+
+    side_to_move = !side_to_move;
+
+    if (side_to_move == white) st.pinned = get_pinned_board_of<white>();
+    else st.pinned = get_pinned_board_of<black>();
+    state = &st;
+}
+
+void Position::unmake_null_move()
+{
+    state = state->previous;
+    side_to_move = !side_to_move;
+}
+
+bool Position::is_square_attacked_by(const uint8_t index, const bool side) const
+{
+    if (!side) {
+        if (get_rook_attack(index, occupations[2]) & (boards[R] | boards[Q])) return true;
+        if (get_bishop_attack(index, occupations[2]) & (boards[B] | boards[Q])) return true;
+        if (knight_attack_tables[index] & boards[N]) return true;
+        if (pawn_attack_tables[black][index] & boards[P]) return true;
+        if (king_attack_tables[index] & boards[K]) return true;
+    }
+    else {
+        if (get_rook_attack(index, occupations[2]) & (boards[r] | boards[q])) return true;
+        if (get_bishop_attack(index, occupations[2]) & (boards[b] | boards[q])) return true;
+        if (knight_attack_tables[index] & boards[n]) return true;
+        if (pawn_attack_tables[white][index] & boards[p]) return true;
+        if (king_attack_tables[index] & boards[k]) return true;
+    }
+    return false;
+}
+
+
+uint64_t Position::get_check_blocker_of(const bool side) const
+{
+    return state->checker | lines_between[least_significant_one(state->checker)][least_significant_one(side == white ? boards[K] : boards[k])];
+}
+
+bool Position::upcoming_repetition(const uint8_t ply) const
+{
+    const uint8_t end = std::min(static_cast<uint16_t>(state->rule_50), state->ply);
+
+    if (end < 3) return false;
+
+    const uint64_t original_key = state->key;
+    const State* prev = state->previous;
+    uint64_t other = original_key ^ prev->key ^ Zobrist::side_key;
+
+    for (int i = 3; i <= end; i+=2) {
+        prev = prev->previous;
+        other ^= prev->key ^ prev->previous->key ^ Zobrist::side_key;
+        prev = prev->previous;
+
+        if (other != 0) continue;
+
+        const uint64_t diff = original_key ^ prev->key;
+        uint64_t slot = Cuckoo::hash1(diff);
+
+        if (diff != Cuckoo::cuckoo_key[slot]) slot = Cuckoo::hash2(diff);
+        if (diff != Cuckoo::cuckoo_key[slot]) continue;
+
+        if (const Move move = Cuckoo::cuckoo_move[slot]; !(occupations[2] & lines_between[move.src()][move.dest()])) {
+            if (ply > i) return true;
+
+            if (prev->repetition > 1) return true;
+        }
+    }
+
+    return false;
+}
+
 void Position::print_board() const
 {
     std::string lines[8];
@@ -372,7 +499,7 @@ std::string Position::to_fen() const
     if (state->en_passant_square == -1) fen << "-";
     else fen << num_to_algebraic(state->en_passant_square);
 
-    fen << " " << state->rule_50 << " " << std::max((state->ply + 1) / 2, 1);
+    fen << " " << static_cast<int>(state->rule_50) << " " << std::max((state->ply + 1) / 2, 1);
     fen << std::endl;
     return fen.str();
 }

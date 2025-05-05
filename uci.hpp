@@ -2,14 +2,17 @@
 
 #include <string>
 #include <iostream>
+#include <thread>
 
 #include "eval/nnue.hpp"
+#include "position/cuckoo.hpp"
 #include "position/fen.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
 
 namespace UCI
 {
+    static std::thread search_thread;
     inline void new_game()
     {
         TT::clear();
@@ -23,8 +26,9 @@ namespace UCI
     inline void start()
     {
         generate_lines();
-        Zobrist::generate_keys();
-        new_game();
+        Cuckoo::init();
+        TT::alloc();
+        accumulator_stack.reserve(128);
     }
     inline void process_move(const std::string& move)
     {
@@ -110,7 +114,7 @@ namespace UCI
                 else begin = std::string::npos;
             }
         }
-
+        TT::age();
         NNUE::refresh_accumulators(&root_accumulators, position);
     }
 
@@ -124,17 +128,48 @@ namespace UCI
     inline void go_depth(const std::string& depth)
     {
         try {
-            start_search(std::stoi(depth), -1);
+            search_thread = std::thread(start_search, std::stoi(depth), -1);
+            search_thread.detach();
         } catch (...) {}
     }
 
-    inline void go_time(const std::string& time)
+    inline void go_time(const std::string& time_num)
     {
         try {
-            const std::string time_num = time.substr(12, std::string::npos);
-            start_search(0, std::stoi(time_num));
+            search_thread = std::thread(start_search, 0, std::stoi(time_num));
+            search_thread.detach();
         }
         catch (...) {}
+    }
+
+   inline void set_option(const std::string& option)
+    {
+        const int value_index = option.find(" value ");
+        const std::string name = option.substr(0, value_index);
+
+        if (name == "Hash") {
+            const std::string value = option.substr(value_index + 7, std::string::npos);
+            try {
+                const int32_t new_size = std::stoi(value);
+                if (new_size < 1 || new_size > 1024) return;
+                TT::resize(static_cast<uint32_t>(new_size));
+            } catch (...) {}
+        }
+        else if (name == "Clear Hash") {
+            TT::clear();
+        }
+    }
+
+    inline void go(std::string& input)
+    {
+        auto cutoff = input.find(' ', 3);
+        if (cutoff != std::string::npos) cutoff -= 3;
+        const std::string command = input.substr(3, cutoff);
+
+        if (command == "movetime") go_time(input.substr(12, std::string::npos));
+        else if (command == "depth") go_depth(input.substr(9, std::string::npos));
+        else if (command == "perft") perft(input.substr(9,std::string::npos));
+        else if (command == "infinite") go_depth("127");
     }
 
     inline void process()
@@ -142,28 +177,39 @@ namespace UCI
         fen_parse("startpos");
         NNUE::refresh_accumulators(&root_accumulators, position);
         std::string input;
-        while (input != "quit") {
+        bool quit = false;
+        while (!quit) {
             std::getline(std::cin, input);
             const auto I = std::ranges::unique(input, [](auto lhs, auto rhs){ return lhs == rhs && lhs == ' '; } ).begin();
             input.erase(I, input.end());
-            if (input.starts_with("go depth ")) go_depth(input.substr(9, std::string::npos));
-            else if (input == "go infinite") go_depth("127");
-            else if (input.starts_with("go movetime ")) go_time(input);
-            else if (input == "d") position.print_board();
-            else if (input == "ucinewgame") new_game();
-            else if (input == "uci") {
-                std::cout << "uciok" << std::endl;
+            if (Timer::running) {
+                if (input == "stop" && !is_search_cancelled) Timer::stop();
             }
-            else if (input.starts_with("position ")) set_board(input.substr(9, std::string::npos));
-            else if (input.starts_with("go perft ")) perft(input.substr(9,std::string::npos));
-            else if (input == "eval") {
-                std::cout << "NNUE evaluation: "
-                << NNUE::evaluate(position, &root_accumulators) * (position.side_to_move == white ? 1 : -1)
-                << " (white side)" << std::endl;
+            else {
+                std::string command = input.substr(0, input.find(' '));
+
+                if (command == "position") set_board(input.substr(9, std::string::npos));
+                else if (command == "go") go(input);
+                else if (command == "isready") std::cout << "readyok" << std::endl;
+                else if (command == "ucinewgame") new_game();
+                else if (command == "uci") {
+                    std::cout << "id name Cataphract" << std::endl <<"id author Menion\n\n"
+                    << "option name Hash type spin default 256 min 1 max 1024\n"
+                    << "option name Clear Hash type button\n"
+                    << "uciok" << std::endl;
+                }
+                else if (command == "eval") {
+                    std::cout << "NNUE evaluation: "
+                    << NNUE::evaluate(position, &root_accumulators) * (position.side_to_move == white ? 1 : -1)
+                    << " (white side)" << std::endl;
+                }
+                else if (command == "d") position.print_board();
+                else if (command == "setoption") set_option(input.substr(15, std::string::npos));
+                else if (command == "quit") quit = true;
             }
-            else if (input == "isready") std::cout << "readyok" << std::endl;
         }
 
+        TT::free_tt();
     }
 
 }

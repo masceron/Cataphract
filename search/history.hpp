@@ -40,7 +40,7 @@ namespace History
         const int16_t bonus = 80 * depth - 60;
         apply(side, from, to, bonus);
 
-        for (const Move& move: searched) {
+        for (const Move move: searched) {
             apply(side, move.src(), move.dest(), -bonus);
         }
         if (table[side][from][to] >= max_history) scale_down();
@@ -202,7 +202,7 @@ namespace Continuation
         table[stm][prev_piece][prev_to][piece][to] += clamped_bonus - table[stm][prev_piece][prev_to][piece][to] * abs(clamped_bonus) / max_continuation;
     }
 
-    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move& move, const uint8_t depth)
+    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move move, const uint8_t depth)
     {
         const int16_t bonus = 80 * depth - 60;
         const bool stm = pos.side_to_move;

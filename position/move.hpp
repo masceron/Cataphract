@@ -76,6 +76,12 @@ struct Move
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
     [[nodiscard]] uint16_t src() const { return move & 0b111111; }
     [[nodiscard]] uint16_t dest() const { return (move >> 6) & 0b111111; }
+
+    [[nodiscard]] bool is_noisy() const
+    {
+        const auto flag = move >> 12;
+        return flag == capture || flag == ep_capture || flag == queen_promotion || flag == queen_promo_capture;
+    }
     template<const bool side_needed> [[nodiscard]] Pieces promoted_to(const bool side = white) const
     {
         if constexpr (!side_needed) return static_cast<Pieces>((flag() & 0b11) + 1);
@@ -87,7 +93,7 @@ struct Move
 
     bool operator==(const Move & _move) const { return _move.move == this->move; };
 
-    std::string get_move_string() const
+    [[nodiscard]] std::string get_move_string() const
     {
         if (move == 0) return "0000";
         std::stringstream s;

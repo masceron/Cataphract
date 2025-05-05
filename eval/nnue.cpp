@@ -33,7 +33,7 @@ inline void Accumulator_entry::accumulator_flip(const bool side, const Position&
     }
 }
 
-void Accumulator_entry::mark_changes(Position& pos, const Move& move)
+void Accumulator_entry::mark_changes(Position& pos, const Move move)
 {
     const uint8_t from = move.src();
     const uint8_t to = move.dest();

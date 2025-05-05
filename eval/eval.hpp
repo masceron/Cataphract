@@ -18,6 +18,5 @@ inline int16_t eval(const Position& pos)
         NNUE::update_accumulators();
     }
 
-    const int16_t static_eval = NNUE::evaluate(pos, &accumulator_stack.back().accumulators);;
-    return Corrections::correct(static_eval, pos);
+    return NNUE::evaluate(pos, &accumulator_stack.back().accumulators);
 }

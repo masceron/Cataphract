@@ -61,7 +61,7 @@ inline uint64_t get_x_ray(const Position& pos, const uint64_t from_set, const ui
     return get_bishop_attack(to, occ) & diagonal_sliders;
 }
 
-inline int16_t static_exchange_evaluation(const Position& pos, const Move& capture)
+inline int16_t static_exchange_evaluation(const Position& pos, const Move capture)
 {
     bool side = pos.side_to_move;
     int8_t depth = 0;

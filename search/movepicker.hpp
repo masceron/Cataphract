@@ -27,15 +27,16 @@ struct MovePicker
     Move* non_captures_start;
     Stages stage = generating_capture_moves;
     Position* pos;
+    SearchEntry* ss;
     Move* current;
     Move* bad_captures_end;
     bool capture_only;
     int16_t scores[256];
 
-    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv): pos(_pos), capture_only(_capture_only)
+    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss): pos(_pos), ss(_ss), capture_only(_capture_only)
     {
         bad_captures_end = &moves.list[255];
-        if (_pv != move_none && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture)) {
+        if (_pv != move_none && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture && _pv.flag() != ep_capture)) {
             if (!pos->state->checker
                 || pos->state->check_blocker & 1ull << _pv.dest()
                 || pos->piece_on[_pv.src()] == K || pos->piece_on[_pv.src()] == k) {
@@ -70,8 +71,10 @@ struct MovePicker
                         }
                         current++;
                     }
-                    if (current < non_captures_start)
+
+                    if (current < non_captures_start) {
                         return {*current, scores[current - moves.begin()]};
+                    }
                     stage = generating_quiet_moves;
                 }
             case generating_quiet_moves:
@@ -170,8 +173,8 @@ struct MovePicker
         uint8_t moved;
         const uint8_t offset = non_captures_start - moves.begin();
 
-        const auto prev = !Continuation::search_stack.empty() ? Continuation::search_stack.back() : 0;
-        const auto prev2 = Continuation::search_stack.size() >= 2 ? Continuation::search_stack[Continuation::search_stack.size() - 2] : 0;
+        const int16_t prev = ss->piece_to != UINT16_MAX ? ss->piece_to : 0;
+        const int16_t prev2 = (ss - 1)->piece_to != UINT16_MAX ? (ss - 1)->piece_to : 0;
 
         if (Killers::find(*begin, pos->state->ply_from_root)) scores[offset] = INT16_MAX;
         else {

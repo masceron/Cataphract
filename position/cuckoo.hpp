@@ -1,5 +1,4 @@
 #pragma once
-#include <array>
 #include <cstdint>
 
 #include "move.hpp"
@@ -11,16 +10,8 @@
 
 namespace Cuckoo
 {
-    constexpr std::array<Move, 8192> init_cuckoo_move ()
-    {
-        std::array<Move, 8192> moves;
-        moves.fill(move_none);
-
-        return moves;
-    }
-
-    inline std::array<uint64_t, 8192> cuckoo_key = {};
-    inline std::array<Move, 8192> cuckoo_move = init_cuckoo_move();
+    inline std::vector<uint64_t> cuckoo_key(8192, 0);
+    inline std::vector cuckoo_move(8192, move_none);
 
     inline uint64_t np_piece_attacks(const uint8_t from, const uint8_t to, const uint8_t piece)
     {

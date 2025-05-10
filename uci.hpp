@@ -25,10 +25,13 @@ namespace UCI
 
     inline void start()
     {
+        Zobrist::generate_keys();
         generate_lines();
         Cuckoo::init();
         TT::alloc();
-        accumulator_stack.reserve(128);
+        accumulator_stack.reserve(129);
+
+        std::cout << "Cataphract v1.0 by masceron" << std::endl;
     }
     inline void process_move(const std::string& move)
     {
@@ -193,7 +196,7 @@ namespace UCI
                 else if (command == "isready") std::cout << "readyok" << std::endl;
                 else if (command == "ucinewgame") new_game();
                 else if (command == "uci") {
-                    std::cout << "id name Cataphract" << std::endl <<"id author Menion\n\n"
+                    std::cout << "id name Cataphract" << "\n" <<"id author masceron\n\n"
                     << "option name Hash type spin default 256 min 1 max 1024\n"
                     << "option name Clear Hash type button\n"
                     << "uciok" << std::endl;

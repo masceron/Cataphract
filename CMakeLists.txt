@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.30)
-project(CSEngine)
+project(Cataphract)
 
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
@@ -17,7 +17,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(FATAL_ERROR "MSVC not supported.")
 endif()
 
-add_executable(CSEngine main.cpp
+add_executable(Cataphract main.cpp
         board/bitboard.hpp
         board/pieces/pawn.hpp
         board/pieces/knight.hpp

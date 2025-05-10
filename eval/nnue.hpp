@@ -35,7 +35,7 @@ struct Accumulator_entry
     std::pair<uint8_t, int16_t> subs[2] = {{0, -1}, {0, -1}};
 
     void accumulator_flip(bool side, const Position &pos);
-    void mark_changes(Position& pos, const Move move);
+    void mark_changes(Position& pos, Move move);
 
     Accumulator_entry() = delete;
     explicit Accumulator_entry(Position& pos, const Move move, const std::pair<bool, bool>& before)

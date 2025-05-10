@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
-#include <list>
 
 #include "../eval/transposition.hpp"
 
@@ -49,7 +48,7 @@ namespace History
 
 namespace Killers
 {
-    inline std::array<std::array<Move, 2>, 127> table;
+    inline std::array<std::array<Move, 2>, 128> table;
     inline void clear()
     {
         memset(table.data(), 0, table.size() * 2 * sizeof(Move));
@@ -171,10 +170,23 @@ namespace Corrections
     }
 }
 
+struct SearchEntry
+{
+    uint16_t piece_to;
+    int16_t static_eval;
+};
+
+inline void search_stack_init(SearchEntry* ss)
+{
+    ss[0].static_eval = score_none;
+    ss[1].static_eval = score_none;
+    ss[2].static_eval = score_none;
+    ss[3] = {UINT16_MAX, score_none};
+    ss[4].piece_to = UINT16_MAX;
+}
+
 namespace Continuation
 {
-    inline std::vector<int16_t> search_stack(0);
-
     static constexpr int16_t min_continuation = -8000;
     static constexpr int16_t max_continuation = 8000;
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
@@ -182,7 +194,6 @@ namespace Continuation
 
     inline void clear()
     {
-        search_stack.clear();
         memset(counter_moves.data(), 0, 589824);
         memset(follow_up.data(), 0, 589824);
     }
@@ -202,16 +213,16 @@ namespace Continuation
         table[stm][prev_piece][prev_to][piece][to] += clamped_bonus - table[stm][prev_piece][prev_to][piece][to] * abs(clamped_bonus) / max_continuation;
     }
 
-    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move move, const uint8_t depth)
+    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move move, const uint8_t depth, const SearchEntry* ss)
     {
         const int16_t bonus = 80 * depth - 60;
         const bool stm = pos.side_to_move;
         uint8_t piece = pos.piece_on[move.src()];
         if (piece >= 6) piece -= 6;
 
-        if (!search_stack.empty()) {
-            const uint8_t prev_piece = search_stack.back() >> 6;
-            const uint8_t prev_to = search_stack.back() & 0b111111;
+        if (ss->piece_to != UINT16_MAX) {
+            const uint8_t prev_piece = ss->piece_to >> 6;
+            const uint8_t prev_to = ss->piece_to & 0b111111;
 
             apply(counter_moves, stm, prev_piece, prev_to, piece, move.dest(), bonus);
 
@@ -221,21 +232,21 @@ namespace Continuation
                 apply(counter_moves, stm, prev_piece, prev_to, tmp, tmpm.dest(), -bonus);
             }
             if (counter_moves[stm][prev_piece][prev_to][piece][move.dest()] >= max_continuation) scale_down(counter_moves);
+        }
 
-            if (search_stack.size() >= 2) {
-                const auto prev2 = search_stack[search_stack.size() - 2];
-                const uint8_t prev2_piece = prev2 >> 6;
-                const uint8_t prev2_to = prev2 & 0b111111;
+        if ((ss - 1)->piece_to != UINT16_MAX) {
+            const auto prev2 = ss - 1;
+            const uint8_t prev2_piece = prev2->piece_to >> 6;
+            const uint8_t prev2_to = prev2->piece_to & 0b111111;
 
-                apply(follow_up, stm, prev2_piece, prev2_to, piece, move.dest(), bonus);
+            apply(follow_up, stm, prev2_piece, prev2_to, piece, move.dest(), bonus);
 
-                for (const auto& tmpm: searched) {
-                    uint8_t tmp = pos.piece_on[tmpm.src()];
-                    if (tmp >= 6) tmp -= 6;
-                    apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmpm.dest(), -bonus);
-                }
-                if (follow_up[stm][prev2_piece][prev2_to][piece][move.dest()] >= max_continuation) scale_down(follow_up);
+            for (const auto& tmpm: searched) {
+                uint8_t tmp = pos.piece_on[tmpm.src()];
+                if (tmp >= 6) tmp -= 6;
+                apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmpm.dest(), -bonus);
             }
+            if (follow_up[stm][prev2_piece][prev2_to][piece][move.dest()] >= max_continuation) scale_down(follow_up);
         }
     }
 }

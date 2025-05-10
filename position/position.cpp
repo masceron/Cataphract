@@ -58,8 +58,6 @@ void Position::make_move(const Move move, State& st)
     const Pieces moving_piece = piece_on[from];
     const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
 
-    Continuation::search_stack.push_back(((moving_piece >= p ? moving_piece - 6 : moving_piece) << 6) + to);
-
     if (flag == king_castle) {
         move_piece(to + 1, to - 1);
         const Pieces rook = side_to_move == white ? R : r;
@@ -204,7 +202,6 @@ void Position::do_move(const Move move)
 
 void Position::unmake_move(const Move &move)
 {
-    Continuation::search_stack.pop_back();
     side_to_move = !side_to_move;
     const uint8_t from = move.src();
     const uint8_t to = move.dest();

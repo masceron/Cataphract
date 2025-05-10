@@ -41,7 +41,7 @@ struct State
     uint8_t repetition;
 };
 
-inline std::deque<State> states(1);
+inline std::deque<State> states;
 
 struct Position
 {

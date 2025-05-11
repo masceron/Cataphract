@@ -225,10 +225,10 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     bool improving;
 
     if (!not_in_check) improving = false;
-    else if (int16_t two_plies_ago; pos.state->ply_from_root >= 2 && (two_plies_ago = (ss - 2)->static_eval) != score_none) {
+    else if (int16_t two_plies_ago; (two_plies_ago = (ss - 2)->static_eval) != score_none) {
         improving = static_eval > two_plies_ago;
     }
-    else if (int16_t four_plies_ago; pos.state->ply_from_root >= 4 && (four_plies_ago = (ss - 4)->static_eval) != score_none) {
+    else if (int16_t four_plies_ago; (four_plies_ago = (ss - 4)->static_eval) != score_none) {
         improving = static_eval > four_plies_ago;
     }
     else improving = true;

@@ -4,7 +4,7 @@
 ___
 </div>
 
-A somewhat UCI-compliant chess engine written in C++. Estimated ELO is around 3400.
+An UCI chess engine written in C++.
 
 ## Features:
 ### Search:
@@ -33,7 +33,5 @@ A somewhat UCI-compliant chess engine written in C++. Estimated ELO is around 34
 #### NNUE 
 * Architecture: (768->1024)x2 -> 1x8, horizontally mirrored.
 * Trained using Lc0's data using the [Bullet](https://github.com/jw1912/bullet) trainer developed by Jamie Whiting.
-
-> Cataphract is not capable of time management at the moment(```go movetime``` only)
 
 > Only work with CPUs that support AVX2.

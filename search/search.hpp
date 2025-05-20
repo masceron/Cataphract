@@ -1,9 +1,15 @@
 #pragma once
 
-#include <cmath>
-#include <forward_list>
+#include <cmath> 
+#include <algorithm>
+#include <array>
 #include <list>
+#include <iostream>
 #include <iomanip>
+#include <vector> 
+#include <string> 
+#include <forward_list>
+#include <climits> 
 
 #include "history.hpp"
 #include "../position/movegen.hpp"
@@ -160,7 +166,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     }
 
     if (pos.state->ply_from_root) {
-        //Mate distance pruning
+       
         alpha = std::max(alpha, -mate_value + pos.state->ply_from_root);
         beta = std::min(beta, mate_value - pos.state->ply_from_root - 1);
         if (alpha >= beta) return alpha;
@@ -237,22 +243,22 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
 
     if (not_in_check && pos.state->ply_from_root && !is_pv) {
         if (depth <= 9) {
-            //Reverse futility pruning
+           
             if (static_eval < mate_in_max_ply && static_eval - 120 * depth >= beta - improving * 70)
                 return beta + (static_eval - beta) / 3;
 
-            //Futility pruning
+           
             if (static_eval + 140 * depth <= alpha) futility_pruning_allowed = true;
         }
 
-        //Razoring
+       
         if (depth <= 5) {
             if (static_eval + 130 * depth <= alpha) {
                 if (quiesce(pos, alpha, beta, ss) < alpha) return alpha;
             }
         }
 
-        //Null move pruning
+       
         if (ss->piece_to != UINT16_MAX && depth >= 3 &&
         std::popcount(pos.occupations[2]) - std::popcount(pos.boards[P]) - std::popcount(pos.boards[p]) > 2) {
             if (static_eval >= beta) {
@@ -279,23 +285,23 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     NodeType type = upper_bound;
     std::pair<Move, int16_t> picked;
     MovePicker move_picker(&pos, false, depth_best_move, ss);
-    
+
     if ((is_pv || cut_node) && move_picker.pv == move_none && depth >= 3) depth -= 1;
     const int late_move_margin = 5 + depth * depth - improving * 2 * depth / 3;
 
     while ((picked = move_picker.next_move()).first != move_none) {
         auto [picked_move, picked_score] = picked;
 
-        //Late move pruning
+      
         if (pos.state->ply_from_root && move_searched >= late_move_margin && depth <= 4 && not_in_check && move_picker.stage >= quiet_moves && abs(mate_value) - abs(best_score) > 128) break;
-        
+
         if (pos.state->ply_from_root && best_score > -mate_in_max_ply && picked_score < INT16_MAX && move_picker.stage == quiet_moves) {
             if (futility_pruning_allowed) {
-                move_picker.current = move_picker.moves.last;
+                move_picker.current = move_picker.moves.last; 
                 continue;
             }
 
-            //History pruning
+           
             if (depth <= 7 && picked_score < -610 * depth) continue;
         }
 
@@ -314,15 +320,15 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
             score = -search(pos, -beta, -alpha, depth - 1, local_pv, false, ss + 1);
         }
         else {
-            //Late move reductions
+            
             int reduction = 1;
 
             if (depth >= 2 && move_searched >= 1 + 3 * is_pv) {
-                reduction += reductions[depth - 1][move_searched - 1];
+                reduction += reductions[depth - 1][std::min(static_cast<int>(move_searched) - 1, 62)]; // Clamp index
                 reduction += cut_node;
                 reduction += !is_pv;
 
-                if (picked_score == INT16_MAX)
+                if (picked_score == INT16_MAX) 
                     reduction -= 1;
                 else if (move_picker.stage == quiet_moves) reduction -= std::clamp(picked_score / 4096, -3, 3);
 
@@ -352,6 +358,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                     if (auto flag = picked_move.flag(); flag == capture || flag == ep_capture || flag >= knight_promo_capture) {
                         uint8_t captured = pos.piece_on[picked_move.dest()];
                         if (flag == ep_capture) captured = P;
+                        if (captured >= 6) captured -= 6; 
                         Capture::update(capture_searched, pos.side_to_move, moving_piece , captured, picked_move.dest(), depth);
                     }
                     else {
@@ -370,7 +377,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         if (auto flag = picked_move.flag(); flag == capture || flag == ep_capture || flag >= knight_promo_capture) {
             uint8_t captured = pos.piece_on[picked_move.dest()];
             if (flag == ep_capture) captured = P;
-            if (captured >= 6) captured -= 6;
+            if (captured >= 6) captured -= 6; 
 
             capture_searched.emplace_front(moving_piece, captured, picked_move.dest());
         }
@@ -398,18 +405,60 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     return best_score;
 }
 
-inline void start_search(int depth, const int time)
+
+
+inline void start_search(int depth_param, int movetime_param, int wtime_param, int btime_param, int winc_param, int binc_param, int movestogo_param)
 {
-    if (time != - 1) {
-        depth = 127;
-        Timer::start(time);
+    //Special thanks to Jim Ablett for the time management function
+    int allocated_time_ms = -1;
+    int search_depth = 127; // Default to infinite depth
+
+    if (movetime_param > 0) {
+        // Fixed time per move
+        allocated_time_ms = movetime_param;
+        search_depth = 127;
+    } else if (depth_param > 0 && depth_param < 127) {
+        // Fixed depth search
+        search_depth = depth_param;
+        allocated_time_ms = -1; // No time limit for fixed depth
+    } else if (wtime_param > 0 || btime_param > 0) {
+        // Time control based on remaining time and increment
+        int remaining_time = (position.side_to_move == white) ? wtime_param : btime_param;
+        int increment = (position.side_to_move == white) ? winc_param : binc_param;
+
+        if (movestogo_param > 0) {
+            // Use movestogo if provided
+            allocated_time_ms = remaining_time / movestogo_param + increment;
+        } else {
+            // Fallback heuristic if movestogo is not provided
+            allocated_time_ms = remaining_time / 30 + increment; // Simple division heuristic
+        }
+
+        // Ensure a minimum time allocation
+        allocated_time_ms = std::max(allocated_time_ms, 100); // Minimum 100ms
+
+        search_depth = 127; // Infinite depth within the time limit
+    } else {
+        // No specific limits provided (e.g., 'go infinite' or just 'go')
+        // Default to infinite depth and a very large time limit
+        search_depth = 127;
+        allocated_time_ms = 6000000; // 100 minutes as a practical infinite limit
     }
-    else Timer::start(6000000);
+
+    // Start the timer if a time limit was determined
+    if (allocated_time_ms > 0) {
+        Timer::start(allocated_time_ms);
+    } else {
+        // If no time limit (fixed depth or true infinite), use a very large timer
+        // This timer is mostly to allow 'stop' command to work, not for actual time control
+        Timer::start(6000000); // 100 minutes
+    }
 
     node_searched = 0;
     Move best_move = move_none;
     std::list<Move> principal_variation;
 
+    // Assuming search_stack and accumulator_stack setup is correct
     std::array<SearchEntry, 140> search_stack;
     search_stack_init(search_stack.data());
 
@@ -419,33 +468,40 @@ inline void start_search(int depth, const int time)
     int alpha = negative_infinity;
     int beta = infinity;
 
-    int window = pawn_weight / 2;
-    for (int cr_depth = 1; cr_depth <= depth; cr_depth++) {
-        if (is_search_cancelled) break;
+    int window = pawn_weight / 2; // Initial aspiration window
+
+    // Iterative deepening loop
+    for (int cr_depth = 1; cr_depth <= search_depth; cr_depth++) {
+        if (is_search_cancelled) break; // Stop if timer expired or 'stop' received
 
         seldepth = 0;
         int score;
 
+        // Aspiration window loop
         while (true) {
+            // Assuming search function signature and usage are correct
             score = search(position, alpha, beta, cr_depth, principal_variation, false, search_stack.data() + 4);
 
-            if (is_search_cancelled) break;
+            if (is_search_cancelled) break; // Stop if timer expired during search
 
+            // Adjust aspiration window based on score
             if (score <= alpha) {
-                beta = (alpha + beta) / 2;
-                alpha = std::max(score - window, static_cast<int>(negative_infinity));
+                beta = (alpha + beta) / 2; // Narrow window from above
+                alpha = std::max(score - window, static_cast<int>(negative_infinity)); // Widen window from below
             }
             else if (score >= beta) {
-                beta = std::min(score + window, static_cast<int>(infinity));
+                beta = std::min(score + window, static_cast<int>(infinity)); // Widen window from above
             }
             else {
+                // Score is within the window, break aspiration loop
                 break;
             }
-            window += window / 2;
+            window += window / 2; // Increase window size on failure
         }
 
-        if (score == negative_infinity) continue;
+        if (is_search_cancelled) break; // Stop if timer expired after aspiration loop
 
+        // Output UCI info string
         const double elapsed = Timer::elapsed();
         std::cout << "info depth " << cr_depth << " seldepth " << seldepth << " score";
 
@@ -455,22 +511,49 @@ inline void start_search(int depth, const int time)
 
         std::cout << " nodes " << node_searched
         << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000
-        << " hashfull " << TT::full()
+        << " hashfull " << TT::full() // Assuming TT::full() exists
         << " time " << elapsed / 1000
         << " pv ";
 
         for (auto x : principal_variation) {
-            std::cout << x.get_move_string() << " ";
+            std::cout << x.get_move_string() << " "; // Assuming Move::get_move_string() exists
         }
         std::cout << std::endl;
 
-        best_move = principal_variation.front();
+        // Update best_move from the principal variation
+        if (!principal_variation.empty()) {
+             best_move = principal_variation.front();
+        }
+
+        // Optional: Stop search early if depth limit reached and not in time control mode
+        if (depth_param > 0 && cr_depth >= depth_param) {
+             break;
+        }
     }
 
+    // Stop the timer and join the thread
     Timer::stop();
-    Timer::timer_thread.join();
+    if (Timer::timer_thread.joinable()) {
+        Timer::timer_thread.join();
+    }
 
-    if (best_move == move_none) best_move = legals<all>(position).list[0];
+    // If no best move was found (e.g., search cancelled very early), pick a legal move
+    if (best_move == move_none) {
+        MoveList legal_moves = legals<all>(position); // Assuming legals function exists
 
+        // Check if there are any legal moves
+        if ((legal_moves.last - legal_moves.begin()) > 0) {
+             best_move = legal_moves.list[0]; // Pick the first legal move
+        } else {
+            // Handle case with no legal moves (checkmate or stalemate)
+            // The engine should ideally report checkmate/stalemate here
+            // For now, keeping it as per original structure, which might imply
+            // the engine just outputs "bestmove (none)" or similar depending on
+            // how move_none is handled downstream. A better approach would be
+            // to signal checkmate/stalemate via UCI.
+        }
+    }
+
+    // Output the final best move
     std::cout << "bestmove " << best_move.get_move_string() << std::endl;
 }

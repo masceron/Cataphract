@@ -405,8 +405,6 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     return best_score;
 }
 
-
-
 inline void start_search(int depth_param, int movetime_param, int wtime_param, int btime_param, int winc_param, int binc_param, int movestogo_param)
 {
     //Special thanks to Jim Ablett for the time management function

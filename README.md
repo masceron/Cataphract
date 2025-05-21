@@ -4,7 +4,7 @@
 ___
 </div>
 
-An UCI chess engine written in C++.
+A UCI chess engine written in C++.
 
 ## Features:
 ### Search:

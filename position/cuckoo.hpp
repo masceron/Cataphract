@@ -57,7 +57,7 @@ namespace Cuckoo
                             std::swap(cuckoo_key[slot], key);
                             std::swap(cuckoo_move[slot], move);
 
-                            if (move == move_none) break;
+                            if (!move) break;
 
                             slot = slot == hash1(key) ? hash2(key) : hash1(key);
                         }

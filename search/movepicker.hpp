@@ -32,11 +32,13 @@ struct MovePicker
     Move* bad_captures_end;
     bool capture_only;
     int16_t scores[256];
+    int threshold;
 
-    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss): pos(_pos), ss(_ss), capture_only(_capture_only)
+    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss, int _threshold = 0): pos(_pos), ss(_ss), capture_only(_capture_only)
     {
         bad_captures_end = &moves.list[255];
-        if (_pv != move_none && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture && _pv.flag() != ep_capture)) {
+        threshold = _threshold;
+        if (_pv && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture && _pv.flag() != ep_capture)) {
             if (!pos->state->checker
                 || pos->state->check_blocker & 1ull << _pv.dest()
                 || pos->piece_on[_pv.src()] == K || pos->piece_on[_pv.src()] == k) {
@@ -58,6 +60,7 @@ struct MovePicker
                 sort_mvv_capthist(moves.begin(), moves.last);
                 non_captures_start = moves.last;
                 current = moves.begin() - 1;
+                [[fallthrough]];
             case good_capture_moves:
                 current++;
                 if (*current == pv) current++;
@@ -65,7 +68,7 @@ struct MovePicker
                     stage = generating_quiet_moves;
                 }
                 else {
-                    while (current < non_captures_start && (*current == pv || static_exchange_evaluation(*pos, *current) < 0)) {
+                    while (current < non_captures_start && (*current == pv || static_exchange_evaluation(*pos, *current) < threshold)) {
                         if (*current != pv) {
                             *bad_captures_end-- = *current;
                         }
@@ -77,6 +80,7 @@ struct MovePicker
                     }
                     stage = generating_quiet_moves;
                 }
+                [[fallthrough]];
             case generating_quiet_moves:
                 if (!capture_only) {
                     pseudo_legals<quiet>(*pos, moves);
@@ -88,6 +92,7 @@ struct MovePicker
                     stage = none;
                     return {move_none, 0};
                 }
+                [[fallthrough]];
             case quiet_moves:
                 current++;
                 if (*current == pv) current++;
@@ -98,6 +103,7 @@ struct MovePicker
                 else {
                     return {*current, scores[current - moves.begin()]};
                 }
+                [[fallthrough]];
             case bad_capture_moves:
                 current--;
                 if (*current == pv) current--;
@@ -107,6 +113,7 @@ struct MovePicker
                 else {
                     return {*current, -1};
                 }
+                [[fallthrough]];
             case none: default:
                 return {move_none, 0};
         }
@@ -115,10 +122,10 @@ struct MovePicker
     std::pair<Move, int16_t> next_move()
     {
         auto move = pick();
-        if (move.first == move_none) return {move_none, 0};
+        if (!move.first) return {move_none, 0};
         while (!check_move_legality(*pos, move.first)) {
             move = pick();
-            if (move.first == move_none) return {move_none, 0};
+            if (!move.first) return {move_none, 0};
         }
         return move;
     }

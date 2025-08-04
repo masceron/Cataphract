@@ -178,9 +178,9 @@ struct SearchEntry
 
 inline void search_stack_init(SearchEntry* ss)
 {
-    ss[0].static_eval = score_none;
-    ss[1].static_eval = score_none;
-    ss[2].static_eval = score_none;
+    ss[0] = {UINT16_MAX, score_none};
+    ss[1] = {UINT16_MAX, score_none};
+    ss[2] = {UINT16_MAX, score_none};
     ss[3] = {UINT16_MAX, score_none};
     ss[4].piece_to = UINT16_MAX;
 }

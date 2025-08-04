@@ -35,7 +35,7 @@ namespace UCI
         TT::alloc();
         accumulator_stack.reserve(129);
 
-        std::cout << "Cataphract v1.0 by masceron" << std::endl;
+        std::cout << "Cataphract v1.1 by masceron" << std::endl;
     }
     inline void process_move(const std::string& move)
     {

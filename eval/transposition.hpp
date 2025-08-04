@@ -94,7 +94,7 @@ namespace TT
         return (static_cast<unsigned __int128>(key) * static_cast<unsigned __int128>(table_size)) >> 64;
     }
 
-    inline Entry* probe(const uint64_t key, bool& match, const uint8_t ply, int& score)
+    inline std::tuple<Entry*, uint8_t, uint8_t, Move, int16_t> probe(const uint64_t key, bool& match, const uint8_t ply, int& score)
     {
         Entry* entry = &table[index_of(key)];
         if (entry->key == key) {
@@ -105,7 +105,7 @@ namespace TT
             else if (score > mate_in_max_ply)
                 score -= ply;
         }
-        return entry;
+        return {entry, entry->depth, entry->age_type, entry->best_move, entry->static_eval};
     }
 
     inline void write(Entry* entry, const uint64_t key, const Move best_move, const int depth, const uint8_t ply, const int static_eval, int score, const NodeType type)

@@ -256,12 +256,8 @@ inline int fen_parse(std::string fen)
         if (next == std::string::npos) {
             return -1;
         }
-        try {
-            st.rule_50 = std::stoi(fen.substr(cr_chars, next - cr_chars));
-            st.ply = 0;
-        } catch (...) {
-            return -1;
-        }
+        st.rule_50 = std::atoi(fen.substr(cr_chars, next - cr_chars).c_str());
+        st.ply = 0;
     }
 
     temp.occupations[white] = temp.boards[P] | temp.boards[K] | temp.boards[N] | temp.boards[Q] | temp.boards[B] | temp.boards[R];

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <cstdint>
 
 #include "../position/position.hpp"

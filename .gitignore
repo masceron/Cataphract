@@ -3,3 +3,4 @@ cmake-build-debuggcc/
 cmake-build-releasegcc/
 cmake-build-debugclang/
 cmake-build-releaseclang/
+cmake-build-gcc-linux/

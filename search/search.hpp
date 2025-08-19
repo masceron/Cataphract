@@ -21,7 +21,7 @@
 #include "../eval/transposition.hpp"
 
 #ifndef __clang__
-constexpr std::array<std::array<uint8_t, 63>,127> reductions_cals()
+consteval std::array<std::array<uint8_t, 63>,127> reductions_cals()
 {
     std::array<std::array<uint8_t, 63>, 127> r;
     for (int depth = 0; depth < 127; depth++) {
@@ -49,7 +49,7 @@ inline auto reductions = reductions_cals();
 inline static uint32_t node_searched = 0;
 inline static int seldepth;
 
-inline static constexpr uint8_t max_ply = 127;
+inline static constexpr int max_ply = 127;
 
 inline int quiesce(Position& pos, int alpha, const int beta, SearchEntry* ss)
 {
@@ -273,7 +273,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         if (ss->piece_to != UINT16_MAX && depth >= 3 &&
         std::popcount(pos.occupations[2]) - std::popcount(pos.boards[P]) - std::popcount(pos.boards[p]) > 2) {
             if (static_eval >= beta) {
-                const int r = std::min((static_eval - beta) / 200, 2) + depth / 5 + 3 + improving;
+                const int r = std::min((static_eval - beta) / 200, 2) + depth / 4 + 3 + improving;
                 State st;
                 std::list<Move> local_pv;
                 (ss + 1)->piece_to = UINT16_MAX;
@@ -287,46 +287,46 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
             }
         }
 
-    const int prob_beta = beta + 230 - 50 * improving;
-    const int prob_depth = std::max(depth - 3, 1);
-    if (depth >= 6 && std::abs(beta) < mate_in_max_ply && !(match && tt_depth >= prob_depth && saved_eval < prob_beta)) {
-        MovePicker prob_picker(&pos, true, tt_move, ss, prob_beta - static_eval);
-        std::pair<Move, int16_t> picked;
-        std::list<Move> temp;
+        const int prob_beta = beta + 230 - 50 * improving;
+        const int prob_depth = std::max(depth - 3, 1);
+        if (depth >= 6 && std::abs(beta) < mate_in_max_ply && !(match && tt_depth >= prob_depth && saved_eval < prob_beta)) {
+            MovePicker prob_picker(&pos, true, tt_move, ss, prob_beta - static_eval);
+            std::pair<Move, int16_t> picked;
+            std::list<Move> temp;
 
-        while ((picked = prob_picker.next_move()).first) {
-            auto [picked_move, picked_score] = picked;
+            while ((picked = prob_picker.next_move()).first) {
+                auto [picked_move, picked_score] = picked;
 
-            accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
+                accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
 
-            uint8_t moving_piece = pos.piece_on[picked_move.src()];
-            if (moving_piece >= p) moving_piece -= 6;
-            (ss + 1)->piece_to = (moving_piece << 6) + picked_move.dest();
+                uint8_t moving_piece = pos.piece_on[picked_move.src()];
+                if (moving_piece >= p) moving_piece -= 6;
+                (ss + 1)->piece_to = (moving_piece << 6) + picked_move.dest();
 
-            State st;
-            pos.make_move(picked_move, st);
+                State st;
+                pos.make_move(picked_move, st);
 
-            int prob_score = -quiesce(pos, -prob_beta, -prob_beta + 1, ss + 1);
+                int prob_score = -quiesce(pos, -prob_beta, -prob_beta + 1, ss + 1);
 
-            if (prob_score >= prob_beta) {
-                prob_score = -search(pos, -prob_beta, -prob_beta + 1, prob_depth - 1, temp, !cut_node, ss + 1);
-            }
+                if (prob_score >= prob_beta) {
+                    prob_score = -search(pos, -prob_beta, -prob_beta + 1, prob_depth - 1, temp, !cut_node, ss + 1);
+                }
 
-            accumulator_stack.pop_back();
-            pos.unmake_move(picked_move);
+                accumulator_stack.pop_back();
+                pos.unmake_move(picked_move);
 
-            if (prob_score >= prob_beta) {
-                TT::write(entry, pos.state->key, picked_move, prob_depth, pos.state->ply_from_root, raw_static_eval, prob_score, lower_bound);
-                return prob_score;
+                if (prob_score >= prob_beta) {
+                    TT::write(entry, pos.state->key, picked_move, prob_depth, pos.state->ply_from_root, raw_static_eval, prob_score, lower_bound);
+                    return prob_score;
+                }
             }
         }
-    }
     }
 
     std::forward_list<Move> quiets_searched;
     std::forward_list<CaptureEntry> capture_searched;
 
-    uint8_t move_searched = 0;
+    int move_searched = 0;
     int best_score = negative_infinity;
     NodeType type = upper_bound;
     std::pair<Move, int16_t> picked;
@@ -340,13 +340,14 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
 
         if (pos.state->ply_from_root && move_searched >= late_move_margin && depth <= 4 && not_in_check && move_picker.stage >= quiet_moves && abs(mate_value) - abs(best_score) > 128) break;
 
-        if (pos.state->ply_from_root && best_score > -mate_in_max_ply && picked_score < INT16_MAX && move_picker.stage == quiet_moves) {
-            if (futility_pruning_allowed) {
-                move_picker.current = move_picker.moves.last; 
-                continue;
+        if (pos.state->ply_from_root && best_score > -mate_in_max_ply) {
+            if (picked_score < INT16_MAX && move_picker.stage == quiet_moves) {
+                if (futility_pruning_allowed) {
+                    move_picker.current = move_picker.moves.last;
+                    continue;
+                }
+                if (depth <= 7 && picked_score < -600 * depth) continue;
             }
-
-            if (depth <= 7 && picked_score < -600 * depth) continue;
         }
 
         std::list<Move> local_pv;
@@ -495,7 +496,7 @@ inline void start_search(const int depth_param, const int movetime_param, const 
     int alpha = negative_infinity;
     int beta = infinity;
 
-    int window = pawn_weight / 2;
+    int window = pawn_weight / 3;
 
     for (root_depth = 1; root_depth <= search_depth; root_depth++) {
         if (is_search_cancelled) break;

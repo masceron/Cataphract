@@ -75,7 +75,7 @@ struct Move
     Move() {}
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
     [[nodiscard]] uint16_t src() const { return move & 0b111111; }
-    [[nodiscard]] uint16_t dest() const { return (move >> 6) & 0b111111; }
+    [[nodiscard]] uint16_t dest() const { return move >> 6 & 0b111111; }
     [[nodiscard]] explicit operator bool() const {return move != 0;}
 
     template<const bool side_needed> [[nodiscard]] Pieces promoted_to(const bool side = white) const

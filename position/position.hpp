@@ -22,7 +22,7 @@ inline bool color_of(const Pieces piece)
 
 struct State
 {
-    uint8_t rule_50;
+    uint16_t rule_50;
     uint8_t castling_rights;
     int8_t en_passant_square;
     uint64_t piece_key;
@@ -38,7 +38,7 @@ struct State
     uint64_t checker;
     uint64_t check_blocker;
     State* previous;
-    uint8_t repetition;
+    int8_t repetition;
 };
 
 inline std::deque<State> states;

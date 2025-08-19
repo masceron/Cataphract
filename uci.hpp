@@ -127,9 +127,9 @@ namespace UCI
 
     inline void perft(const std::string& depth)
     {
-        try {
-            divide(std::stoi(depth));
-        } catch (...) {}
+        const int depthTo = std::atoi(depth.c_str());
+        if (depthTo < 1) return;
+        divide(depthTo);
     }
 
     // Removed go_depth and go_time as their logic is merged into go and start_search
@@ -141,11 +141,9 @@ namespace UCI
 
         if (name == "Hash") {
             const std::string value = option.substr(value_index + 7, std::string::npos);
-            try {
-                const int32_t new_size = std::stoi(value);
-                if (new_size < 1 || new_size > 1024) return;
-                TT::resize(static_cast<uint32_t>(new_size));
-            } catch (...) {}
+            const int32_t new_size = std::atoi(value.c_str());
+            if (new_size < 1 || new_size > 1024) return;
+            TT::resize(static_cast<uint32_t>(new_size));
         }
         else if (name == "Clear Hash") {
             TT::clear();

@@ -124,14 +124,15 @@ inline int quiesce(Position& pos, int alpha, const int beta, SearchEntry* ss)
             continue;
         }
 
-        accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
-
         uint8_t moving_piece = pos.piece_on[picked_move.src()];
         if (moving_piece >= p) moving_piece -= 6;
         (ss + 1)->piece_to = (moving_piece << 6) + picked_move.dest();
 
         pos.make_move(picked_move, st);
+        accumulator_stack.emplace_back(pos, picked_move);
+
         const int score = -quiesce(pos, -beta, -alpha, ss + 1);
+
         accumulator_stack.pop_back();
         pos.unmake_move(picked_move);
 
@@ -297,14 +298,14 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
             while ((picked = prob_picker.next_move()).first) {
                 auto [picked_move, picked_score] = picked;
 
-                accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
-
                 uint8_t moving_piece = pos.piece_on[picked_move.src()];
                 if (moving_piece >= p) moving_piece -= 6;
                 (ss + 1)->piece_to = (moving_piece << 6) + picked_move.dest();
 
                 State st;
+
                 pos.make_move(picked_move, st);
+                accumulator_stack.emplace_back(pos, picked_move);
 
                 int prob_score = -quiesce(pos, -prob_beta, -prob_beta + 1, ss + 1);
 
@@ -351,7 +352,6 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         }
 
         std::list<Move> local_pv;
-        accumulator_stack.emplace_back(pos, picked_move, accumulator_stack.back().is_mirrored);
 
         int score;
         State st;
@@ -359,7 +359,9 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         uint8_t moving_piece = pos.piece_on[picked_move.src()];
         if (moving_piece >= p) moving_piece -= 6;
         (ss + 1)->piece_to = (moving_piece << 6) + picked_move.dest();
+
         pos.make_move(picked_move, st);
+        accumulator_stack.emplace_back(pos, picked_move);
 
         if (move_searched == 0) {
             score = -search(pos, -beta, -alpha, depth - 1, local_pv, false, ss + 1);
@@ -384,6 +386,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                 score = -search(pos, -beta, -alpha, depth - 1, local_pv, false, ss + 1);
             }
         }
+
         accumulator_stack.pop_back();
         pos.unmake_move(picked_move);
 
@@ -489,9 +492,6 @@ inline void start_search(const int depth_param, const int movetime_param, const 
 
     std::array<SearchEntry, 140> search_stack;
     search_stack_init(search_stack.data());
-
-    accumulator_stack.clear();
-    accumulator_stack.emplace_back(root_accumulators, position);
 
     int alpha = negative_infinity;
     int beta = infinity;

@@ -24,10 +24,10 @@ enum NodeType: uint8_t
 struct Entry
 {
     uint64_t key;
-    uint8_t depth;
     int16_t score;
     int16_t static_eval;
     Move best_move;
+    uint8_t depth;
     uint8_t age_type;
 
     void save(const uint64_t _key, const uint8_t _depth, const int16_t _static_eval, const int16_t _score , const Move _best_move, const uint8_t _age_type)
@@ -58,9 +58,9 @@ namespace TT
     inline void alloc()
     {
 #ifdef _WIN32
-        table = static_cast<Entry*>(_aligned_malloc(table_size * 16, 16));
+        table = static_cast<Entry*>(_aligned_malloc(table_size * sizeof(Entry), sizeof(Entry)));
 #else
-        table = static_cast<Entry*>(std::aligned_alloc(16, table_size * 16));
+        table = static_cast<Entry*>(std::aligned_alloc(sizeof(Entry), table_size * sizeof(Entry)));
 #endif
         clear();
     }

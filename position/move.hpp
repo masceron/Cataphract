@@ -67,6 +67,7 @@ inline std::string num_to_algebraic(const uint8_t sq)
     return files[sq % 8] + std::to_string(8 - sq/8);
 }
 
+#pragma pack(push, 1)
 struct Move
 {
     uint16_t move;
@@ -116,5 +117,6 @@ struct Move
         return s.str();
     }
 };
+#pragma pack(pop)
 
 const Move move_none(0, 0, 0);

@@ -1,82 +1,66 @@
 #include <immintrin.h>
+#include <cstring>
 
 #include "accumulators.hpp"
 #include "nnue.hpp"
 
 struct Network;
 
-unsigned char data[] = {
+alignas(32) unsigned char data[] = {
     #embed "../net.bin"
 };
 
-auto network = reinterpret_cast<Network*>(data);
+inline auto network = reinterpret_cast<Network*>(data);
 
-inline void Accumulator_entry::accumulator_flip(const bool side, const Position& pos)
+Network *get_net()
 {
-    if (side == white) is_mirrored.first = !is_mirrored.first;
-    else is_mirrored.second = !is_mirrored.second;
-
-    memcpy(&accumulators.accumulators[side], network->accumulator_biases, hl_size * sizeof(int16_t));
-
-    for (int piece = 0; piece < 12; piece++) {
-        uint64_t board = pos.boards[piece];
-        while (board) {
-            auto [white_add, black_add] = input_index_of(piece, least_significant_one(board), is_mirrored);
-            const uint16_t add = side == white ? white_add : black_add;
-
-            for (int iter = 0; iter < hl_size; iter++) {
-                accumulators.accumulators[side][iter] += network->accumulator_weights[add][iter];
-            }
-
-            board &= board - 1;
-        }
-    }
+    return network;
 }
+
 
 void Accumulator_entry::mark_changes(Position& pos, const Move move)
 {
     const uint8_t from = move.src();
     const uint8_t to = move.dest();
     const uint8_t flag = move.flag();
-    const uint8_t moved_piece = pos.piece_on[from];
+    const Pieces moved_piece = pos.piece_on[to];
+    memcpy(bitboards, &pos.boards, 12 * sizeof(uint64_t));
+    const bool just_moved = !pos.side_to_move;
 
-    if ((moved_piece == K || moved_piece == k) && from % 8 / 4 != to % 8 / 4) {
-        const Pieces captured = pos.piece_on[to];
-        if (captured != nil) pos.remove_piece(to);
-        pos.move_piece(from, to);
-        if (flag == queen_castle) pos.move_piece(to - 2, to + 1);
-        accumulator_flip(pos.side_to_move, pos);
-        pos.move_piece(to, from);
-        if (captured != nil) pos.put_piece(captured, to);
-        if (flag == queen_castle) pos.move_piece(to + 1, to - 2);
+    if (moved_piece == K || moved_piece == k) {
+        if (const int flip = !just_moved * 56;
+            input_buckets_map[from ^ flip] != input_buckets_map[to ^ flip] || ((from % 8 > 3) != (to % 8 > 3))) {
+            require_rebuild = true;
+            return;
+        }
     }
+
 
     if (flag < knight_promotion) {
         adds[0] = {moved_piece, to};
         subs[0] = {moved_piece, from};
         if (flag == capture) {
-            subs[1] = { pos.piece_on[to], to};
+            subs[1] = { pos.state->captured_piece, to};
         }
         else if (flag == ep_capture) {
-            const uint8_t captured_sq = to - Delta<Up>(pos.side_to_move);
-            subs[1] = {pos.piece_on[captured_sq], captured_sq};
+            subs[1] = {pos.state->captured_piece, to - Delta<Up>(just_moved)};
         }
         else if (flag == king_castle) {
-            auto rook = pos.side_to_move == white ? R : r;
+            auto rook = just_moved == white ? R : r;
             adds[1] = {rook, to - 1};
             subs[1] = {rook, to + 1};
         }
         else if (flag == queen_castle) {
-            auto rook = pos.side_to_move == white ? R : r;
+            auto rook = just_moved == white ? R : r;
             adds[1] = {rook, to + 1};
             subs[1] = {rook, to - 2};
         }
     }
     else {
-        subs[0] = {moved_piece, from};
-        adds[0] = {move.promoted_to<true>(pos.side_to_move), to};
+        subs[0] = {!just_moved ? P : p, from};
+        adds[0] = {move.promoted_to<true>(just_moved), to};
         if (flag >= knight_promo_capture) {
-            subs[1] = {pos.piece_on[to], to};
+            subs[1] = {pos.state->captured_piece, to};
         }
     }
 }
@@ -93,7 +77,7 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
 
     __m256i sum = vec_zero;
 
-    constexpr uint8_t iters = hl_size / 16;
+    static constexpr int iters = hl_size / 16;
     for (int i = 0; i < iters; i++) {
         const __m256i us = _mm256_load_si256(to_move++);
         const __m256i them = _mm256_load_si256(not_to_move++);
@@ -113,16 +97,16 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
     const __m128i sum128 = _mm_add_epi32(_mm256_castsi256_si128(sum), _mm256_extracti128_si256(sum, 1));
     const auto high64  = _mm_unpackhi_epi64(sum128, sum128);
     const auto sum64 = _mm_add_epi32(high64, sum128);
-    const auto high32  = _mm_shufflelo_epi16(sum64, _MM_SHUFFLE(1, 0, 3, 2));
+    const auto high32  = _mm_shufflelo_epi16(sum64, 0x4e);
     const auto sum32 = _mm_add_epi32(sum64, high32);
     return _mm_cvtsi128_si32(sum32);
 }
 
-int16_t NNUE::evaluate(const Position& pos, Accumulators* accumulator_pair)
+int16_t NNUE::evaluate(const Position& pos, int16_t* accumulator_pair)
 {
     static constexpr uint8_t divisor = (32 + output_buckets - 1) / output_buckets;
     const uint8_t bucket = (std::popcount(pos.occupations[2]) - 2) / divisor;
-    const int32_t eval = forward((*accumulator_pair)[pos.side_to_move], (*accumulator_pair)[!pos.side_to_move], bucket);
+    const int32_t eval = forward(&accumulator_pair[pos.side_to_move * hl_size], &accumulator_pair[!pos.side_to_move * hl_size], bucket);
 
     return static_cast<int16_t>((eval / QA + network->output_bias[bucket]) * eval_scale / (QA * QB));
 }
@@ -131,7 +115,25 @@ void NNUE::update_accumulators()
     accumulator_stack_update(network);
 }
 
-void NNUE::refresh_accumulators(Accumulators* accumulators, const Position& pos)
+void NNUE::refresh_accumulators(Position& pos)
 {
-    accumulators_set(network, accumulators, pos);
+    for (auto &pair: finny_table) {
+        for (auto &[bitboards, accumulators] : pair) {
+            memset(bitboards, 0, 12 * sizeof(uint64_t));
+            memcpy(accumulators, network->accumulator_biases, hl_size * sizeof(int16_t));
+            memcpy(&accumulators[hl_size], network->accumulator_biases, hl_size * sizeof(int16_t));
+        }
+    }
+    accumulator_stack.clear();
+    accumulator_stack.emplace_back();
+    const auto [w, b] = get_buckets(pos.boards);
+
+    const auto stack_entry = &accumulator_stack[0];
+    const auto finny_entry = &finny_table[w][b];
+
+    memcpy(stack_entry->bitboards, pos.boards, 12 * sizeof(uint64_t));
+    memcpy(finny_entry->bitboards, pos.boards, 12 * sizeof(uint64_t));
+
+    accumulators_set(network, pos.boards, stack_entry->accumulators);
+    memcpy(finny_entry->accumulators, stack_entry->accumulators, 2 * hl_size * sizeof(int16_t));
 }

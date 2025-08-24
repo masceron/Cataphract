@@ -122,7 +122,7 @@ namespace UCI
             }
         }
         TT::age();
-        NNUE::refresh_accumulators(&root_accumulators, position);
+        NNUE::refresh_accumulators(position);
     }
 
     inline void perft(const std::string& depth)
@@ -206,10 +206,8 @@ namespace UCI
 
     inline void process()
     {
-
-
         fen_parse("startpos"); // Set initial position
-        NNUE::refresh_accumulators(&root_accumulators, position); // Initialize NNUE state
+        NNUE::refresh_accumulators(position); // Initialize NNUE state
 
         std::string input;
         bool quit = false;
@@ -242,9 +240,8 @@ namespace UCI
                 if (command.empty() && !input.empty()) command = input; // Handle commands with no parameters
 
                 if (command == "position") {
-
                     set_board(input.substr(9, std::string::npos));
-                    NNUE::refresh_accumulators(&root_accumulators, position); // Update NNUE state for new position
+                    NNUE::refresh_accumulators(position); // Update NNUE state for new position
                 }
                 else if (command == "go") {
                     go(input); // Start search
@@ -255,7 +252,7 @@ namespace UCI
                 else if (command == "ucinewgame") {
                     new_game(); // Reset engine state
                     fen_parse("startpos"); // Reset board to startpos
-                    NNUE::refresh_accumulators(&root_accumulators, position); // Reset NNUE state
+                    NNUE::refresh_accumulators(position); // Reset NNUE state
                 }
                 else if (command == "uci") {
                     std::cout << "id name Cataphract" << "\n" <<"id author masceron\n\n"
@@ -266,9 +263,8 @@ namespace UCI
                     << "uciok" << std::endl;
                 }
                 else if (command == "eval") {
-
                     std::cout << "NNUE evaluation: "
-                    << NNUE::evaluate(position, &root_accumulators) * (position.side_to_move == white ? 1 : -1)
+                    << eval(position) * (!position.side_to_move ? 1 : -1)
                     << " (white side)" << std::endl;
                 }
                 else if (command == "d") {

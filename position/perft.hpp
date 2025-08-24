@@ -33,17 +33,17 @@ inline void divide(const int depth)
     size_t total = 0;
 
     const auto start = std::chrono::high_resolution_clock::now();
-    const MoveList list = legals<all>(position);
-    const int n = list.size();
+    const MoveList moves = legals<all>(position);
+    const int n = moves.size();
 
     State st;
 
     for (int i = 0; i < n; i++) {
-        position.make_move(list[i], st);
+        position.make_move(moves[i], st);
         const size_t num = perft(depth - 1);
-        std::cout << list[i].get_move_string() << ": " << num << std::endl;
+        std::cout << moves[i].get_move_string() << ": " << num << std::endl;
         total += num;
-        position.unmake_move(list[i]);
+        position.unmake_move(moves[i]);
     }
     const auto time_taken = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start);
     std::cout << "\nNodes searched: " << total << "\n";

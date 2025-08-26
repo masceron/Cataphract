@@ -20,8 +20,8 @@ Network *get_net()
 
 void Accumulator_entry::mark_changes(Position& pos, const Move move)
 {
-    const uint8_t from = move.src();
-    const uint8_t to = move.dest();
+    const uint8_t from = move.from();
+    const uint8_t to = move.to();
     const uint8_t flag = move.flag();
     const Pieces moved_piece = pos.piece_on[to];
     memcpy(bitboards, &pos.boards, 12 * sizeof(uint64_t));
@@ -31,10 +31,8 @@ void Accumulator_entry::mark_changes(Position& pos, const Move move)
         if (const int flip = !just_moved * 56;
             input_buckets_map[from ^ flip] != input_buckets_map[to ^ flip] || ((from % 8 > 3) != (to % 8 > 3))) {
             require_rebuild = true;
-            return;
         }
     }
-
 
     if (flag < knight_promotion) {
         adds[0] = {moved_piece, to};

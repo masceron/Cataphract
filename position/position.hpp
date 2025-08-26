@@ -56,9 +56,9 @@ struct Position
     }
     void new_game();
 
-    void move_piece(uint8_t from, uint8_t to);
-    void put_piece(Pieces piece, uint8_t sq);
-    void remove_piece(uint8_t sq);
+    void move_piece(int from, int to);
+    void put_piece(Pieces piece, int sq);
+    void remove_piece(int sq);
 
     void make_move(Move move, State &st);
     void unmake_move(const Move &move);
@@ -69,9 +69,9 @@ struct Position
 
     [[nodiscard]] uint64_t get_check_blocker_of(bool side) const;
 
-    [[nodiscard]] bool upcoming_repetition(uint8_t ply) const;
+    [[nodiscard]] bool upcoming_repetition(int ply) const;
 
-    [[nodiscard]] bool is_square_attacked_by(uint8_t index, bool side) const;
+    [[nodiscard]] bool is_square_attacked_by(int index, bool side) const;
 
     template <const bool side>
     [[nodiscard]] uint64_t get_pinned_board_of() const
@@ -82,13 +82,13 @@ struct Position
         static constexpr uint8_t bishop = side == white ? b : B;
         static constexpr uint8_t queen = side == white ? q : Q;
 
-        const uint8_t king_index = least_significant_one(boards[king]);
+        const int king_index = lsb(boards[king]);
 
         attacker = (get_rook_attack(king_index, occupations[!side]) & (boards[rook] | boards[queen]))
                      | (get_bishop_attack(king_index, occupations[!side]) & (boards[bishop] | boards[queen]));
 
         while (attacker) {
-            const uint8_t sniper = least_significant_one(attacker);
+            const int sniper = lsb(attacker);
 
             if (const uint64_t between = lines_between[sniper][king_index] & occupations[side]; std::has_single_bit(between))
                 pinned_board |= between;
@@ -109,7 +109,7 @@ struct Position
         static constexpr uint8_t pawn = side == white ? p : P;
         static constexpr uint8_t knight = side == white ? n : N;
 
-        const uint8_t king_index = least_significant_one(boards[king]);
+        const uint8_t king_index = lsb(boards[king]);
 
         const uint64_t checkers = (pawn_attack_tables[side][king_index] & (boards[pawn]))
             | (knight_attack_tables[king_index] & boards[knight])

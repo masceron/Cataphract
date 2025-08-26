@@ -28,19 +28,19 @@ namespace History
             }
     }
 
-    inline void apply(const bool side, const uint8_t from, const uint8_t to, const int16_t bonus)
+    inline void apply(const bool side, const int from, const int to, const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, min_history, max_history);
         table[side][from][to] += clamped_bonus - table[side][from][to] * abs(clamped_bonus) / max_history;
     }
 
-    inline void update(const std::forward_list<Move>& searched, const bool side, const uint8_t from, const uint8_t to, const uint8_t depth)
+    inline void update(const std::forward_list<Move>& searched, const bool side, const int from, const int to, const uint8_t depth)
     {
         const int16_t bonus = 80 * depth - 60;
         apply(side, from, to, bonus);
 
         for (const Move move: searched) {
-            apply(side, move.src(), move.dest(), -bonus);
+            apply(side, move.from(), move.to(), -bonus);
         }
         if (table[side][from][to] >= max_history) scale_down();
     }
@@ -53,14 +53,14 @@ namespace Killers
     {
         memset(table.data(), 0, table.size() * 2 * sizeof(Move));
     }
-    inline void insert(const Move move, const uint8_t ply)
+    inline void insert(const Move move, const int ply)
     {
         auto killers_of_ply = table[ply];
         if (move == killers_of_ply[0] || move == killers_of_ply[1]) return;
         killers_of_ply[1] = killers_of_ply[0];
         killers_of_ply[0] = move;
     }
-    inline bool find(const Move move, const uint8_t ply)
+    inline bool find(const Move move, const int ply)
     {
         return table[ply][0] == move || table[ply][1] == move;
     }
@@ -91,7 +91,7 @@ namespace Capture
                     std::ranges::transform(table[stm][moved_piece][captured_piece].begin(), table[stm][moved_piece][captured_piece].end(), table[stm][moved_piece][captured_piece].begin(), [](const int16_t& x) {return x >> 1;});
     }
 
-    inline void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const uint8_t sq, const int16_t bonus)
+    inline void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq, const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, min_bonus, max_bonus);
         table[stm][moved_piece][captured_piece][sq] += clamped_bonus - table[stm][moved_piece][captured_piece][sq] * abs(clamped_bonus) / max_bonus;
@@ -217,21 +217,21 @@ namespace Continuation
     {
         const int16_t bonus = 80 * depth - 60;
         const bool stm = pos.side_to_move;
-        uint8_t piece = pos.piece_on[move.src()];
+        uint8_t piece = pos.piece_on[move.from()];
         if (piece >= 6) piece -= 6;
 
         if (ss->piece_to != UINT16_MAX) {
             const uint8_t prev_piece = ss->piece_to >> 6;
             const uint8_t prev_to = ss->piece_to & 0b111111;
 
-            apply(counter_moves, stm, prev_piece, prev_to, piece, move.dest(), bonus);
+            apply(counter_moves, stm, prev_piece, prev_to, piece, move.to(), bonus);
 
             for (const auto& tmpm: searched) {
-                uint8_t tmp = pos.piece_on[tmpm.src()];
+                uint8_t tmp = pos.piece_on[tmpm.from()];
                 if (tmp >= 6) tmp -= 6;
-                apply(counter_moves, stm, prev_piece, prev_to, tmp, tmpm.dest(), -bonus);
+                apply(counter_moves, stm, prev_piece, prev_to, tmp, tmpm.to(), -bonus);
             }
-            if (counter_moves[stm][prev_piece][prev_to][piece][move.dest()] >= max_continuation) scale_down(counter_moves);
+            if (counter_moves[stm][prev_piece][prev_to][piece][move.to()] >= max_continuation) scale_down(counter_moves);
         }
 
         if ((ss - 1)->piece_to != UINT16_MAX) {
@@ -239,14 +239,14 @@ namespace Continuation
             const uint8_t prev2_piece = prev2->piece_to >> 6;
             const uint8_t prev2_to = prev2->piece_to & 0b111111;
 
-            apply(follow_up, stm, prev2_piece, prev2_to, piece, move.dest(), bonus);
+            apply(follow_up, stm, prev2_piece, prev2_to, piece, move.to(), bonus);
 
             for (const auto& tmpm: searched) {
-                uint8_t tmp = pos.piece_on[tmpm.src()];
+                uint8_t tmp = pos.piece_on[tmpm.from()];
                 if (tmp >= 6) tmp -= 6;
-                apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmpm.dest(), -bonus);
+                apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmpm.to(), -bonus);
             }
-            if (follow_up[stm][prev2_piece][prev2_to][piece][move.dest()] >= max_continuation) scale_down(follow_up);
+            if (follow_up[stm][prev2_piece][prev2_to][piece][move.to()] >= max_continuation) scale_down(follow_up);
         }
     }
 }

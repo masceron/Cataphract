@@ -60,7 +60,7 @@ inline int algebraic_to_num(const std::string &algebraic)
     return rank * 8 + file;
 }
 
-inline std::string num_to_algebraic(const uint8_t sq)
+inline std::string num_to_algebraic(const int sq)
 {
     static constexpr char files[] = "abcdefgh";
 
@@ -75,8 +75,8 @@ struct Move
     explicit Move(const uint16_t _move): move(_move) {}
     Move() {}
     [[nodiscard]] uint16_t flag() const { return move >> 12; }
-    [[nodiscard]] uint16_t src() const { return move & 0b111111; }
-    [[nodiscard]] uint16_t dest() const { return move >> 6 & 0b111111; }
+    [[nodiscard]] uint16_t from() const { return move & 0b111111; }
+    [[nodiscard]] uint16_t to() const { return move >> 6 & 0b111111; }
     [[nodiscard]] explicit operator bool() const {return move != 0;}
 
     template<const bool side_needed> [[nodiscard]] Pieces promoted_to(const bool side = white) const
@@ -94,7 +94,7 @@ struct Move
     {
         if (move == 0) return "0000";
         std::stringstream s;
-        s << num_to_algebraic(src()) << num_to_algebraic(dest());
+        s << num_to_algebraic(from()) << num_to_algebraic(to());
 
         if (flag() >= knight_promotion) {
             switch (promoted_to<false>()) {
@@ -119,4 +119,4 @@ struct Move
 };
 #pragma pack(pop)
 
-const Move move_none(0, 0, 0);
+const Move null_move(0, 0, 0);

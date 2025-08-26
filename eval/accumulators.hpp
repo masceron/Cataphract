@@ -59,16 +59,13 @@ inline uint64_t horizontal_mirror(uint64_t board)
 inline std::pair<uint16_t, uint16_t> input_index_of(const uint8_t p, const uint8_t sq,
                                                     const std::pair<bool, bool> &mirrors)
 {
-    const uint8_t white_flip = mirrors.first ? 7 : 0;
-    const uint8_t black_flip = mirrors.second ? 7 : 0;
-
-    return {p * 64 + (sq ^ 56 ^ white_flip), flip_color(p) * 64 + (sq ^ black_flip)};
+    return {p * 64 + (sq ^ 56 ^ (mirrors.first ? 7 : 0)), flip_color(p) * 64 + (sq ^ (mirrors.second ? 7 : 0))};
 }
 
 inline std::pair<uint8_t, uint8_t> get_buckets(const uint64_t *boards)
 {
     return {
-        input_buckets_map[least_significant_one(boards[K]) ^ 56], input_buckets_map[least_significant_one(boards[k])]
+        input_buckets_map[lsb(boards[K]) ^ 56], input_buckets_map[lsb(boards[k])]
     };
 }
 
@@ -77,14 +74,14 @@ inline void accumulators_set(Network *network, const uint64_t *boards, int16_t *
     memcpy(accumulators, network->accumulator_biases, hl_size * sizeof(int16_t));
     memcpy(&accumulators[hl_size], network->accumulator_biases, hl_size * sizeof(int16_t));
 
-    const std::pair mirror = {least_significant_one(boards[K]) % 8 > 3, least_significant_one(boards[k]) % 8 > 3};
+    const std::pair mirror = {lsb(boards[K]) % 8 > 3, lsb(boards[k]) % 8 > 3};
     const auto [white_bucket, black_bucket] = get_buckets(boards);
 
     for (int i = 0; i < 12; i++) {
         uint64_t board = boards[i];
 
         while (board) {
-            auto [white_add, black_add] = input_index_of(i, least_significant_one(board), mirror);
+            auto [white_add, black_add] = input_index_of(i, lsb(board), mirror);
             for (int iter = 0; iter < hl_size; iter++) {
                 accumulators[iter] += network->accumulator_weights[white_bucket][white_add][iter];
                 accumulators[iter + hl_size] += network->accumulator_weights[black_bucket][black_add][iter];
@@ -95,68 +92,108 @@ inline void accumulators_set(Network *network, const uint64_t *boards, int16_t *
     }
 }
 
-inline void accumulators_addsub(Network *network, const int16_t *prev, int16_t *accs,
-                                const std::pair<uint8_t, int8_t> *add,
-                                const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &is_mirrored,
-                                const std::pair<uint8_t, uint8_t> &buckets)
+template<const int exclude>
+void accumulators_addsub(Network *network, const int16_t *prev, int16_t *accs,
+                         const std::pair<uint8_t, int8_t> *add,
+                         const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &mirrors,
+                         const std::pair<uint8_t, uint8_t> &buckets)
 {
-    auto [white_add, black_add] = input_index_of(add[0].first, add[0].second, is_mirrored);
-    auto [white_sub, black_sub] = input_index_of(sub[0].first, sub[0].second, is_mirrored);
+    auto [white_add, black_add] = input_index_of(add[0].first, add[0].second, mirrors);
+    auto [white_sub, black_sub] = input_index_of(sub[0].first, sub[0].second, mirrors);
 
     for (int iter = 0; iter < hl_size; iter++) {
-        accs[iter] = prev[iter] + network->accumulator_weights[buckets.first][white_add][iter]
-                     - network->accumulator_weights[buckets.first][white_sub][iter];
-        accs[iter + hl_size] = prev[iter + hl_size]
-                               + network->accumulator_weights[buckets.second][black_add][iter]
-                               - network->accumulator_weights[buckets.second][black_sub][iter];
+        if constexpr (exclude != white) {
+            accs[iter] = prev[iter] + network->accumulator_weights[buckets.first][white_add][iter]
+                         - network->accumulator_weights[buckets.first][white_sub][iter];
+        }
+
+        if constexpr (exclude != black) {
+            accs[iter + hl_size] = prev[iter + hl_size]
+                                   + network->accumulator_weights[buckets.second][black_add][iter]
+                                   - network->accumulator_weights[buckets.second][black_sub][iter];
+        }
     }
 }
 
-inline void accumulators_addsub2(Network *network, const int16_t *prev, int16_t *accs,
-                                 const std::pair<uint8_t, int8_t> *add,
-                                 const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &is_mirrored,
-                                 const std::pair<uint8_t, uint8_t> &buckets)
+template<const int exclude>
+void accumulators_addsub2(Network *network, const int16_t *prev, int16_t *accs,
+                          const std::pair<uint8_t, int8_t> *add,
+                          const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &mirrors,
+                          const std::pair<uint8_t, uint8_t> &buckets)
 {
-    auto [white_add, black_add] = input_index_of(add[0].first, add[0].second, is_mirrored);
-    auto [white_sub1, black_sub1] = input_index_of(sub[0].first, sub[0].second, is_mirrored);
-    auto [white_sub2, black_sub2] = input_index_of(sub[1].first, sub[1].second, is_mirrored);
+    auto [white_add, black_add] = input_index_of(add[0].first, add[0].second, mirrors);
+    auto [white_sub1, black_sub1] = input_index_of(sub[0].first, sub[0].second, mirrors);
+    auto [white_sub2, black_sub2] = input_index_of(sub[1].first, sub[1].second, mirrors);
 
-    for (uint16_t iter = 0; iter < hl_size; iter++) {
-        accs[iter] = prev[iter]
-                     + network->accumulator_weights[buckets.first][white_add][iter]
-                     - network->accumulator_weights[buckets.first][white_sub1][iter]
-                     - network->accumulator_weights[buckets.first][white_sub2][iter];
+    for (int iter = 0; iter < hl_size; iter++) {
+        if constexpr (exclude != white) {
+            accs[iter] = prev[iter]
+                         + network->accumulator_weights[buckets.first][white_add][iter]
+                         - network->accumulator_weights[buckets.first][white_sub1][iter]
+                         - network->accumulator_weights[buckets.first][white_sub2][iter];
+        }
 
-        accs[iter + hl_size] = prev[iter + hl_size]
-                               + network->accumulator_weights[buckets.second][black_add][iter]
-                               - network->accumulator_weights[buckets.second][black_sub1][iter]
-                               - network->accumulator_weights[buckets.second][black_sub2][iter];
+        if constexpr (exclude != black) {
+            accs[iter + hl_size] = prev[iter + hl_size]
+                                   + network->accumulator_weights[buckets.second][black_add][iter]
+                                   - network->accumulator_weights[buckets.second][black_sub1][iter]
+                                   - network->accumulator_weights[buckets.second][black_sub2][iter];
+        }
     }
 }
 
-
-inline void accumulators_add2sub2(Network *network, const int16_t *prev, int16_t *accs,
-                                  const std::pair<uint8_t, int8_t> *add,
-                                  const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &is_mirrored,
-                                  const std::pair<uint8_t, uint8_t> &buckets)
+template<const int exclude>
+void accumulators_add2sub2(Network *network, const int16_t *prev, int16_t *accs,
+                           const std::pair<uint8_t, int8_t> *add,
+                           const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &mirrors,
+                           const std::pair<uint8_t, uint8_t> &buckets)
 {
-    auto [white_add1, black_add1] = input_index_of(add[0].first, add[0].second, is_mirrored);
-    auto [white_add2, black_add2] = input_index_of(add[1].first, add[1].second, is_mirrored);
-    auto [white_sub1, black_sub1] = input_index_of(sub[0].first, sub[0].second, is_mirrored);
-    auto [white_sub2, black_sub2] = input_index_of(sub[1].first, sub[1].second, is_mirrored);
+    auto [white_add1, black_add1] = input_index_of(add[0].first, add[0].second, mirrors);
+    auto [white_add2, black_add2] = input_index_of(add[1].first, add[1].second, mirrors);
+    auto [white_sub1, black_sub1] = input_index_of(sub[0].first, sub[0].second, mirrors);
+    auto [white_sub2, black_sub2] = input_index_of(sub[1].first, sub[1].second, mirrors);
 
     for (int iter = 0; iter < hl_size; iter++) {
-        accs[iter] = prev[iter]
-                     + network->accumulator_weights[buckets.first][white_add1][iter]
-                     + network->accumulator_weights[buckets.first][white_add2][iter]
-                     - network->accumulator_weights[buckets.first][white_sub1][iter]
-                     - network->accumulator_weights[buckets.first][white_sub2][iter];
+        if constexpr (exclude != white) {
+            accs[iter] = prev[iter]
+                         + network->accumulator_weights[buckets.first][white_add1][iter]
+                         + network->accumulator_weights[buckets.first][white_add2][iter]
+                         - network->accumulator_weights[buckets.first][white_sub1][iter]
+                         - network->accumulator_weights[buckets.first][white_sub2][iter];
+        }
 
-        accs[iter + hl_size] = prev[iter + hl_size]
-                               + network->accumulator_weights[buckets.second][black_add1][iter]
-                               + network->accumulator_weights[buckets.second][black_add2][iter]
-                               - network->accumulator_weights[buckets.second][black_sub1][iter]
-                               - network->accumulator_weights[buckets.second][black_sub2][iter];
+        if constexpr (exclude != black) {
+            accs[iter + hl_size] = prev[iter + hl_size]
+                                   + network->accumulator_weights[buckets.second][black_add1][iter]
+                                   + network->accumulator_weights[buckets.second][black_add2][iter]
+                                   - network->accumulator_weights[buckets.second][black_sub1][iter]
+                                   - network->accumulator_weights[buckets.second][black_sub2][iter];
+        }
+    }
+}
+
+template<const int exclude>
+void update_from_move(Network *network, int16_t *prev, int16_t *cur, const std::pair<uint8_t, int8_t> *add,
+                      const std::pair<uint8_t, int8_t> *sub, const std::pair<bool, bool> &mirrors,
+                      const std::pair<uint8_t, uint8_t> &buckets)
+{
+    if (sub[1].second != -1) {
+        //Castling
+        if (add[1].second != -1) {
+            accumulators_add2sub2<exclude>(network, prev, cur,
+                                           add, sub, mirrors,
+                                           buckets);
+        }
+        //Capture or promo-capture
+        else {
+            accumulators_addsub2<exclude>(network, prev, cur, add,
+                                          sub, mirrors,
+                                          buckets);
+        }
+    } else {
+        accumulators_addsub<exclude>(network, prev, cur, add,
+                                     sub, mirrors,
+                                     buckets);
     }
 }
 
@@ -168,98 +205,118 @@ inline void accumulator_stack_update(Network *network)
     for (; idx < accumulator_stack.size(); idx++) {
         const auto stack_entry = &accumulator_stack[idx];
         const auto new_bitboards = stack_entry->bitboards;
-        const auto [white_bucket, black_bucket] = get_buckets(new_bitboards);
+        const auto new_buckets = get_buckets(new_bitboards);
         const std::pair new_mirrors = {
-            least_significant_one(new_bitboards[K]) % 8 > 3, least_significant_one(new_bitboards[k]) % 8 > 3
+            lsb(new_bitboards[K]) % 8 > 3, lsb(new_bitboards[k]) % 8 > 3
         };
         const auto current_accumulators = stack_entry->accumulators;
 
-        if (!stack_entry->require_rebuild) {
-            const auto previous_accumulators = accumulator_stack[idx - 1].accumulators;
-            if (stack_entry->subs[1].second != -1) {
-                //Castling
-                if (stack_entry->adds[1].second != -1) {
-                    accumulators_add2sub2(network, previous_accumulators, current_accumulators,
-                                          stack_entry->adds, stack_entry->subs, new_mirrors,
-                                          {white_bucket, black_bucket});
-                }
-                //Capture or promo-capture
-                else {
-                    accumulators_addsub2(network, previous_accumulators, current_accumulators, stack_entry->adds,
-                                         stack_entry->subs, new_mirrors,
-                                         {white_bucket, black_bucket});
-                }
-            } else {
-                accumulators_addsub(network, previous_accumulators, current_accumulators, stack_entry->adds,
-                                    stack_entry->subs, new_mirrors, {white_bucket, black_bucket});
-            }
-        } else {
+        const auto previous_entry = &accumulator_stack[idx - 1];
+        const auto previous_boards = previous_entry->bitboards;
+        const auto previous_accumulators = accumulator_stack[idx - 1].accumulators;
+
+        if (!stack_entry->require_rebuild) [[likely]] {
+            update_from_move<-1>(network, previous_accumulators, current_accumulators, stack_entry->adds,
+                                 stack_entry->subs, new_mirrors, new_buckets);
+        } else [[unlikely]] {
+            const auto previous_buckets = get_buckets(previous_boards);
+            const auto [white_bucket, black_bucket] = new_buckets;
             const auto saved_entry = &finny_table[white_bucket][black_bucket];
             const auto saved_bitboards = saved_entry->bitboards;
-            const std::pair old_mirrors = {
-                saved_bitboards[K] && least_significant_one(saved_bitboards[K]) % 8 > 3,
-                saved_bitboards[k] && least_significant_one(saved_bitboards[k]) % 8 > 3
-            };
             const auto saved_accumulators = saved_entry->accumulators;
 
-            for (int piece = 0; piece < 12; piece++) {
-                const auto old_white = old_mirrors.first
-                                           ? horizontal_mirror(saved_bitboards[piece])
-                                           : saved_bitboards[piece];
-                const auto old_black = old_mirrors.second
-                                           ? horizontal_mirror(saved_bitboards[piece])
-                                           : saved_bitboards[piece];
-                const auto new_white = new_mirrors.first
-                                           ? horizontal_mirror(new_bitboards[piece])
-                                           : new_bitboards[piece];
-                const auto new_black = new_mirrors.second
-                                           ? horizontal_mirror(new_bitboards[piece])
-                                           : new_bitboards[piece];
+            bool to_update;
 
-                auto white_adds = new_white & ~old_white;
-                auto black_adds = new_black & ~old_black;
-                while (white_adds) {
-                    const int index_added = least_significant_one(white_adds);
-                    const int input_index = (index_added ^ 56) + piece * 64;
-                    for (int iter = 0; iter < hl_size; iter++) {
-                        saved_accumulators[iter] += network->accumulator_weights[white_bucket][input_index][iter];
-                    }
-                    white_adds &= white_adds - 1;
-                }
+            const std::pair saved_mirrors = {
+                saved_bitboards[K] && lsb(saved_bitboards[K]) % 8 > 3,
+                saved_bitboards[k] && lsb(saved_bitboards[k]) % 8 > 3
+            };
 
-                while (black_adds) {
-                    const int index_added = least_significant_one(black_adds);
-                    const int input_index = index_added + flip_color(piece) * 64;
-                    for (int iter = 0; iter < hl_size; iter++) {
-                        saved_accumulators[iter + hl_size] += network->accumulator_weights[black_bucket][input_index][
-                            iter];
-                    }
-                    black_adds &= black_adds - 1;
-                }
-
-                auto white_subs = old_white & ~new_white;
-                auto black_subs = old_black & ~new_black;
-                while (white_subs) {
-                    const int index_subbed = least_significant_one(white_subs);
-                    const int input_index = (index_subbed ^ 56) + piece * 64;
-                    for (int iter = 0; iter < hl_size; iter++) {
-                        saved_accumulators[iter] -= network->accumulator_weights[white_bucket][input_index][iter];
-                    }
-                    white_subs &= white_subs - 1;
-                }
-
-                while (black_subs) {
-                    const int index_subbed = least_significant_one(black_subs);
-                    const int input_index = index_subbed + flip_color(piece) * 64;
-                    for (int iter = 0; iter < hl_size; iter++) {
-                        saved_accumulators[iter + hl_size] -= network->accumulator_weights[black_bucket][input_index][
-                            iter];
-                    }
-                    black_subs &= black_subs - 1;
-                }
+            if (previous_buckets != new_buckets) {
+                const auto old_saved_entry = &finny_table[previous_buckets.first][previous_buckets.second];
+                memcpy(old_saved_entry->bitboards, previous_boards, 12 * sizeof(uint64_t));
+                memcpy(old_saved_entry->accumulators, previous_accumulators, 2 * hl_size * sizeof(int16_t));
+                to_update = white_bucket == previous_buckets.first;
+            } else {
+                to_update = new_mirrors.first == lsb(previous_boards[K]) % 8 > 3;
             }
+
+            if (!to_update) {
+                for (int piece = 0; piece < 12; piece++) {
+                    const auto old_white = saved_mirrors.first
+                                               ? horizontal_mirror(saved_bitboards[piece])
+                                               : saved_bitboards[piece];
+                    const auto new_white = new_mirrors.first
+                                               ? horizontal_mirror(new_bitboards[piece])
+                                               : new_bitboards[piece];
+                    auto white_adds = __builtin_bswap64(new_white & ~old_white);
+
+                    while (white_adds) {
+                        const int index_added = lsb(white_adds);
+                        const int input_index = index_added + piece * 64;
+                        for (int iter = 0; iter < hl_size; iter++) {
+                            saved_accumulators[iter] += network->accumulator_weights[white_bucket][input_index][iter];
+                        }
+                        white_adds &= white_adds - 1;
+                    }
+
+                    auto white_subs = __builtin_bswap64(old_white & ~new_white);
+
+                    while (white_subs) {
+                        const int index_subbed = lsb(white_subs);
+                        const int input_index = index_subbed + piece * 64;
+                        for (int iter = 0; iter < hl_size; iter++) {
+                            saved_accumulators[iter] -= network->accumulator_weights[white_bucket][input_index][iter];
+                        }
+                        white_subs &= white_subs - 1;
+                    }
+                }
+
+                update_from_move<white>(network, previous_accumulators, current_accumulators, stack_entry->adds,
+                                        stack_entry->subs, new_mirrors, new_buckets);
+                memcpy(current_accumulators, saved_accumulators, hl_size * sizeof(int16_t));
+                memcpy(&saved_accumulators[hl_size], &current_accumulators[hl_size], hl_size * sizeof(int16_t));
+            } else {
+                for (int piece = 0; piece < 12; piece++) {
+                    const auto old_black = saved_mirrors.second
+                                               ? horizontal_mirror(saved_bitboards[piece])
+                                               : saved_bitboards[piece];
+
+                    const auto new_black = new_mirrors.second
+                                               ? horizontal_mirror(new_bitboards[piece])
+                                               : new_bitboards[piece];
+                    auto black_adds = new_black & ~old_black;
+
+                    while (black_adds) {
+                        const int index_added = lsb(black_adds);
+                        const int input_index = index_added + flip_color(piece) * 64;
+                        for (int iter = 0; iter < hl_size; iter++) {
+                            saved_accumulators[iter + hl_size] += network->accumulator_weights[black_bucket][
+                                input_index][iter];
+                        }
+                        black_adds &= black_adds - 1;
+                    }
+
+                    auto black_subs = old_black & ~new_black;
+
+                    while (black_subs) {
+                        const int index_subbed = lsb(black_subs);
+                        const int input_index = index_subbed + flip_color(piece) * 64;
+                        for (int iter = 0; iter < hl_size; iter++) {
+                            saved_accumulators[iter + hl_size] -= network->accumulator_weights[black_bucket][
+                                input_index][
+                                iter];
+                        }
+                        black_subs &= black_subs - 1;
+                    }
+                }
+                update_from_move<black>(network, previous_accumulators, current_accumulators, stack_entry->adds,
+                                        stack_entry->subs, new_mirrors, new_buckets);
+                memcpy(&current_accumulators[hl_size], &saved_accumulators[hl_size], hl_size * sizeof(int16_t));
+                memcpy(saved_accumulators, current_accumulators, hl_size * sizeof(int16_t));
+            }
+
             memcpy(saved_bitboards, new_bitboards, 12 * sizeof(uint64_t));
-            memcpy(current_accumulators, saved_accumulators, 2 * hl_size * sizeof(int16_t));
         }
 
         stack_entry->is_dirty = false;

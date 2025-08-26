@@ -2,11 +2,11 @@
 #include "bishop.hpp"
 #include <bit>
 
-constexpr uint64_t occupancy_board(const uint8_t set_index, const uint8_t mask_bits_count, uint64_t attack_board)
+constexpr uint64_t occupancy_board(const int set_index, const int mask_bits_count, uint64_t attack_board)
 {
     uint64_t occupancy = 0;
-    for (uint8_t count = 0; count < mask_bits_count; count++) {
-        const uint8_t index = std::popcount((attack_board & -attack_board) - 1);
+    for (int count = 0; count < mask_bits_count; count++) {
+        const int index = std::popcount((attack_board & -attack_board) - 1);
         attack_board = attack_board & (attack_board - 1);
         if (set_index & (1ull << count)) {
             occupancy |= 1ull << index;

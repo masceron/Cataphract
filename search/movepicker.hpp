@@ -23,7 +23,7 @@ enum Stages: uint8_t
 struct MovePicker
 {
     MoveList moves;
-    Move pv = move_none;
+    Move pv = null_move;
     Move* non_captures_start;
     Stages stage = generating_capture_moves;
     Position* pos;
@@ -40,8 +40,8 @@ struct MovePicker
         threshold = _threshold;
         if (_pv && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture && _pv.flag() != ep_capture)) {
             if (!pos->state->checker
-                || pos->state->check_blocker & 1ull << _pv.dest()
-                || pos->piece_on[_pv.src()] == K || pos->piece_on[_pv.src()] == k) {
+                || pos->state->check_blocker & 1ull << _pv.to()
+                || pos->piece_on[_pv.from()] == K || pos->piece_on[_pv.from()] == k) {
                 pv = _pv;
                 stage = TT_moves;
             }
@@ -90,7 +90,7 @@ struct MovePicker
                 }
                 else {
                     stage = none;
-                    return {move_none, 0};
+                    return {null_move, 0};
                 }
                 [[fallthrough]];
             case quiet_moves:
@@ -115,17 +115,17 @@ struct MovePicker
                 }
                 [[fallthrough]];
             case none: default:
-                return {move_none, 0};
+                return {null_move, 0};
         }
     }
 
     std::pair<Move, int16_t> next_move()
     {
         auto move = pick();
-        if (!move.first) return {move_none, 0};
+        if (!move.first) return {null_move, 0};
         while (!check_move_legality(*pos, move.first)) {
             move = pick();
-            if (!move.first) return {move_none, 0};
+            if (!move.first) return {null_move, 0};
         }
         return move;
     }
@@ -135,14 +135,14 @@ struct MovePicker
         if (begin == end) return;
 
         const bool stm = pos->side_to_move;
-        uint8_t moved = pos->piece_on[begin->src()];
-        uint8_t captured = pos->piece_on[begin->dest()];
+        uint8_t moved = pos->piece_on[begin->from()];
+        uint8_t captured = pos->piece_on[begin->to()];
 
         if (captured == nil) captured = P;
         if (moved >= 6) moved -= 6;
         if (captured >= 6) captured -= 6;
 
-        scores[0] = mvv[captured] + Capture::table[stm][moved][captured][begin->dest()];
+        scores[0] = mvv[captured] + Capture::table[stm][moved][captured][begin->to()];
         if (begin->flag() >= knight_promo_capture) scores[0] += value_of(begin->promoted_to<false>());
 
         Move* start = begin + 1;
@@ -152,14 +152,14 @@ struct MovePicker
 
             Move* tmpm = start;
 
-            moved = pos->piece_on[start->src()];
-            captured = pos->piece_on[start->dest()];
+            moved = pos->piece_on[start->from()];
+            captured = pos->piece_on[start->to()];
 
             if (captured == nil) captured = P;
             if (moved >= 6) moved -= 6;
             if (captured >= 6) captured -= 6;
 
-            scores[i] = mvv[captured] + Capture::table[stm][moved][captured][start->dest()];
+            scores[i] = mvv[captured] + Capture::table[stm][moved][captured][start->to()];
             if (start->flag() >= knight_promo_capture) scores[i] += value_of(start->promoted_to<false>());
 
             while (i > 0 && scores[i - 1] < scores[i]) {
@@ -185,11 +185,11 @@ struct MovePicker
 
         if (Killers::find(*begin, pos->state->ply_from_root)) scores[offset] = INT16_MAX;
         else {
-            moved = pos->piece_on[begin->src()];
+            moved = pos->piece_on[begin->from()];
             if (moved >= 6) moved -= 6;
-            scores[offset] = History::table[pos->side_to_move][begin->src()][begin->dest()] +
-            2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->dest()]
-            + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->dest()];
+            scores[offset] = History::table[pos->side_to_move][begin->from()][begin->to()] +
+            2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->to()]
+            + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->to()];
         }
 
         Move* start = begin + 1;
@@ -200,11 +200,11 @@ struct MovePicker
 
             if (Killers::find(*tmpm, pos->state->ply_from_root)) scores[i] = INT16_MAX;
             else {
-                moved = pos->piece_on[tmpm->src()];
+                moved = pos->piece_on[tmpm->from()];
                 if (moved >= 6) moved -= 6;
-                scores[i] = History::table[pos->side_to_move][tmpm->src()][tmpm->dest()] +
-                2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->dest()]
-                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->dest()];
+                scores[i] = History::table[pos->side_to_move][tmpm->from()][tmpm->to()] +
+                2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->to()]
+                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->to()];
             }
             while (i > offset && scores[i - 1] < scores[i]) {
                 std::swap(scores[i-1], scores[i]);

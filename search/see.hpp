@@ -53,7 +53,7 @@ inline uint64_t least_valuable_piece(const Position& pos, const uint64_t attacke
 
 inline uint64_t get_x_ray(const Position& pos, const uint64_t from_set, const uint8_t to, const uint64_t occ)
 {
-    if (const uint8_t from = least_significant_one(from_set); from / 8 == to / 8 || from % 8 == to % 8) {
+    if (const uint8_t from = lsb(from_set); from / 8 == to / 8 || from % 8 == to % 8) {
         const uint64_t orthogonal_sliders = (pos.boards[R] | pos.boards[r] | pos.boards[Q] | pos.boards[q]) ^ from_set;
         return get_rook_attack(to, occ) & orthogonal_sliders;
     }
@@ -66,8 +66,8 @@ inline int16_t static_exchange_evaluation(const Position& pos, const Move captur
     bool side = pos.side_to_move;
     int8_t depth = 0;
     int16_t gains[32];
-    const uint8_t to = capture.dest();
-    const uint8_t from = capture.src();
+    const uint8_t to = capture.to();
+    const uint8_t from = capture.from();
     uint64_t from_set = 1ull << from;
     const uint64_t x_ray_able = pos.boards[P] | pos.boards[p] | pos.boards[B] | pos.boards[b] | pos.boards[R] | pos.boards[r] | pos.boards[Q] | pos.boards[q];
     uint64_t occ = pos.occupations[2];

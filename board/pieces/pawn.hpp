@@ -22,7 +22,7 @@ constexpr uint64_t mask_pawn_attack(const uint8_t side, const uint8_t index)
 
 constexpr std::array<std::array<uint64_t, 64>, 2> generate_pawn_attack_tables() {
     std::array<std::array<uint64_t, 64>, 2> pawn_attacks{};
-    for (uint8_t i = 0; i < 64; i++) {
+    for (int i = 0; i < 64; i++) {
         pawn_attacks[0][i] = mask_pawn_attack(white, i);
         pawn_attacks[1][i] = mask_pawn_attack(black, i);
     }

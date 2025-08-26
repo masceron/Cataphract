@@ -11,9 +11,9 @@
 namespace Cuckoo
 {
     inline std::vector<uint64_t> cuckoo_key(8192, 0);
-    inline std::vector cuckoo_move(8192, move_none);
+    inline std::vector cuckoo_move(8192, null_move);
 
-    inline uint64_t np_piece_attacks(const uint8_t from, const uint8_t to, const uint8_t piece)
+    inline uint64_t np_piece_attacks(const int from, const int to, const uint8_t piece)
     {
         const uint64_t to_board = 1ull << to;
         switch (piece) {
@@ -44,10 +44,10 @@ namespace Cuckoo
 
     inline void init()
     {
-        for (uint8_t piece = 1; piece < 12; piece++) {
+        for (int piece = 1; piece < 12; piece++) {
             if (piece == p) continue;
-            for (uint8_t sq0 = 0; sq0 < 64; sq0++) {
-                for (uint8_t sq1 = sq0 + 1; sq1 < 64; sq1++) {
+            for (int sq0 = 0; sq0 < 64; sq0++) {
+                for (int sq1 = sq0 + 1; sq1 < 64; sq1++) {
                     if (np_piece_attacks(sq0, sq1, piece)) {
                         Move move(sq0, sq1, quiet_move);
                         uint64_t key = Zobrist::piece_keys[piece][sq0] ^ Zobrist::piece_keys[piece][sq1] ^ Zobrist::side_key;

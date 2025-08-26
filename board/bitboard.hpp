@@ -33,7 +33,8 @@ enum Direction
     Upleft = 9,
 };
 
-template<const Direction direction, const bool side> uint64_t Shift(const uint64_t& board)
+template<const Direction direction, const bool side>
+uint64_t Shift(const uint64_t& board)
 {
     if constexpr (direction == Up && side == white) {
         return board >> 8;
@@ -79,9 +80,9 @@ inline void set_bit(uint64_t& bitboard, const uint8_t index)
     bitboard = bitboard | (1ull << index);
 }
 
-inline uint8_t least_significant_one(const uint64_t bitboard)
+inline int lsb(const uint64_t bitboard)
 {
-    return static_cast<uint8_t>(__builtin_ctzll(bitboard));
+    return __builtin_ctzll(bitboard);
 }
 
 inline void print_bitboard(const uint64_t bitboard)

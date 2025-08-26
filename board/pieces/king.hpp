@@ -21,7 +21,7 @@ consteval uint64_t mask_king_attack(const uint8_t index) {
 consteval std::array<uint64_t, 64> generate_king_attack_tables()
 {
     std::array<uint64_t, 64> king_tables{};
-    for (uint8_t i = 0; i < 64; i ++) {
+    for (int i = 0; i < 64; i ++) {
         king_tables[i] = mask_king_attack(i);
     }
     return king_tables;

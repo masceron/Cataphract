@@ -233,12 +233,9 @@ inline void accumulator_stack_update(Network *network)
             };
 
             if (previous_buckets != new_buckets) {
-                const auto old_saved_entry = &finny_table[previous_buckets.first][previous_buckets.second];
-                memcpy(old_saved_entry->bitboards, previous_boards, 12 * sizeof(uint64_t));
-                memcpy(old_saved_entry->accumulators, previous_accumulators, 2 * hl_size * sizeof(int16_t));
                 to_update = white_bucket == previous_buckets.first;
             } else {
-                to_update = new_mirrors.first == lsb(previous_boards[K]) % 8 > 3;
+                to_update = new_mirrors.first == (lsb(previous_boards[K]) % 8 > 3);
             }
 
             if (!to_update) {

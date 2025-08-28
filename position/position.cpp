@@ -49,7 +49,6 @@ void Position::make_move(const Move move, State& st)
     st.previous = state;
     st.rule_50++;
     st.ply++;
-    st.ply_from_root++;
     state = &st;
 
     const uint8_t from = move.from();
@@ -217,7 +216,6 @@ void Position::do_move(const Move move)
     make_move(move, st);
     states.push_back(st);
     state = &states.back();
-    state->ply_from_root = 0;
 }
 
 void Position::unmake_move(const Move &move)
@@ -383,7 +381,6 @@ void Position::make_null_move(State& st)
 
     st.previous = state;
     st.repetition = 1;
-    st.ply_from_root++;
     st.ply = 0;
     st.key ^= Zobrist::side_key;
     st.side_key ^= Zobrist::side_key;

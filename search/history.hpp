@@ -8,6 +8,20 @@
 
 #include "../eval/transposition.hpp"
 
+struct SearchEntry
+{
+    uint16_t piece_to = UINT16_MAX;
+    int16_t static_eval = score_none;
+    uint8_t plies;
+};
+
+inline void search_stack_init(std::vector<SearchEntry>& stack)
+{
+    for (unsigned long long i = 0; i < stack.size(); i++) {
+        stack[i].plies = i - 4;
+    }
+}
+
 namespace History
 {
     inline std::array<std::array<std::array<int16_t, 64>, 64>, 2> table;
@@ -168,21 +182,6 @@ namespace Corrections
 
         return static_eval;
     }
-}
-
-struct SearchEntry
-{
-    uint16_t piece_to;
-    int16_t static_eval;
-};
-
-inline void search_stack_init(SearchEntry* ss)
-{
-    ss[0] = {UINT16_MAX, score_none};
-    ss[1] = {UINT16_MAX, score_none};
-    ss[2] = {UINT16_MAX, score_none};
-    ss[3] = {UINT16_MAX, score_none};
-    ss[4].piece_to = UINT16_MAX;
 }
 
 namespace Continuation

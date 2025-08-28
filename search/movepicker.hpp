@@ -183,7 +183,7 @@ struct MovePicker
         const int16_t prev = ss->piece_to != UINT16_MAX ? ss->piece_to : 0;
         const int16_t prev2 = (ss - 1)->piece_to != UINT16_MAX ? (ss - 1)->piece_to : 0;
 
-        if (Killers::find(*begin, pos->state->ply_from_root)) scores[offset] = INT16_MAX;
+        if (Killers::find(*begin, ss->plies)) scores[offset] = INT16_MAX;
         else {
             moved = pos->piece_on[begin->from()];
             if (moved >= 6) moved -= 6;
@@ -198,7 +198,7 @@ struct MovePicker
             int i = offset + start - begin;
             Move* tmpm = start;
 
-            if (Killers::find(*tmpm, pos->state->ply_from_root)) scores[i] = INT16_MAX;
+            if (Killers::find(*tmpm, ss->plies)) scores[i] = INT16_MAX;
             else {
                 moved = pos->piece_on[tmpm->from()];
                 if (moved >= 6) moved -= 6;

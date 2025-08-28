@@ -21,6 +21,7 @@ A UCI chess engine written in C++.
 * Internal iterative reduction
 * Killers (2 per ply)
 * Static exchange evaluation
+* Probcut
 #### History:
 * Main history
 * Countermove history (1-ply) and follow-up history (2-ply)
@@ -31,7 +32,7 @@ A UCI chess engine written in C++.
 * Major piece correction history
 ### Evaluation
 #### NNUE 
-* Architecture: (768->1024)x2 -> 1x8, horizontally mirrored.
+* Architecture: (768x10 -> 1024)x2 -> 1x8, horizontally mirrored.
 * Trained using Lc0's data using the [Bullet](https://github.com/jw1912/bullet) trainer developed by Jamie Whiting.
 
 > Only work with CPUs that support AVX2.

@@ -58,14 +58,14 @@ void Position::make_move(const Move move, State& st)
     const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
 
     if (captured_piece != nil) {
-        if ((captured_piece == P || captured_piece == p) && flag == ep_capture) [[unlikely]] {
+        if ((captured_piece == P || captured_piece == p) && flag == ep_capture) {
                 const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
                 remove_piece(captured_square);
 
                 st.piece_key ^= Zobrist::piece_keys[captured_piece][captured_square];
         }
         else {
-            if (st.castling_rights) [[unlikely]] {
+            if (st.castling_rights) {
                 if (!side_to_move) {
                     switch (to) {
                         case 0:
@@ -143,7 +143,7 @@ void Position::make_move(const Move move, State& st)
 
         st.rule_50 = 0;
     }
-    else if (st.castling_rights) [[unlikely]] {
+    else if (st.castling_rights) {
         if (moving_piece == K && from == 60) {
             st.castling_rights &= 0b1100;
             st.castling_key = Zobrist::castling_keys[st.castling_rights];
@@ -315,6 +315,12 @@ bool Position::is_pseudo_legal(const Move move)
     }
 
     return true;
+}
+
+bool Position::is_quiet(const Move move) const
+{
+    const auto flag = move.flag();
+    return piece_on[move.to()] == nil && flag < knight_promotion && flag != ep_capture;
 }
 
 bool Position::is_legal(const Move move)

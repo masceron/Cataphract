@@ -20,7 +20,8 @@ namespace UCI
     inline void new_game()
     {
         TT::clear();
-        History::clear();
+        ButterflyHistory::clear();
+        PieceToHistory::clear();
         Killers::clear();
         Capture::clear();
         Corrections::clear();
@@ -33,7 +34,6 @@ namespace UCI
         generate_lines();
         Cuckoo::init();
         TT::alloc();
-        accumulator_stack.reserve(129);
 
         std::cout << "Cataphract v1.1 by masceron" << std::endl;
     }

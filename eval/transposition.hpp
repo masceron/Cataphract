@@ -79,7 +79,7 @@ namespace TT
         if (new_size_in_mb != table_size_in_mb) {
             free_tt();
             table_size_in_mb = new_size_in_mb;
-            table_size = table_size_in_mb * 1048576 / 16;
+            table_size = table_size_in_mb * 1048576 / sizeof(Entry);
             alloc();
         }
     }
@@ -94,7 +94,7 @@ namespace TT
         return (static_cast<unsigned __int128>(key) * static_cast<unsigned __int128>(table_size)) >> 64;
     }
 
-    inline std::tuple<Entry*, uint8_t, uint8_t, Move, int16_t> probe(const uint64_t key, bool& match, const uint8_t ply, int& score)
+    inline std::tuple<Entry*, int, uint8_t, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply, int& score)
     {
         Entry* entry = &table[index_of(key)];
         if (entry->key == key) {

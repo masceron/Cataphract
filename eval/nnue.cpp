@@ -12,14 +12,16 @@ alignas(32) unsigned char data[] = {
 
 inline auto network = reinterpret_cast<Network*>(data);
 
-Network *get_net()
-{
-    return network;
-}
-
-
 void Accumulator_entry::mark_changes(Position& pos, const Move move)
 {
+    is_dirty = true;
+    require_rebuild = false;
+
+    adds[0] = {0, -1};
+    adds[1] = {0, -1};
+    subs[0] = {0, -1};
+    subs[1] = {0, -1};
+
     const uint8_t from = move.from();
     const uint8_t to = move.to();
     const uint8_t flag = move.flag();
@@ -71,11 +73,11 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
     auto to_move = reinterpret_cast<__m256i*>(stm);
     auto not_to_move = reinterpret_cast<__m256i*>(nstm);
     auto move_weights = reinterpret_cast<const __m256i*>(&network->output_weights[bucket]);
-    auto non_move_weights = reinterpret_cast<const __m256i*>(&network->output_weights[bucket][hl_size]);
+    auto non_move_weights = reinterpret_cast<const __m256i*>(&network->output_weights[bucket][HL_SIZE]);
 
     __m256i sum = vec_zero;
 
-    static constexpr int iters = hl_size / 16;
+    static constexpr int iters = HL_SIZE / 16;
     for (int i = 0; i < iters; i++) {
         const __m256i us = _mm256_load_si256(to_move++);
         const __m256i them = _mm256_load_si256(not_to_move++);
@@ -102,11 +104,11 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
 
 int16_t NNUE::evaluate(const Position& pos, int16_t* accumulator_pair)
 {
-    static constexpr uint8_t divisor = (32 + output_buckets - 1) / output_buckets;
+    static constexpr uint8_t divisor = (32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS;
     const uint8_t bucket = (std::popcount(pos.occupations[2]) - 2) / divisor;
-    const int32_t eval = forward(&accumulator_pair[pos.side_to_move * hl_size], &accumulator_pair[!pos.side_to_move * hl_size], bucket);
+    const int32_t eval = forward(&accumulator_pair[pos.side_to_move * HL_SIZE], &accumulator_pair[!pos.side_to_move * HL_SIZE], bucket);
 
-    return static_cast<int16_t>((eval / QA + network->output_bias[bucket]) * eval_scale / (QA * QB));
+    return static_cast<int16_t>((eval / QA + network->output_bias[bucket]) * EVAL_SCALE / (QA * QB));
 }
 void NNUE::update_accumulators()
 {
@@ -118,20 +120,21 @@ void NNUE::refresh_accumulators(Position& pos)
     for (auto &pair: finny_table) {
         for (auto &[bitboards, accumulators] : pair) {
             memset(bitboards, 0, 12 * sizeof(uint64_t));
-            memcpy(accumulators, network->accumulator_biases, hl_size * sizeof(int16_t));
-            memcpy(&accumulators[hl_size], network->accumulator_biases, hl_size * sizeof(int16_t));
+            memcpy(accumulators, network->accumulator_biases, HL_SIZE * sizeof(int16_t));
+            memcpy(&accumulators[HL_SIZE], network->accumulator_biases, HL_SIZE * sizeof(int16_t));
         }
     }
     accumulator_stack.clear();
-    accumulator_stack.emplace_back();
+    accumulator_stack.push();
     const auto [w, b] = get_buckets(pos.boards);
 
-    const auto stack_entry = &accumulator_stack[0];
+    const auto stack_entry = accumulator_stack[0];
     const auto finny_entry = &finny_table[w][b];
 
     memcpy(stack_entry->bitboards, pos.boards, 12 * sizeof(uint64_t));
     memcpy(finny_entry->bitboards, pos.boards, 12 * sizeof(uint64_t));
 
+    stack_entry->is_dirty = false;
     accumulators_set(network, pos.boards, stack_entry->accumulators);
-    memcpy(finny_entry->accumulators, stack_entry->accumulators, 2 * hl_size * sizeof(int16_t));
+    memcpy(finny_entry->accumulators, stack_entry->accumulators, 2 * HL_SIZE * sizeof(int16_t));
 }

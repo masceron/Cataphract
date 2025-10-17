@@ -139,8 +139,8 @@ struct MovePicker
         uint8_t captured = pos->piece_on[begin->to()];
 
         if (captured == nil) captured = P;
+        else if (captured >= 6) captured -= 6;
         if (moved >= 6) moved -= 6;
-        if (captured >= 6) captured -= 6;
 
         scores[0] = mvv[captured] + Capture::table[stm][moved][captured][begin->to()];
         if (begin->flag() >= knight_promo_capture) scores[0] += value_of(begin->promoted_to<false>());
@@ -156,8 +156,8 @@ struct MovePicker
             captured = pos->piece_on[start->to()];
 
             if (captured == nil) captured = P;
+            else if (captured >= 6) captured -= 6;
             if (moved >= 6) moved -= 6;
-            if (captured >= 6) captured -= 6;
 
             scores[i] = mvv[captured] + Capture::table[stm][moved][captured][start->to()];
             if (start->flag() >= knight_promo_capture) scores[i] += value_of(start->promoted_to<false>());
@@ -180,16 +180,20 @@ struct MovePicker
         uint8_t moved;
         const uint8_t offset = non_captures_start - moves.begin();
 
-        const int16_t prev = ss->piece_to != UINT16_MAX ? ss->piece_to : 0;
-        const int16_t prev2 = (ss - 1)->piece_to != UINT16_MAX ? (ss - 1)->piece_to : 0;
+        const int16_t prev = (ss - 1)->piece_to != UINT16_MAX ? (ss - 1)->piece_to : 0;
+        const int16_t prev2 = (ss - 2)->piece_to != UINT16_MAX ? (ss - 2)->piece_to : 0;
+        const int16_t prev4 = (ss - 4)->piece_to != UINT16_MAX ? (ss - 4)->piece_to : 0;
 
         if (Killers::find(*begin, ss->plies)) scores[offset] = INT16_MAX;
         else {
             moved = pos->piece_on[begin->from()];
             if (moved >= 6) moved -= 6;
-            scores[offset] = History::table[pos->side_to_move][begin->from()][begin->to()] +
-            2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->to()]
-            + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->to()];
+            scores[offset] =
+                (ButterflyHistory::table[pos->side_to_move][begin->from()][begin->to()]
+                    + PieceToHistory::table[pos->side_to_move][moved][begin->to()]) / 2
+            + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->to()]
+            + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->to()]
+            + Continuation::four_plies[pos->side_to_move][prev4 >> 6][prev4 & 0b111111][moved][begin->to()] / 2;
         }
 
         Move* start = begin + 1;
@@ -202,9 +206,11 @@ struct MovePicker
             else {
                 moved = pos->piece_on[tmpm->from()];
                 if (moved >= 6) moved -= 6;
-                scores[i] = History::table[pos->side_to_move][tmpm->from()][tmpm->to()] +
-                2 * Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->to()]
-                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->to()];
+                scores[i] = (ButterflyHistory::table[pos->side_to_move][tmpm->from()][tmpm->to()]
+                    + PieceToHistory::table[pos->side_to_move][moved][tmpm->to()]) / 2
+                + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->to()]
+                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->to()]
+                + Continuation::four_plies[pos->side_to_move][prev4 >> 6][prev4 & 0b111111][moved][begin->to()] / 2;
             }
             while (i > offset && scores[i - 1] < scores[i]) {
                 std::swap(scores[i-1], scores[i]);

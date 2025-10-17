@@ -6,40 +6,30 @@
 
 static constexpr uint8_t QA = 255;
 static constexpr uint8_t QB = 64;
-static constexpr int16_t eval_scale = 400;
-#define hl_size 1024
-#define input_size 768
-#define output_buckets 8
-#define input_buckets 10
+static constexpr int16_t EVAL_SCALE = 400;
+#define HL_SIZE 1024
+#define INPUT_SIZE 768
+#define OUTPUT_BUCKETS 8
+#define INPUT_BUCKETS 10
 
 struct Network
 {
-    int16_t accumulator_weights[input_buckets][input_size][hl_size];
-    int16_t accumulator_biases[hl_size];
-    int16_t output_weights[output_buckets][2 * hl_size];
-    int16_t output_bias[output_buckets];
+    int16_t accumulator_weights[INPUT_BUCKETS][INPUT_SIZE][HL_SIZE];
+    int16_t accumulator_biases[HL_SIZE];
+    int16_t output_weights[OUTPUT_BUCKETS][2 * HL_SIZE];
+    int16_t output_bias[OUTPUT_BUCKETS];
 };
-
-Network* get_net();
 
 struct Accumulator_entry
 {
-    bool is_dirty = false;
-    bool require_rebuild = false;
+    alignas(32) int16_t accumulators[2 * HL_SIZE];
     uint64_t bitboards[12];
-    std::pair<uint8_t, int8_t> adds[2] = {{0, -1}, {0, -1}};
-    std::pair<uint8_t, int8_t> subs[2] = {{0, -1}, {0, -1}};
-    alignas(32) int16_t accumulators[2 * hl_size];
+    bool is_dirty;
+    bool require_rebuild;
+    std::pair<uint8_t, int8_t> adds[2];
+    std::pair<uint8_t, int8_t> subs[2];
 
     void mark_changes(Position& pos, Move move);
-
-    Accumulator_entry(Position& pos, const Move move)
-    : is_dirty(true)
-    {
-        mark_changes(pos, move);
-    }
-
-    Accumulator_entry() {}
 };
 
 namespace NNUE

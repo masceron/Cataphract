@@ -119,6 +119,7 @@ struct Position
 
     [[nodiscard]] bool is_legal(Move move);
     [[nodiscard]] bool is_pseudo_legal(Move move);
+    [[nodiscard]] bool is_quiet(Move move) const;
 
     [[nodiscard]] uint64_t construct_zobrist_key() const;
 

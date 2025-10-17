@@ -28,32 +28,32 @@ inline int algebraic_to_num(const std::string &algebraic)
     int rank = 0;
     int file = 0;
     if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - (algebraic[1] - '0');
-    else return - 1;
+    else return -1;
     switch (algebraic[0]) {
         case 'a':
             file = 0;
-        break;
+            break;
         case 'b':
             file = 1;
-        break;
+            break;
         case 'c':
             file = 2;
-        break;
+            break;
         case 'd':
             file = 3;
-        break;
+            break;
         case 'e':
             file = 4;
-        break;
+            break;
         case 'f':
             file = 5;
-        break;
+            break;
         case 'g':
             file = 6;
-        break;
+            break;
         case 'h':
             file = 7;
-        break;
+            break;
         default:
             return -1;
     }
@@ -64,22 +64,49 @@ inline std::string num_to_algebraic(const int sq)
 {
     static constexpr char files[] = "abcdefgh";
 
-    return files[sq % 8] + std::to_string(8 - sq/8);
+    return files[sq % 8] + std::to_string(8 - sq / 8);
 }
 
 #pragma pack(push, 1)
 struct Move
 {
     uint16_t move;
-    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags) : move(src | (dest << 6) | (flags << 12)) {}
-    explicit Move(const uint16_t _move): move(_move) {}
-    Move() {}
-    [[nodiscard]] uint16_t flag() const { return move >> 12; }
-    [[nodiscard]] uint16_t from() const { return move & 0b111111; }
-    [[nodiscard]] uint16_t to() const { return move >> 6 & 0b111111; }
-    [[nodiscard]] explicit operator bool() const {return move != 0;}
 
-    template<const bool side_needed> [[nodiscard]] Pieces promoted_to(const bool side = white) const
+    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags) : move(
+        src | (dest << 6) | (flags << 12))
+    {
+    }
+
+    explicit Move(const uint16_t _move) : move(_move)
+    {
+    }
+
+    Move()
+    {
+    }
+
+    [[nodiscard]] uint16_t flag() const
+    {
+        return move >> 12;
+    }
+
+    [[nodiscard]] uint16_t from() const
+    {
+        return move & 0b111111;
+    }
+
+    [[nodiscard]] uint16_t to() const
+    {
+        return move >> 6 & 0b111111;
+    }
+
+    [[nodiscard]] explicit operator bool() const
+    {
+        return move != 0;
+    }
+
+    template<const bool side_needed>
+    [[nodiscard]] Pieces promoted_to(const bool side = white) const
     {
         if constexpr (!side_needed) return static_cast<Pieces>((flag() & 0b11) + 1);
         else {
@@ -88,7 +115,7 @@ struct Move
         }
     }
 
-    bool operator==(const Move & _move) const { return _move.move == this->move; };
+    bool operator==(const Move _move) const { return _move.move == this->move; };
 
     [[nodiscard]] std::string get_move_string() const
     {
@@ -100,16 +127,16 @@ struct Move
             switch (promoted_to<false>()) {
                 case N:
                     s << "n";
-                break;
+                    break;
                 case B:
                     s << "b";
-                break;
+                    break;
                 case R:
                     s << "r";
-                break;
+                    break;
                 case Q:
                     s << "q";
-                break;
+                    break;
                 default:
                     break;
             }
@@ -119,4 +146,4 @@ struct Move
 };
 #pragma pack(pop)
 
-const Move null_move(0, 0, 0);
+const Move null_move(0);

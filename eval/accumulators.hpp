@@ -7,7 +7,9 @@ struct Accumulator_stack
     Accumulator_entry stack[130];
     int size;
 
-    Accumulator_stack(): size(0) {}
+    Accumulator_stack() : stack{}, size(0)
+    {
+    }
 
     void push(Position& pos, const Move move)
     {
@@ -102,7 +104,7 @@ inline std::pair<uint8_t, uint8_t> get_buckets(const uint64_t *boards)
     };
 }
 
-inline void accumulators_set(Network *network, const uint64_t *boards, int16_t *accumulators)
+inline void accumulators_set(const Network *network, const uint64_t *boards, int16_t *accumulators)
 {
     memcpy(accumulators, network->accumulator_biases, HL_SIZE * sizeof(int16_t));
     memcpy(&accumulators[HL_SIZE], network->accumulator_biases, HL_SIZE * sizeof(int16_t));

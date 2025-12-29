@@ -22,7 +22,7 @@ inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64
     return attackers;
 }
 
-inline int value_of(const Pieces piece)
+inline int16_t value_of(const Pieces piece)
 {
     switch (piece) {
         case P: case p:

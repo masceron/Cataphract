@@ -6,13 +6,19 @@
 
 struct Network;
 
+#ifdef __AVX512F__
+alignas(64) unsigned char data[] = {
+    #embed "../net.bin"
+};
+#elifdef __AVX2__
 alignas(32) unsigned char data[] = {
     #embed "../net.bin"
 };
+#endif
 
 inline auto network = reinterpret_cast<Network*>(data);
 
-void Accumulator_entry::mark_changes(Position& pos, const Move move)
+void Accumulator_entry::mark_changes(const Position& pos, const Move move)
 {
     is_dirty = true;
     require_rebuild = false;
@@ -65,6 +71,41 @@ void Accumulator_entry::mark_changes(Position& pos, const Move move)
     }
 }
 
+#ifdef __AVX512F__
+int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
+{
+    static const __m512i vec_zero = _mm512_setzero_si512();
+    static const __m512i vec_QA = _mm512_set1_epi16(QA);
+
+    auto to_move = reinterpret_cast<__m512i*>(stm);
+    auto not_to_move = reinterpret_cast<__m512i*>(nstm);
+    auto move_weights = reinterpret_cast<const __m512i*>(&network->output_weights[bucket]);
+    auto non_move_weights = reinterpret_cast<const __m512i*>(&network->output_weights[bucket][HL_SIZE]);
+
+    __m512i sum = vec_zero;
+
+    static constexpr int iters = HL_SIZE / 32;
+
+    for (int i = 0; i < iters; i++) {
+        const __m512i us = _mm512_load_si512(to_move++);
+        const __m512i them = _mm512_load_si512(not_to_move++);
+        const __m512i us_weights = _mm512_load_si512(move_weights++);
+        const __m512i them_weights = _mm512_load_si512(non_move_weights++);
+
+        const __m512i us_clamped = _mm512_min_epi16(_mm512_max_epi16(us, vec_zero), vec_QA);
+        const __m512i them_clamped = _mm512_min_epi16(_mm512_max_epi16(them, vec_zero), vec_QA);
+
+        const __m512i us_results = _mm512_madd_epi16(_mm512_mullo_epi16(us_weights, us_clamped), us_clamped);
+        const __m512i them_results = _mm512_madd_epi16(_mm512_mullo_epi16(them_weights, them_clamped), them_clamped);
+
+        sum = _mm512_add_epi32(sum, us_results);
+        sum = _mm512_add_epi32(sum, them_results);
+    }
+
+    // Horizontal sum of the 16 x 32-bit integers in the zmm register
+    return _mm512_reduce_add_epi32(sum);
+}
+#elifdef __AVX2__
 int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
 {
     static const __m256i vec_zero = _mm256_setzero_si256();
@@ -101,6 +142,7 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
     const auto sum32 = _mm_add_epi32(sum64, high32);
     return _mm_cvtsi128_si32(sum32);
 }
+#endif
 
 int16_t NNUE::evaluate(const Position& pos, int16_t* accumulator_pair)
 {
@@ -115,7 +157,7 @@ void NNUE::update_accumulators()
     accumulator_stack_update(network);
 }
 
-void NNUE::refresh_accumulators(Position& pos)
+void NNUE::refresh_accumulators(const Position& pos)
 {
     for (auto &pair: finny_table) {
         for (auto &[bitboards, accumulators] : pair) {

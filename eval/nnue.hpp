@@ -22,20 +22,24 @@ struct Network
 
 struct Accumulator_entry
 {
+#ifdef __AVX512F__
+    alignas(64) int16_t accumulators[2 * HL_SIZE];
+#elifdef __AVX2__
     alignas(32) int16_t accumulators[2 * HL_SIZE];
+#endif
     uint64_t bitboards[12];
     bool is_dirty;
     bool require_rebuild;
     std::pair<uint8_t, int8_t> adds[2];
     std::pair<uint8_t, int8_t> subs[2];
 
-    void mark_changes(Position& pos, Move move);
+    void mark_changes(const Position& pos, Move move);
 };
 
 namespace NNUE
 {
     int32_t forward(int16_t* stm, int16_t* nstm, uint8_t bucket);
     void update_accumulators();
-    void refresh_accumulators(Position& pos);
+    void refresh_accumulators(const Position& pos);
     int16_t evaluate(const Position& pos, int16_t* accumulator_pair);
 }

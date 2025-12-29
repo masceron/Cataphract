@@ -11,7 +11,7 @@ struct Accumulator_stack
     {
     }
 
-    void push(Position& pos, const Move move)
+    void push(const Position& pos, const Move move)
     {
         stack[size].mark_changes(pos, move);
         ++size;
@@ -53,7 +53,11 @@ inline constexpr uint8_t input_buckets_map[] = {
 struct Finny_entry
 {
     uint64_t bitboards[12];
+#ifdef __AVX512F__
+    alignas(64) int16_t accumulators[2 * HL_SIZE];
+#elifdef __AVX2__
     alignas(32) int16_t accumulators[2 * HL_SIZE];
+#endif
 };
 
 inline Finny_entry finny_table[INPUT_BUCKETS][INPUT_BUCKETS];

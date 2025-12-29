@@ -184,17 +184,15 @@ namespace PieceToHistory
 
 namespace Continuation
 {
-    static constexpr int16_t min_continuation = -9000;
-    static constexpr int16_t max_continuation = 9000;
+    static constexpr int16_t min_continuation = -11000;
+    static constexpr int16_t max_continuation = 11000;
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
-    inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> four_plies;
 
     inline void clear()
     {
         memset(counter_moves.data(), 0, 589824);
         memset(follow_up.data(), 0, 589824);
-        memset(four_plies.data(), 0, 589824);
     }
 
     inline void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
@@ -251,20 +249,6 @@ namespace Continuation
                 apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmpm.to(), -bonus);
             }
             if (follow_up[stm][prev2_piece][prev2_to][piece][move.to()] >= max_continuation) scale_down(follow_up);
-        }
-
-        if (const auto prev4 = ss - 4; (ss - 4)->piece_to != UINT16_MAX) {
-            const uint8_t prev4_piece = prev4->piece_to >> 6;
-            const uint8_t prev4_to = prev4->piece_to & 0b111111;
-
-            apply(four_plies, stm, prev4_piece, prev4_to, piece, move.to(), bonus);
-
-            for (const auto& tmpm: searched) {
-                uint8_t tmp = pos.piece_on[tmpm.from()];
-                if (tmp >= 6) tmp -= 6;
-                apply(four_plies, stm, prev4_piece, prev4_to, tmp, tmpm.to(), -bonus);
-            }
-            if (four_plies[stm][prev4_piece][prev4_to][piece][move.to()] >= max_continuation) scale_down(four_plies);
         }
     }
 }

@@ -102,7 +102,6 @@ int32_t NNUE::forward(int16_t* stm, int16_t* nstm, const uint8_t bucket)
         sum = _mm512_add_epi32(sum, them_results);
     }
 
-    // Horizontal sum of the 16 x 32-bit integers in the zmm register
     return _mm512_reduce_add_epi32(sum);
 }
 #elifdef __AVX2__

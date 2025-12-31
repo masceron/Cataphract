@@ -35,7 +35,7 @@ namespace UCI
         Cuckoo::init();
         TT::alloc();
 
-        std::cout << "Cataphract v1.1 by masceron" << std::endl;
+        std::cout << "Cataphract v1.2 by masceron" << std::endl;
     }
     inline void process_move(const std::string& move)
     {

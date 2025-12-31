@@ -100,8 +100,8 @@ namespace ButterflyHistory
 {
     inline std::array<std::array<std::array<int16_t, 64>, 64>, 2> table;
 
-    static constexpr int16_t min_butterfly = -9000;
-    static constexpr int16_t max_butterfly = 9000;
+    static constexpr int16_t min_butterfly = -8000;
+    static constexpr int16_t max_butterfly = 8000;
 
     inline void clear()
     {
@@ -141,8 +141,8 @@ namespace PieceToHistory
 {
     inline std::array<std::array<std::array<int16_t, 64>, 6>, 2> table;
 
-    static constexpr int16_t min_piece_to = -9000;
-    static constexpr int16_t max_piece_to = 9000;
+    static constexpr int16_t min_piece_to = -8000;
+    static constexpr int16_t max_piece_to = 8000;
 
     inline void clear()
     {
@@ -184,8 +184,8 @@ namespace PieceToHistory
 
 namespace Continuation
 {
-    static constexpr int16_t min_continuation = -11000;
-    static constexpr int16_t max_continuation = 11000;
+    static constexpr int16_t min_continuation = -12000;
+    static constexpr int16_t max_continuation = 12000;
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
 

@@ -7,7 +7,6 @@
 #include <ranges>
 #include <algorithm>
 
-
 #include "eval/nnue.hpp"
 #include "position/cuckoo.hpp"
 #include "position/fen.hpp"
@@ -35,7 +34,7 @@ namespace UCI
         Cuckoo::init();
         TT::alloc();
 
-        std::cout << "Cataphract v1.2 by masceron" << std::endl;
+        std::cout << "Cataphract v1.3 by masceron" << std::endl;
     }
     inline void process_move(const std::string& move)
     {

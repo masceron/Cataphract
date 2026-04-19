@@ -304,7 +304,7 @@ namespace Corrections
         *major = std::clamp(static_cast<int16_t>(correction_major / correction_scale), static_cast<int16_t>(-correction_limit), correction_limit);
     }
 
-    inline int16_t correct(int16_t static_eval, const Position& pos)
+    inline int correct(int static_eval, const Position& pos)
     {
         const auto minors = pos.boards[N] | pos.boards[n] | pos.boards[B] | pos.boards[b];
         const auto majors = pos.boards[Q] | pos.boards[q] | pos.boards[R] | pos.boards[r];
@@ -315,7 +315,7 @@ namespace Corrections
 
         const int corrections = pawn_correction + minor_correction + major_correction;
 
-        static_eval += static_cast<int16_t>(corrections / correction_grain);
+        static_eval += corrections / correction_grain;
 
         return static_eval;
     }

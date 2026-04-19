@@ -16,7 +16,7 @@ void Position::new_game()
 void Position::move_piece(const int from, const int to)
 {
     const Pieces piece = piece_on[from];
-    const uint64_t ft = (1ull << from) | (1ull << to);
+    const uint64_t ft = 1ull << from | 1ull << to;
     boards[piece] ^= ft;
     occupations[color_of(piece)] ^= ft;
     occupations[2] ^= ft;
@@ -57,39 +57,47 @@ void Position::make_move(const Move move, State& st)
     const Pieces moving_piece = piece_on[from];
     const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
 
-    if (captured_piece != nil) {
-        if ((captured_piece == P || captured_piece == p) && flag == ep_capture) {
-                const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
-                remove_piece(captured_square);
+    if (captured_piece != nil)
+    {
+        if ((captured_piece == P || captured_piece == p) && flag == ep_capture)
+        {
+            const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
+            remove_piece(captured_square);
 
-                st.piece_key ^= Zobrist::piece_keys[captured_piece][captured_square];
+            st.piece_key ^= Zobrist::piece_keys[captured_piece][captured_square];
         }
-        else {
-            if (st.castling_rights) {
-                if (!side_to_move) {
-                    switch (to) {
-                        case 0:
-                            st.castling_rights &= ~black_queen;
-                            st.castling_key =  Zobrist::castling_keys[st.castling_rights];
-                            break;
-                        case 7:
-                            st.castling_rights &= ~black_king;
-                            st.castling_key = Zobrist::castling_keys[st.castling_rights];
-                            break;
-                        default: break;
+        else
+        {
+            if (st.castling_rights)
+            {
+                if (!side_to_move)
+                {
+                    switch (to)
+                    {
+                    case 0:
+                        st.castling_rights &= ~black_queen;
+                        st.castling_key = Zobrist::castling_keys[st.castling_rights];
+                        break;
+                    case 7:
+                        st.castling_rights &= ~black_king;
+                        st.castling_key = Zobrist::castling_keys[st.castling_rights];
+                        break;
+                    default: break;
                     }
                 }
-                else {
-                    switch (to) {
-                        case 56:
-                            st.castling_rights &= ~white_queen;
-                            st.castling_key = Zobrist::castling_keys[st.castling_rights];
-                            break;
-                        case 63:
-                            st.castling_rights &= ~white_king;
-                            st.castling_key = Zobrist::castling_keys[st.castling_rights];
-                            break;
-                        default: break;
+                else
+                {
+                    switch (to)
+                    {
+                    case 56:
+                        st.castling_rights &= ~white_queen;
+                        st.castling_key = Zobrist::castling_keys[st.castling_rights];
+                        break;
+                    case 63:
+                        st.castling_rights &= ~white_king;
+                        st.castling_key = Zobrist::castling_keys[st.castling_rights];
+                        break;
+                    default: break;
                     }
                 }
             }
@@ -100,34 +108,39 @@ void Position::make_move(const Move move, State& st)
         }
         st.rule_50 = 0;
     }
-    else {
+    else
+    {
         Pieces rook;
-        switch (flag) {
-            case king_castle:
-                move_piece(to + 1, to - 1);
-                rook = side_to_move == white ? R : r;
+        switch (flag)
+        {
+        case king_castle:
+            move_piece(to + 1, to - 1);
+            rook = side_to_move == white ? R : r;
 
-                st.piece_key ^= Zobrist::piece_keys[rook][to + 1] ^ Zobrist::piece_keys[rook][to - 1];
-                break;
-            case queen_castle:
-                move_piece(to - 2, to + 1);
-                rook = side_to_move == white ? R : r;
+            st.piece_key ^= Zobrist::piece_keys[rook][to + 1] ^ Zobrist::piece_keys[rook][to - 1];
+            break;
+        case queen_castle:
+            move_piece(to - 2, to + 1);
+            rook = side_to_move == white ? R : r;
 
-                st.piece_key ^= Zobrist::piece_keys[rook][to - 2] ^ Zobrist::piece_keys[rook][to + 1];
-                break;
-            default: break;
+            st.piece_key ^= Zobrist::piece_keys[rook][to - 2] ^ Zobrist::piece_keys[rook][to + 1];
+            break;
+        default: break;
         }
     }
 
-    if (st.en_passant_square != -1) [[unlikely]] {
+    if (st.en_passant_square != -1) [[unlikely]]
+    {
         st.en_passant_key = 0;
         st.en_passant_square = -1;
     }
 
     move_piece(from, to);
 
-    if (moving_piece == P || moving_piece == p) {
-        if (flag >= knight_promotion) {
+    if (moving_piece == P || moving_piece == p)
+    {
+        if (flag >= knight_promotion)
+        {
             const Pieces promoted_to = move.promoted_to<true>(side_to_move);
             remove_piece(to);
             put_piece(promoted_to, to);
@@ -135,7 +148,9 @@ void Position::make_move(const Move move, State& st)
             st.piece_key ^= Zobrist::piece_keys[promoted_to][to] ^ Zobrist::piece_keys[moving_piece][to];
         }
         else if (flag == double_push &&
-            (pawn_attack_tables[side_to_move][to + (side_to_move == white ? 8 : -8)] & boards[side_to_move == white ? p : P])) {
+            pawn_attack_tables[side_to_move][to + (side_to_move == white ? 8 : -8)] & boards[
+                side_to_move == white ? p : P])
+        {
             st.en_passant_square = to + (side_to_move == white ? 8 : -8);
 
             st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
@@ -143,31 +158,40 @@ void Position::make_move(const Move move, State& st)
 
         st.rule_50 = 0;
     }
-    else if (st.castling_rights) {
-        if (moving_piece == K && from == 60) {
+    else if (st.castling_rights)
+    {
+        if (moving_piece == K && from == 60)
+        {
             st.castling_rights &= 0b1100;
             st.castling_key = Zobrist::castling_keys[st.castling_rights];
         }
-        else if (moving_piece == k && from == 4) {
+        else if (moving_piece == k && from == 4)
+        {
             st.castling_rights &= 0b0011;
             st.castling_key = Zobrist::castling_keys[st.castling_rights];
         }
-        else if (moving_piece == R) {
-            if (from == 56) {
+        else if (moving_piece == R)
+        {
+            if (from == 56)
+            {
                 st.castling_rights &= ~white_queen;
                 st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
-            else if (from == 63) {
+            else if (from == 63)
+            {
                 st.castling_rights &= ~white_king;
                 st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
         }
-        else if (moving_piece == r) {
-            if (from == 7) {
+        else if (moving_piece == r)
+        {
+            if (from == 7)
+            {
                 st.castling_rights &= ~black_king;
                 st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
-            else if (from == 0) {
+            else if (from == 0)
+            {
                 st.castling_rights &= ~black_queen;
                 st.castling_key = Zobrist::castling_keys[st.castling_rights];
             }
@@ -182,27 +206,33 @@ void Position::make_move(const Move move, State& st)
 
     st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
 
-    if (!side_to_move) {
+    if (!side_to_move)
+    {
         st.checker = get_checker_of<black>();
         st.pinned = get_pinned_board_of<black>();
     }
-    else {
+    else
+    {
         st.checker = get_checker_of<white>();
         st.pinned = get_pinned_board_of<white>();
     }
 
-    if (st.checker) {
+    if (st.checker)
+    {
         st.check_blocker = get_check_blocker_of(!side_to_move);
     }
 
     side_to_move = !side_to_move;
 
     st.repetition = 1;
-    if (const uint16_t cutoff = std::min(st.rule_50, st.ply); cutoff >= 4) {
+    if (const uint16_t cutoff = std::min(st.rule_50, st.ply); cutoff >= 4)
+    {
         const State* tst = st.previous->previous;
-        for (int cr = 4; cr <= cutoff; cr += 2) {
+        for (int cr = 4; cr <= cutoff; cr += 2)
+        {
             tst = tst->previous->previous;
-            if (st.key == tst->key) {
+            if (st.key == tst->key)
+            {
                 st.repetition = tst->repetition + 1;
                 break;
             }
@@ -218,28 +248,33 @@ void Position::do_move(const Move move)
     state = &states.back();
 }
 
-void Position::unmake_move(const Move &move)
+void Position::unmake_move(const Move& move)
 {
     side_to_move = !side_to_move;
     const uint8_t from = move.from();
     const uint8_t to = move.to();
     const uint8_t flag = move.flag();
 
-    if (flag >= knight_promotion) {
+    if (flag >= knight_promotion)
+    {
         remove_piece(to);
         put_piece(side_to_move == white ? P : p, to);
     }
-    else if (flag == king_castle) {
+    else if (flag == king_castle)
+    {
         move_piece(to - 1, to + 1);
     }
-    else if (flag == queen_castle) {
+    else if (flag == queen_castle)
+    {
         move_piece(to + 1, to - 2);
     }
 
     move_piece(to, from);
-    if (state->captured_piece != nil) {
+    if (state->captured_piece != nil)
+    {
         uint8_t captured_square = to;
-        if (flag == ep_capture) {
+        if (flag == ep_capture)
+        {
             captured_square -= Delta<Up>(side_to_move);
         }
 
@@ -252,10 +287,12 @@ void Position::unmake_move(const Move &move)
 bool Position::is_pseudo_legal(const Move move)
 {
     const uint16_t flag = move.flag();
-    if (flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle) {
+    if (flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle)
+    {
         MoveList list;
         pseudo_legals<all>(*this, list);
-        for (int i = 0; i < list.size(); i++) {
+        for (int i = 0; i < list.size(); i++)
+        {
             if (list.list[i] == move) return true;
         }
         return false;
@@ -272,41 +309,54 @@ bool Position::is_pseudo_legal(const Move move)
     if (occupations[side_to_move] & to_board) return false;
 
     static constexpr uint64_t rank18 = 0xFF000000000000FFull;
-    if (moved_piece == P || moved_piece == p) {
+    if (moved_piece == P || moved_piece == p)
+    {
         if (rank18 & to_board) return false;
 
         if (!(pawn_attack_tables[side_to_move][from] & occupations[!side_to_move] & to_board)
             && !(from + Delta<Up>(side_to_move) == to && piece_on[to] == nil)
-            && !(from + 2 * Delta<Up>(side_to_move) == to && piece_on[to] == nil && piece_on[to - Delta<Up>(side_to_move)] == nil))
+            && !(from + 2 * Delta<Up>(side_to_move) == to && piece_on[to] == nil && piece_on[to - Delta<Up>(side_to_move)] == nil
+                && (side_to_move == white ? from / 8 == 6 : from / 8 == 1)))
             return false;
     }
-    else if (moved_piece == N || moved_piece == n) {
+    else if (moved_piece == N || moved_piece == n)
+    {
         if (!(knight_attack_tables[from] & to_board & ~occupations[side_to_move])) return false;
     }
-    else if (moved_piece == R || moved_piece == r) {
+    else if (moved_piece == R || moved_piece == r)
+    {
         if (!(get_rook_attack(from, occupations[2]) & to_board & ~occupations[side_to_move])) return false;
     }
-    else if (moved_piece == B || moved_piece == b) {
+    else if (moved_piece == B || moved_piece == b)
+    {
         if (!(get_bishop_attack(from, occupations[2]) & to_board & ~occupations[side_to_move])) return false;
     }
-    else if (moved_piece == Q || moved_piece == q) {
-        if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board & ~occupations[side_to_move])) return false;
+    else if (moved_piece == Q || moved_piece == q)
+    {
+        if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board & ~
+            occupations[side_to_move])) return false;
     }
-    else if (moved_piece == K || moved_piece == k) {
+    else if (moved_piece == K || moved_piece == k)
+    {
         if (!(king_attack_tables[from] & to_board & ~occupations[side_to_move])) return false;
     }
 
-    if (state->checker) {
-        if (moved_piece != K && moved_piece != k) {
-            if (std::popcount(state->checker) != 1) {
+    if (state->checker)
+    {
+        if (moved_piece != K && moved_piece != k)
+        {
+            if (std::popcount(state->checker) != 1)
+            {
                 return false;
             }
 
             if (!(state->check_blocker & to_board)) return false;
         }
-        else {
+        else
+        {
             occupations[2] ^= boards[moved_piece];
-            if (is_square_attacked_by(to, !side_to_move)) {
+            if (is_square_attacked_by(to, !side_to_move))
+            {
                 occupations[2] ^= boards[moved_piece];
                 return false;
             }
@@ -334,17 +384,22 @@ bool Position::is_legal(const Move move)
     const uint64_t king_board = boards[king];
     const auto king_index = lsb(king_board);
 
-    if (flag == king_castle) {
-        for (int k = from; k <= from + 2; k++) {
+    if (flag == king_castle)
+    {
+        for (int k = from; k <= from + 2; k++)
+        {
             if (is_square_attacked_by(k, enemy)) return false;
         }
     }
-    else if (flag == queen_castle) {
-        for (int k = from; k >= from - 2; k--) {
+    else if (flag == queen_castle)
+    {
+        for (int k = from; k >= from - 2; k--)
+        {
             if (is_square_attacked_by(k, enemy)) return false;
         }
     }
-    else if (flag == ep_capture) {
+    else if (flag == ep_capture)
+    {
         const uint64_t eq = boards[us == white ? q : Q];
         const uint64_t eb = boards[us == white ? b : B];
         const uint64_t er = boards[us == white ? r : R];
@@ -352,24 +407,28 @@ bool Position::is_legal(const Move move)
 
         return !((get_bishop_attack(king_index, occ) & (eq | eb)) | (get_rook_attack(king_index, occ) & (eq | er)));
     }
-    else if (piece_on[from] == king) {
+    else if (piece_on[from] == king)
+    {
         occupations[2] ^= king_board;
-        if (is_square_attacked_by(to, enemy)) {
+        if (is_square_attacked_by(to, enemy))
+        {
             occupations[2] ^= king_board;
             return false;
         }
         occupations[2] ^= king_board;
     }
 
-    return !(state->pinned & (1ull << from)) || (lines_intersect[from][to] & king_board);
+    return !(state->pinned & 1ull << from) || lines_intersect[from][to] & king_board;
 }
 
 uint64_t Position::construct_zobrist_key() const
 {
     uint64_t key = 0;
-    for (int piece = 0; piece < 12; piece++) {
+    for (int piece = 0; piece < 12; piece++)
+    {
         auto board = boards[piece];
-        while (board) {
+        while (board)
+        {
             key ^= Zobrist::piece_keys[piece][lsb(board)];
             board &= board - 1;
         }
@@ -391,7 +450,8 @@ void Position::make_null_move(State& st)
     st.key ^= Zobrist::side_key;
     st.side_key ^= Zobrist::side_key;
 
-    if (st.en_passant_square != -1) {
+    if (st.en_passant_square != -1)
+    {
         st.en_passant_square = -1;
         st.key ^= st.en_passant_key;
         st.en_passant_key = 0;
@@ -412,14 +472,16 @@ void Position::unmake_null_move()
 
 bool Position::is_square_attacked_by(const int index, const bool side) const
 {
-    if (!side) {
+    if (!side)
+    {
         if (get_rook_attack(index, occupations[2]) & (boards[R] | boards[Q])) return true;
         if (get_bishop_attack(index, occupations[2]) & (boards[B] | boards[Q])) return true;
         if (knight_attack_tables[index] & boards[N]) return true;
         if (pawn_attack_tables[black][index] & boards[P]) return true;
         if (king_attack_tables[index] & boards[K]) return true;
     }
-    else {
+    else
+    {
         if (get_rook_attack(index, occupations[2]) & (boards[r] | boards[q])) return true;
         if (get_bishop_attack(index, occupations[2]) & (boards[b] | boards[q])) return true;
         if (knight_attack_tables[index] & boards[n]) return true;
@@ -445,7 +507,8 @@ bool Position::upcoming_repetition(const int ply) const
     const State* prev = state->previous;
     uint64_t other = original_key ^ prev->key ^ Zobrist::side_key;
 
-    for (int i = 3; i <= end; i+=2) {
+    for (int i = 3; i <= end; i += 2)
+    {
         prev = prev->previous;
         other ^= prev->key ^ prev->previous->key ^ Zobrist::side_key;
         prev = prev->previous;
@@ -458,7 +521,8 @@ bool Position::upcoming_repetition(const int ply) const
         if (diff != Cuckoo::cuckoo_key[slot]) slot = Cuckoo::hash2(diff);
         if (diff != Cuckoo::cuckoo_key[slot]) continue;
 
-        if (const Move move = Cuckoo::cuckoo_move[slot]; !(occupations[2] & lines_between[move.from()][move.to()])) {
+        if (const Move move = Cuckoo::cuckoo_move[slot]; !(occupations[2] & lines_between[move.from()][move.to()]))
+        {
             if (ply > i) return true;
 
             if (prev->repetition > 1) return true;
@@ -471,30 +535,37 @@ bool Position::upcoming_repetition(const int ply) const
 void Position::print_board() const
 {
     std::string lines[8];
-    for (int rank = 0; rank < 8; rank++) {
-        lines[rank] += std::to_string(8-rank) + "  ";
-        for (int file = 0; file < 8; file++) {
+    for (int rank = 0; rank < 8; rank++)
+    {
+        lines[rank] += std::to_string(8 - rank) + "  ";
+        for (int file = 0; file < 8; file++)
+        {
             lines[rank] += ". ";
         }
         lines[rank] += "\n";
     }
-    for (int _pos = 0; _pos < 64; _pos++) {
-        lines[_pos / 8][3 + (_pos % 8) * 2] = piece_icons[piece_on[_pos]];
+    for (int _pos = 0; _pos < 64; _pos++)
+    {
+        lines[_pos / 8][3 + _pos % 8 * 2] = piece_icons[piece_on[_pos]];
     }
 
     std::cout << "   a b c d e f g h\n";
-    for (const auto& i: lines) std::cout << i;
+    for (const auto& i : lines) std::cout << i;
     std::cout << "FEN: " << to_fen();
 }
 
 std::string Position::to_fen() const
 {
     std::stringstream fen;
-    for (int row = 0; row < 8; row++) {
+    for (int row = 0; row < 8; row++)
+    {
         int empty = 0;
-        for (int col = 0; col < 8; col++) {
-            if (piece_on[row * 8 + col] != nil) {
-                if (empty) {
+        for (int col = 0; col < 8; col++)
+        {
+            if (piece_on[row * 8 + col] != nil)
+            {
+                if (empty)
+                {
                     fen << empty;
                     empty = 0;
                 }
@@ -509,9 +580,11 @@ std::string Position::to_fen() const
     fen << " " << (side_to_move ? "b " : "w ");
 
     if (!state->castling_rights) fen << "-";
-    else {
+    else
+    {
         static constexpr char rights[] = {'K', 'Q', 'k', 'q'};
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 4; i++)
+        {
             if (state->castling_rights >> i & 1) fen << rights[i];
         }
     }

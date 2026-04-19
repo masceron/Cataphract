@@ -6,6 +6,7 @@
 #include <sstream>
 #include <ranges>
 #include <algorithm>
+#include <charconv>
 
 #include "eval/nnue.hpp"
 #include "position/cuckoo.hpp"
@@ -16,6 +17,7 @@
 namespace UCI
 {
     static std::thread search_thread;
+
     inline void new_game()
     {
         TT::clear();
@@ -36,47 +38,55 @@ namespace UCI
 
         std::cout << "Cataphract v1.3 by masceron" << std::endl;
     }
-    inline void process_move(const std::string& move)
+
+    inline void process_move(const std::string_view move)
     {
-        if (move.length() == 4) {
+        if (move.length() == 4)
+        {
             const MoveList moves = legals<all>(position);
             const int from = algebraic_to_num(move.substr(0, 2));
             const int to = algebraic_to_num(move.substr(2, 2));
             if (from == -1 || to == -1) return;
             const auto _move = Move(from, to, 0);
-            for (int i = 0; i < moves.size(); i++) {
-                if (const auto move_test = moves[i]; (move_test.move & 0xFFF) == _move.move) {
+            for (int i = 0; i < moves.size(); i++)
+            {
+                if (const auto move_test = moves[i]; (move_test.move & 0xFFF) == _move.move)
+                {
                     position.do_move(move_test);
                     return;
                 }
             }
         }
-        else if (move.length() == 5) {
+        else if (move.length() == 5)
+        {
             const int from = algebraic_to_num(move.substr(0, 2));
             const int to = algebraic_to_num(move.substr(2, 2));
             int flag = 0;
             if (from == -1 || to == -1) return;
-            switch (move[4]) {
-                case 'n':
-                    flag = 8;
+            switch (move[4])
+            {
+            case 'n':
+                flag = 8;
                 break;
-                case 'b':
-                    flag = 9;
+            case 'b':
+                flag = 9;
                 break;
-                case 'r':
-                    flag = 10;
+            case 'r':
+                flag = 10;
                 break;
-                case 'q':
-                    flag = 11;
+            case 'q':
+                flag = 11;
                 break;
-                default:
-                    return;
+            default:
+                return;
             }
             flag += (abs(from - to) % 8 == 0) ? 0 : 4;
             const MoveList moves = legals<all>(position);
             const auto _move = Move(from, to, flag);
-            for (const auto& move_test : moves.list) {
-                if ((move_test.move) == _move.move) {
+            for (const auto& move_test : moves.list)
+            {
+                if ((move_test.move) == _move.move)
+                {
                     position.do_move(move_test);
                     return;
                 }
@@ -84,36 +94,44 @@ namespace UCI
         }
     }
 
-    inline void set_board(const std::string& fen)
+    inline void set_board(const std::string_view fen)
     {
         const auto moves_pos = fen.find("moves ");
 
-        if (fen.starts_with("startpos")) {
+        if (fen.starts_with("startpos"))
+        {
             fen_parse("startpos");
         }
-        else if (fen.starts_with("fen ")) {
-            if (moves_pos == std::string::npos) {
-                if (fen_parse(fen.substr(4, std::string::npos)) == - 1) {
+        else if (fen.starts_with("fen "))
+        {
+            if (moves_pos == std::string::npos)
+            {
+                if (fen_parse(fen.substr(4, std::string::npos)) == -1)
+                {
                     return;
                 }
             }
-            else if (fen_parse(fen.substr(4, moves_pos - 5)) == - 1) {
+            else if (fen_parse(fen.substr(4, moves_pos - 5)) == -1)
+            {
                 return;
             }
         }
-        else {
+        else
+        {
             return;
         }
 
-        if (moves_pos != std::string::npos) {
-            std::string moves = fen.substr(moves_pos + 6, std::string::npos);
-            std::ranges::transform(moves, moves.begin(), [](const unsigned char c){ return std::tolower(c); });
+        if (moves_pos != std::string::npos)
+        {
+            auto moves = fen.substr(moves_pos + 6, std::string::npos);
 
             auto limiter = moves.find(' ');
             size_t begin = 0;
-            while (begin != std::string::npos) {
+            while (begin != std::string::npos)
+            {
                 process_move(moves.substr(begin, limiter - begin));
-                if (limiter != std::string::npos) {
+                if (limiter != std::string::npos)
+                {
                     begin = limiter + 1;
                     limiter = moves.find(' ', begin);
                 }
@@ -124,36 +142,38 @@ namespace UCI
         NNUE::refresh_accumulators(position);
     }
 
-    inline void perft(const std::string& depth)
+    inline void perft(const std::string_view depth)
     {
-        const int depthTo = std::atoi(depth.c_str());
+        int depthTo = 0;
+        std::from_chars(depth.data(), depth.data() + depth.size(), depthTo);
         if (depthTo < 1) return;
         divide(depthTo);
     }
 
-    // Removed go_depth and go_time as their logic is merged into go and start_search
-
-    inline void set_option(const std::string& option)
+    inline void set_option(std::string_view option)
     {
-        const int value_index = option.find(" value ");
-        const std::string name = option.substr(0, value_index);
+        const auto value_index = option.find(" value ");
 
-        if (name == "Hash") {
-            const std::string value = option.substr(value_index + 7, std::string::npos);
-            const int32_t new_size = std::atoi(value.c_str());
+        if (const std::string_view name = option.substr(0, value_index); name == "Hash")
+        {
+            const std::string_view value = option.substr(value_index + 7);
+            int32_t new_size = 0;
+            std::from_chars(value.data(), value.data() + value.size(), new_size);
+
             if (new_size < 1 || new_size > 1024) return;
             TT::resize(static_cast<uint32_t>(new_size));
         }
-        else if (name == "Clear Hash") {
+        else if (name == "Clear Hash")
+        {
             TT::clear();
         }
     }
 
-    inline void go(std::string& input)
+    inline void go(const std::string_view input)
     {
         std::stringstream ss(input);
         std::string token;
-        ss >> token; // Consume "go" token
+        ss >> token;
 
         int depth = 0;
         int movetime = 0;
@@ -167,36 +187,53 @@ namespace UCI
         int perft_depth = 0;
 
         // Parse go parameters
-        while (ss >> token) {
-            if (token == "depth") {
+        while (ss >> token)
+        {
+            if (token == "depth")
+            {
                 ss >> depth;
-            } else if (token == "movetime") {
+            }
+            else if (token == "movetime")
+            {
                 ss >> movetime;
-            } else if (token == "wtime") {
+            }
+            else if (token == "wtime")
+            {
                 ss >> wtime;
-            } else if (token == "btime") {
+            }
+            else if (token == "btime")
+            {
                 ss >> btime;
-            } else if (token == "winc") {
+            }
+            else if (token == "winc")
+            {
                 ss >> winc;
-            } else if (token == "binc") {
+            }
+            else if (token == "binc")
+            {
                 ss >> binc;
-            } else if (token == "movestogo") {
+            }
+            else if (token == "movestogo")
+            {
                 ss >> movestogo;
-            } else if (token == "infinite") {
+            }
+            else if (token == "infinite")
+            {
                 infinite = true;
-            } else if (token == "perft") {
+            }
+            else if (token == "perft")
+            {
                 perft_cmd = true;
                 ss >> perft_depth;
             }
-            // Ignore other parameters like "searchmoves", "ponder", "nodes", "mate" for now
         }
-        // Handle perft command separately after parsing all parameters
-         if (perft_cmd) {
-         // Call perft with the parsed depth
-           perft(std::to_string(perft_depth));
-        } else {
-
-            if (infinite) depth = 127; // Use 127 as a marker for infinite depth
+        if (perft_cmd)
+        {
+            perft(std::to_string(perft_depth));
+        }
+        else
+        {
+            if (infinite) depth = 127;
 
             search_thread = std::thread(start_search, depth, movetime, wtime, btime, winc, binc, movestogo);
             search_thread.detach();
@@ -205,84 +242,96 @@ namespace UCI
 
     inline void process()
     {
-        fen_parse("startpos"); // Set initial position
-        NNUE::refresh_accumulators(position); // Initialize NNUE state
+        fen_parse("startpos");
+        NNUE::refresh_accumulators(position);
 
         std::string input;
         bool quit = false;
-        while (!quit) {
+        while (!quit)
+        {
             std::getline(std::cin, input);
 
-            // Clean up multiple spaces and leading/trailing spaces
-            auto I = std::ranges::unique(input, [](auto lhs, auto rhs){ return lhs == rhs && lhs == ' '; } ).begin();
+            auto I = std::ranges::unique(input, [](auto lhs, auto rhs)
+            {
+                return lhs == rhs && lhs == ' ';
+            }).begin();
+
             input.erase(I, input.end());
+
             if (!input.empty() && input.front() == ' ') input.erase(0, 1);
             if (!input.empty() && input.back() == ' ') input.pop_back();
 
-            // Handle 'stop' command while search is running
-            if (Timer::running) {
-                if (input == "stop" && !is_search_cancelled) {
+            if (Timer::running)
+            {
+                if (input == "stop" && !is_search_cancelled)
+                {
                     Timer::stop();
                 }
-                // Ignore other commands while searching, except potentially 'quit'
-                if (input == "quit") {
-                    Timer::stop(); // Signal stop to the search thread
-                    if (search_thread.joinable()) {
-                        search_thread.join(); // Wait for search thread to finish
+                if (input == "quit")
+                {
+                    Timer::stop();
+                    if (search_thread.joinable())
+                    {
+                        search_thread.join();
                     }
                     quit = true;
                 }
             }
-            else {
-                // Process commands when not searching
-                std::string command = input.substr(0, input.find(' '));
-                if (command.empty() && !input.empty()) command = input; // Handle commands with no parameters
+            else
+            {
+                std::string_view input_view(input);
+                std::string_view command = input_view.substr(0, input_view.find(' '));
 
-                if (command == "position") {
-                    set_board(input.substr(9, std::string::npos));
-                    NNUE::refresh_accumulators(position); // Update NNUE state for new position
+                if (command.empty() && !input.empty()) command = input_view;
+
+                if (command == "position")
+                {
+                    set_board(input_view.substr(9));
+                    NNUE::refresh_accumulators(position);
                 }
-                else if (command == "go") {
-                    go(input); // Start search
+                else if (command == "go")
+                {
+                    go(input);
                 }
-                else if (command == "isready") {
+                else if (command == "isready")
+                {
                     std::cout << "readyok" << std::endl;
                 }
-                else if (command == "ucinewgame") {
-                    new_game(); // Reset engine state
-                    fen_parse("startpos"); // Reset board to startpos
-                    NNUE::refresh_accumulators(position); // Reset NNUE state
+                else if (command == "ucinewgame")
+                {
+                    new_game();
+                    fen_parse("startpos");
+                    NNUE::refresh_accumulators(position);
                 }
-                else if (command == "uci") {
-                    std::cout << "id name Cataphract" << "\n" <<"id author masceron\n\n"
-                    << "option name Hash type spin default 256 min 1 max 1024\n"
-                    << "option name Clear Hash type button\n"
-                    // UCI options for time controls are not typically listed here,
-                    // as wtime/btime/winc/binc/movestogo are parameters to 'go', not options.
-                    << "uciok" << std::endl;
-                }
-                else if (command == "eval") {
-                    std::cout << "NNUE evaluation: "
-                    << eval(position) * (!position.side_to_move ? 1 : -1)
-                    << " (white side)" << std::endl;
-                }
-                else if (command == "d") {
+                else if (command == "uci")
+                {
+                    std::cout << "id name Cataphract" << "\n" << "id author masceron\n\n"
+                        << "option name Hash type spin default 256 min 1 max 1024\n"
+                        << "option name Clear Hash type button\n"
 
+                        << "uciok" << std::endl;
+                }
+                else if (command == "eval")
+                {
+                    std::cout << "NNUE evaluation: "
+                        << eval(position) * (!position.side_to_move ? 1 : -1)
+                        << " (white side)" << std::endl;
+                }
+                else if (command == "d")
+                {
                     position.print_board();
                 }
-                else if (command == "setoption") {
-
-                    set_option(input.substr(15, std::string::npos));
+                else if (command == "setoption")
+                {
+                    set_option(input_view.substr(10, std::string::npos));
                 }
-                else if (command == "quit") {
-                    quit = true; // Exit the loop
+                else if (command == "quit")
+                {
+                    quit = true;
                 }
-                // Add handling for other potential commands if needed
             }
         }
 
-        // Clean up resources before exiting
-        TT::free_tt(); // Assuming TT::free_tt exists
+        TT::free_tt();
     }
-
 }

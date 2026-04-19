@@ -19,20 +19,6 @@
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
 
-#ifndef __clang__
-consteval std::array<std::array<uint8_t, 63>, 127> lmrs()
-{
-    std::array<std::array<uint8_t, 63>, 127> r;
-    for (int depth = 0; depth < 127; depth++) {
-        for (int numMoves = 0; numMoves < 63; numMoves++) {
-            r[depth][numMoves] = std::floor(0.5 + std::log(depth + 1) * std::log(numMoves + 1) / 3.5);
-        }
-    }
-    return r;
-}
-
-inline constexpr auto reductions = lmrs();
-#else
 inline auto reductions = [] {
     std::array<std::array<uint8_t, 63>, 127> r;
     for (int depth = 0; depth < 127; depth++) {
@@ -42,7 +28,6 @@ inline auto reductions = [] {
     }
     return r;
 }();
-#endif
 
 inline auto lmp = [] {
     std::array<std::array<uint8_t, 16>, 2> prunes;

@@ -22,7 +22,7 @@ enum flag: uint16_t
     queen_promo_capture
 };
 
-inline int algebraic_to_num(const std::string &algebraic)
+inline int algebraic_to_num(const std::string_view &algebraic)
 {
     if (algebraic.length() != 2) return -1;
     int rank = 0;
@@ -81,9 +81,7 @@ struct Move
     {
     }
 
-    Move()
-    {
-    }
+    Move() = default;
 
     [[nodiscard]] uint16_t flag() const
     {

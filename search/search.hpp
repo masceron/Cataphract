@@ -14,6 +14,7 @@
 #include "movepicker.hpp"
 #include "../position/move.hpp"
 #include "see.hpp"
+#include "time.hpp"
 #include "timer.hpp"
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
@@ -604,7 +605,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         if (not_in_check && ((depth_best_move.flag() != capture && depth_best_move.flag() < knight_promo_capture &&
             depth_best_move.flag() != ep_capture) || !depth_best_move))
         {
-            if (const int16_t delta = best_score - ss->static_eval;
+            if (const auto delta = static_cast<int16_t>(best_score - ss->static_eval);
                 !(type == lower_bound && delta < 0) && !(type == upper_bound && delta > 0))
             {
                 Corrections::update(delta, pos, depth);
@@ -615,53 +616,30 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     return best_score;
 }
 
-inline void start_search(const int depth_param, const int movetime_param, const int wtime_param, const int btime_param,
-                         const int winc_param, const int binc_param, const int movestogo_param)
+inline void start_search(const int depth_param, const int move_time, const int wtime, const int btime,
+                         const int winc, const int binc, const int moves_to_go)
 {
-    int allocated_time_ms;
-    int search_depth;
+    int search_depth = 127;
+    TimeManager tm;
 
-    if (movetime_param > 0)
+    if (move_time > 0)
     {
-        allocated_time_ms = movetime_param;
-        search_depth = 127;
+        tm.init_move_time(move_time);
     }
     else if (depth_param > 0 && depth_param < 127)
     {
         search_depth = depth_param;
-        allocated_time_ms = -1;
+        tm.init_none();
     }
-    else if (wtime_param > 0 || btime_param > 0)
+    else if (wtime > 0 || btime > 0)
     {
-        const int remaining_time = position.side_to_move == white ? wtime_param : btime_param;
-        const int increment = position.side_to_move == white ? winc_param : binc_param;
+        const int time_left = position.side_to_move == white ? wtime : btime;
+        const int increment = position.side_to_move == white ? winc : binc;
 
-        if (movestogo_param > 0)
-        {
-            allocated_time_ms = remaining_time / movestogo_param + increment;
-        }
-        else
-        {
-            allocated_time_ms = remaining_time / 30 + increment;
-        }
-        allocated_time_ms = std::max(allocated_time_ms, 100);
-
-        search_depth = 127;
-    }
-    else
-    {
-        search_depth = 127;
-        allocated_time_ms = 6000000;
+        tm.init_time_control(&position, time_left, increment, moves_to_go);
     }
 
-    if (allocated_time_ms > 0)
-    {
-        Timer::start(allocated_time_ms);
-    }
-    else
-    {
-        Timer::start(6000000);
-    }
+    Timer::start(static_cast<uint32_t>(tm.max_time));
 
     node_searched = 0;
     Move best_move = null_move;
@@ -726,6 +704,13 @@ inline void start_search(const int depth_param, const int movetime_param, const 
         if (!principal_variation.empty())
         {
             best_move = principal_variation.front();
+        }
+
+        tm.update(best_move, score);
+
+        if (const double elapsed_ms = static_cast<double>(Timer::elapsed()) / 1000.0; tm.should_stop(elapsed_ms))
+        {
+            break;
         }
     }
 

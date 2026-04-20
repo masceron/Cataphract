@@ -4,8 +4,8 @@
 
 #include "../position/position.hpp"
 
-static constexpr uint8_t QA = 255;
-static constexpr uint8_t QB = 64;
+static constexpr int QA = 255;
+static constexpr int QB = 64;
 static constexpr int16_t EVAL_SCALE = 400;
 #define HL_SIZE 1024
 #define INPUT_SIZE 768
@@ -26,6 +26,8 @@ struct Accumulator_entry
     alignas(64) int16_t accumulators[2 * HL_SIZE];
 #elifdef __AVX2__
     alignas(32) int16_t accumulators[2 * HL_SIZE];
+#else
+    int16_t accumulators[2 * HL_SIZE];
 #endif
     uint64_t bitboards[12];
     bool is_dirty;

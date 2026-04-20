@@ -46,6 +46,7 @@ add_executable(Cataphract main.cpp
         eval/accumulators.hpp
         eval/nnue.cpp
         position/cuckoo.hpp
+        search/time.hpp
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

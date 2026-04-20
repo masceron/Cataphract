@@ -12,6 +12,8 @@ struct SearchEntry
 {
     uint16_t piece_to = UINT16_MAX;
     int16_t static_eval = score_none;
+    Move excluded = null_move;
+    uint8_t double_extensions = 0;
     uint8_t plies;
 };
 

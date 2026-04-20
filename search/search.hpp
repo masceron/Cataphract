@@ -4,8 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <list>
-#include <iostream>
-#include <iomanip>
+#include <print>
 #include <vector>
 #include <string>
 #include <forward_list>
@@ -434,7 +433,8 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         }
 
         int extension = 0;
-        if (!root_node && tt_hit && !ss->excluded && ss->plies < 2 * root_depth && ss->double_extensions < 2 * root_depth)
+        if (!root_node && tt_hit && !ss->excluded && ss->plies < 2 * root_depth && ss->double_extensions < 2 *
+            root_depth)
         {
             if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != upper_bound &&
                 std::abs(tt_score) < mate_in_max_ply)
@@ -633,8 +633,8 @@ inline void start_search(const int depth_param, const int movetime_param, const 
     }
     else if (wtime_param > 0 || btime_param > 0)
     {
-        const int remaining_time = (position.side_to_move == white) ? wtime_param : btime_param;
-        const int increment = (position.side_to_move == white) ? winc_param : binc_param;
+        const int remaining_time = position.side_to_move == white ? wtime_param : btime_param;
+        const int increment = position.side_to_move == white ? winc_param : binc_param;
 
         if (movestogo_param > 0)
         {
@@ -653,6 +653,7 @@ inline void start_search(const int depth_param, const int movetime_param, const 
         search_depth = 127;
         allocated_time_ms = 6000000;
     }
+
     if (allocated_time_ms > 0)
     {
         Timer::start(allocated_time_ms);
@@ -705,23 +706,22 @@ inline void start_search(const int depth_param, const int movetime_param, const 
         if (is_search_cancelled) break;
 
         const double elapsed = Timer::elapsed();
-        std::cout << "info depth " << root_depth << " seldepth " << seldepth << " score";
+        std::print("info depth {} seldepth {} score ", root_depth, seldepth);
 
-        if (score < -mate_in_max_ply) std::cout << " mate " << -std::ceil((mate_value + score) / 2.0);
-        else if (score > mate_in_max_ply) std::cout << " mate " << std::ceil((mate_value - score) / 2.0);
-        else std::cout << " cp " << score;
+        if (score < -mate_in_max_ply) std::print("mate {} ", -std::ceil((mate_value + score) / 2.0));
+        else if (score > mate_in_max_ply) std::print("mate {} ", std::ceil((mate_value - score) / 2.0));
+        else std::print("cp {} ", score);
 
-        std::cout << " nodes " << node_searched
-            << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000
-            << " hashfull " << TT::full()
-            << " time " << elapsed / 1000
-            << " pv ";
+        std::print("nodes {} nps {} hashfull {} time {} pv ",
+                   node_searched, static_cast<uint64_t>(node_searched / elapsed * 1000000), TT::full(),
+                   static_cast<uint64_t>(elapsed / 1000));
 
         for (auto x : principal_variation)
         {
-            std::cout << x.get_move_string() << " ";
+            std::print("{} ", x.get_move_string());
         }
-        std::cout << std::endl;
+        std::println();
+        std::fflush(stdout);
 
         if (!principal_variation.empty())
         {
@@ -737,5 +737,6 @@ inline void start_search(const int depth_param, const int movetime_param, const 
         best_move = legals<all>(position)[0];
     }
 
-    std::cout << "bestmove " << best_move.get_move_string() << std::endl;
+    std::println("bestmove {}", best_move.get_move_string());
+    std::fflush(stdout);
 }

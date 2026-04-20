@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstdint>
-#include <iostream>
+#include <print>
 #include <sstream>
 #include "bitboard.hpp"
 
@@ -94,8 +94,6 @@ inline void print_bitboard(const uint64_t bitboard)
         for (int file = 0; file < 8; file++) {
             board << (bitboard >> (rank * 8 + file) & 1) << " ";
         }
-        board << "\n";
     }
-    board << std::endl;
-    std::cout << board.str();
+    std::println("{}", board.str());
 }

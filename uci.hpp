@@ -1,12 +1,13 @@
 #pragma once
 
 #include <string>
-#include <iostream>
 #include <thread>
 #include <sstream>
 #include <ranges>
 #include <algorithm>
 #include <charconv>
+#include <iostream>
+#include <print>
 
 #include "eval/nnue.hpp"
 #include "position/cuckoo.hpp"
@@ -36,7 +37,8 @@ namespace UCI
         Cuckoo::init();
         TT::alloc();
 
-        std::cout << "Cataphract v1.3 by masceron" << std::endl;
+        std::println("Cataphract v1.3 by masceron");
+        std::fflush(stdout);
     }
 
     inline void process_move(const std::string_view move)
@@ -295,7 +297,7 @@ namespace UCI
                 }
                 else if (command == "isready")
                 {
-                    std::cout << "readyok" << std::endl;
+                    std::println("readyok");
                 }
                 else if (command == "ucinewgame")
                 {
@@ -305,17 +307,17 @@ namespace UCI
                 }
                 else if (command == "uci")
                 {
-                    std::cout << "id name Cataphract" << "\n" << "id author masceron\n\n"
-                        << "option name Hash type spin default 256 min 1 max 1024\n"
-                        << "option name Clear Hash type button\n"
-
-                        << "uciok" << std::endl;
+                    std::println("id name Cataphract");
+                    std::println("id author masceron\n");
+                    std::println("option name Hash type spin default 256 min 1 max 1024");
+                    std::println("option name Clear Hash type button");
+                    std::println("uciok");
+                    std::fflush(stdout);
                 }
                 else if (command == "eval")
                 {
-                    std::cout << "NNUE evaluation: "
-                        << eval(position) * (!position.side_to_move ? 1 : -1)
-                        << " (white side)" << std::endl;
+                    std::println("NNUE evaluation: {} (white side)",
+                                 eval(position) * (!position.side_to_move ? 1 : -1));
                 }
                 else if (command == "d")
                 {

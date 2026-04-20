@@ -1,4 +1,5 @@
 #include <sstream>
+#include <print>
 
 #include "position.hpp"
 
@@ -542,16 +543,15 @@ void Position::print_board() const
         {
             lines[rank] += ". ";
         }
-        lines[rank] += "\n";
     }
     for (int _pos = 0; _pos < 64; _pos++)
     {
         lines[_pos / 8][3 + _pos % 8 * 2] = piece_icons[piece_on[_pos]];
     }
 
-    std::cout << "   a b c d e f g h\n";
-    for (const auto& i : lines) std::cout << i;
-    std::cout << "FEN: " << to_fen();
+    std::println("   a b c d e f g h");
+    for (const auto& i : lines) std::println("{}", i);
+    std::println("FEN: {}", to_fen());
 }
 
 std::string Position::to_fen() const

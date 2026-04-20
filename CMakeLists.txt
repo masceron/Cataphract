@@ -1,21 +1,21 @@
 cmake_minimum_required(VERSION 3.28.3)
 project(Cataphract)
 
-if(NOT CMAKE_BUILD_TYPE)
+if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif()
+endif ()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set(CMAKE_CXX_STANDARD 26)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Wno-class-memaccess -static -g -march=native -fno-exceptions")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wall -Wextra -Wno-class-memaccess -g -march=native -fno-exceptions")
     set(CMAKE_CXX_FLAGS_RELEASE "-O3 -fno-exceptions -flto=auto -fipa-pta -flto-partition=one -fwhole-program -DNDEBUG -s -Wall -Wextra -Wno-class-memaccess -march=native -mtune=native -static")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     set(CMAKE_CXX_STANDARD 26)
-    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wextra -fsanitize=undefined -g -static -march=native -fno-exceptions")
+    set(CMAKE_CXX_FLAGS_DEBUG "-O0 -Wextra -fsanitize=undefined -g -march=native -fno-exceptions")
     set(CMAKE_CXX_FLAGS_RELEASE "-flto=full -fno-exceptions -march=native -mtune=native -O3 -static -DNDEBUG")
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(FATAL_ERROR "MSVC not supported.")
-endif()
+endif ()
 
 add_executable(Cataphract main.cpp
         board/bitboard.hpp
@@ -47,3 +47,7 @@ add_executable(Cataphract main.cpp
         eval/nnue.cpp
         position/cuckoo.hpp
 )
+
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(Cataphract PRIVATE "-lstdc++exp")
+endif ()

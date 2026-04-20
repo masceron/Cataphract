@@ -98,6 +98,11 @@ struct Move
         return move >> 6 & 0b111111;
     }
 
+    [[nodiscard]] bool is_quiet() const
+    {
+        return flag() < capture;
+    }
+
     [[nodiscard]] explicit operator bool() const
     {
         return move != 0;

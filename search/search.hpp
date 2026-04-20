@@ -19,19 +19,24 @@
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
 
-inline auto reductions = [] {
+inline auto reductions = []
+{
     std::array<std::array<uint8_t, 63>, 127> r;
-    for (int depth = 0; depth < 127; depth++) {
-        for (int numMoves = 0; numMoves < 63; numMoves++) {
+    for (int depth = 0; depth < 127; depth++)
+    {
+        for (int numMoves = 0; numMoves < 63; numMoves++)
+        {
             r[depth][numMoves] = std::floor(0.5 + std::log(depth + 1) * std::log(numMoves + 1) / 3.5);
         }
     }
     return r;
 }();
 
-inline auto lmp = [] {
+inline auto lmp = []
+{
     std::array<std::array<uint8_t, 16>, 2> prunes;
-    for (int i = 0; i < 16; i++) {
+    for (int i = 0; i < 16; i++)
+    {
         prunes[0][i] = std::floor(5 + i * i / 2);
         prunes[1][i] = std::floor(5 + i * i);
     }
@@ -43,10 +48,11 @@ inline static int seldepth;
 
 inline static constexpr int max_ply = 127;
 
-inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
+inline int quiesce(Position& pos, int alpha, const int beta, SearchEntry* ss)
 {
     node_searched++;
-    if (ss->plies > seldepth) {
+    if (ss->plies > seldepth)
+    {
         seldepth = ss->plies;
     }
 
@@ -56,7 +62,7 @@ inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
 
     int tt_score;
     bool tt_hit = false;
-    Entry *entry;
+    Entry* entry;
     int16_t tt_static_eval;
     uint8_t entry_depth;
     uint8_t entry_age_type;
@@ -73,29 +79,38 @@ inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
 
     const bool not_in_check = !pos.state->checker;
 
-    if (tt_hit) {
+    if (tt_hit)
+    {
         if (entry_type == exact
             || (entry_type == lower_bound && tt_score >= beta)
             || (entry_type == upper_bound && tt_score <= alpha))
             return tt_score;
 
-        if (not_in_check) {
-            if (tt_static_eval != score_none) {
+        if (not_in_check)
+        {
+            if (tt_static_eval != score_none)
+            {
                 raw_static_eval = tt_static_eval;
-            } else {
+            }
+            else
+            {
                 raw_static_eval = eval(pos);
             }
             stand_pat = Corrections::correct(raw_static_eval, pos);
 
             if (!((stand_pat > tt_score && entry_type == lower_bound) || (
-                      stand_pat < tt_score && entry_type == upper_bound)))
+                stand_pat < tt_score && entry_type == upper_bound)))
                 stand_pat = tt_score;
-        } else {
+        }
+        else
+        {
             raw_static_eval = eval(pos);
             stand_pat = Corrections::correct(raw_static_eval, pos);
         }
         best_move = tt_move;
-    } else {
+    }
+    else
+    {
         raw_static_eval = eval(pos);
         stand_pat = Corrections::correct(raw_static_eval, pos);
     }
@@ -111,9 +126,11 @@ inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
     NodeType type = upper_bound;
     std::forward_list<CaptureEntry> capture_searched;
 
-    while ((picked_move = move_picker.next_move().first)) {
+    while ((picked_move = move_picker.next_move().first))
+    {
         if (picked_move.flag() < knight_promotion && stand_pat + value_of(pos.piece_on[picked_move.to()]) + 150 <
-            alpha) {
+            alpha)
+        {
             continue;
         }
 
@@ -131,15 +148,21 @@ inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
 
         if (is_search_cancelled) return alpha;
 
-        if (score > best_score) {
+        if (score > best_score)
+        {
             best_score = score;
             best_move = picked_move;
-            if (score > alpha) {
-                if (score >= beta) {
-                    if (const uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil) {
+            if (score > alpha)
+            {
+                if (score >= beta)
+                {
+                    if (const uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil)
+                    {
                         Capture::update(capture_searched, pos.side_to_move, moving_piece, captured, picked_move.to(),
                                         1);
-                    } else if (picked_move.flag() == ep_capture) {
+                    }
+                    else if (picked_move.flag() == ep_capture)
+                    {
                         Capture::update(capture_searched, pos.side_to_move, moving_piece, P, picked_move.to(),
                                         1);
                     }
@@ -152,9 +175,12 @@ inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
             }
         }
 
-        if (uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil) {
+        if (uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil)
+        {
             capture_searched.emplace_front(moving_piece, captured, picked_move.to());
-        } else if (picked_move.flag() == ep_capture) {
+        }
+        else if (picked_move.flag() == ep_capture)
+        {
             capture_searched.emplace_front(moving_piece, P, picked_move.to());
         }
     }
@@ -166,13 +192,14 @@ inline int quiesce(Position &pos, int alpha, const int beta, SearchEntry *ss)
 
 inline int root_depth;
 
-inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move> &pv, const bool cut_node,
-                  SearchEntry *ss)
+inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, const bool cut_node,
+                  SearchEntry* ss)
 {
     node_searched++;
     if (is_search_cancelled) return alpha;
 
-    if (ss->plies > seldepth) {
+    if (ss->plies > seldepth)
+    {
         seldepth = ss->plies;
     }
 
@@ -180,16 +207,19 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
     const bool is_pv = beta - alpha > 1;
     const bool root_node = ss->plies == 0;
 
-    if (ss->plies > max_ply) {
+    if (ss->plies > max_ply)
+    {
         return not_in_check ? eval(pos) : 0;
     }
 
-    if (!root_node) {
+    if (!root_node)
+    {
         alpha = std::max(alpha, -mate_value + ss->plies);
         beta = std::min(beta, mate_value - ss->plies - 1);
         if (alpha >= beta) return alpha;
 
-        if (alpha < draw && pos.upcoming_repetition(ss->plies)) {
+        if (alpha < draw && pos.upcoming_repetition(ss->plies))
+        {
             alpha = draw;
             if (alpha >= beta) return alpha;
         }
@@ -199,7 +229,8 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
         if (!not_in_check) depth += 1;
     }
 
-    if (depth <= 0) {
+    if (depth <= 0)
+    {
         return quiesce(pos, alpha, beta, ss);
     }
 
@@ -208,25 +239,31 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
     Move depth_best_move = null_move;
     Move tt_move = null_move;
     int tt_depth;
-    Entry *entry;
+    Entry* entry;
     NodeType entry_type;
+    ss->double_extensions = (ss - 1)->double_extensions;
+    uint64_t tt_key = pos.state->key ^ (ss->excluded.move << 16);
 
     int raw_static_eval;
     bool improving = false;
 
     int16_t tt_static_eval;
-    uint8_t entry_age_type;
 
+    uint8_t entry_age_type;
     std::tie(entry, tt_depth, entry_age_type, tt_move, tt_static_eval) = TT::probe(
-        pos.state->key, tt_hit, ss->plies, tt_score);
+        tt_key, tt_hit, ss->plies, tt_score);
     entry_type = static_cast<NodeType>(entry_age_type & 0b11);
 
-    if (tt_hit) {
-        if (tt_depth >= depth && !is_pv) {
+    if (tt_hit)
+    {
+        if (tt_depth >= depth && !is_pv)
+        {
             if (entry_type == exact
                 || (entry_type == lower_bound && tt_score >= beta)
-                || (entry_type == upper_bound && tt_score <= alpha)) {
-                if (tt_score >= beta && tt_move && pos.is_quiet(tt_move)) {
+                || (entry_type == upper_bound && tt_score <= alpha))
+            {
+                if (tt_score >= beta && tt_move && pos.is_quiet(tt_move))
+                {
                     update_quiet_histories(pos, depth, tt_move, ss, {});
                 }
 
@@ -235,53 +272,73 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
         }
     }
 
-    if (!not_in_check) {
+    if (!not_in_check)
+    {
         raw_static_eval = score_none;
         ss->static_eval = score_none;
-    } else {
-        if (tt_hit) {
-            if (tt_static_eval != score_none) {
+    }
+    else
+    {
+        if (tt_hit)
+        {
+            if (tt_static_eval != score_none)
+            {
                 raw_static_eval = tt_static_eval;
-            } else {
+            }
+            else
+            {
                 raw_static_eval = eval(pos);
             }
 
             ss->static_eval = Corrections::correct(raw_static_eval, pos);
 
             if (!((ss->static_eval > tt_score && entry_type == lower_bound) || (
-                      ss->static_eval < tt_score && entry_type == upper_bound)))
+                ss->static_eval < tt_score && entry_type == upper_bound)))
                 ss->static_eval = tt_score;
-        } else {
+        }
+        else
+        {
             raw_static_eval = eval(pos);
             ss->static_eval = Corrections::correct(raw_static_eval, pos);
         }
 
-        if (int16_t two_plies_ago; (two_plies_ago = (ss - 2)->static_eval) != score_none) {
+        if (int16_t two_plies_ago; (two_plies_ago = (ss - 2)->static_eval) != score_none)
+        {
             improving = ss->static_eval > two_plies_ago;
-        } else if (int16_t four_plies_ago; (four_plies_ago = (ss - 4)->static_eval) != score_none) {
+        }
+        else if (int16_t four_plies_ago; (four_plies_ago = (ss - 4)->static_eval) != score_none)
+        {
             improving = ss->static_eval > four_plies_ago;
-        } else improving = true;
+        }
+        else improving = true;
     }
 
     bool futility_pruning_allowed = false;
 
-    if (not_in_check && !is_pv) {
-        if (depth <= 9) {
+    if (not_in_check && !is_pv)
+    {
+        if (depth <= 9 && !ss->excluded)
+        {
             if (ss->static_eval < mate_in_max_ply && ss->static_eval - 120 * depth >= beta - improving * 70)
                 return beta + (ss->static_eval - beta) / 3;
 
             if (ss->static_eval + 140 * depth <= alpha) futility_pruning_allowed = true;
         }
 
-        if (depth <= 5) {
-            if (ss->static_eval + 120 * depth <= alpha) {
+        if (depth <= 5)
+        {
+            if (ss->static_eval + 120 * depth <= alpha)
+            {
                 if (quiesce(pos, alpha, beta, ss) < alpha) return alpha;
             }
         }
 
         if ((ss - 1)->piece_to != UINT16_MAX && depth >= 3 &&
-            std::popcount(pos.occupations[2]) - std::popcount(pos.boards[P]) - std::popcount(pos.boards[p]) > 2) {
-            if (ss->static_eval >= beta) {
+            std::popcount(pos.occupations[2]) - std::popcount(pos.boards[P]) - std::popcount(pos.boards[p]) > 2 &&
+            !ss->excluded)
+        {
+            if (ss->static_eval >= beta)
+            {
                 const int r = std::min((ss->static_eval - beta) / 200, 2) + depth / 4 + 3 + improving;
                 State st;
                 std::list<Move> local_pv;
@@ -299,13 +356,17 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
         const int prob_beta = beta + 230 - 50 * improving;
         if (const int prob_depth = std::max(depth - 3, 1);
             depth >= 6 && std::abs(beta) < mate_in_max_ply &&
-            !(tt_hit && tt_depth >= prob_depth && tt_score < prob_beta)) {
+            !(tt_hit && tt_depth >= prob_depth && tt_score < prob_beta))
+        {
             MovePicker prob_picker(&pos, true, tt_move, ss, prob_beta - ss->static_eval);
             std::pair<Move, int16_t> picked;
             std::list<Move> temp;
 
-            while ((picked = prob_picker.next_move()).first) {
+            while ((picked = prob_picker.next_move()).first)
+            {
                 auto [picked_move, picked_score] = picked;
+
+                if (picked_move == ss->excluded) continue;
 
                 uint8_t moving_piece = pos.piece_on[picked_move.from()];
                 if (moving_piece >= p) moving_piece -= 6;
@@ -318,15 +379,17 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
 
                 int prob_score = -quiesce(pos, -prob_beta, -prob_beta + 1, ss + 1);
 
-                if (prob_score >= prob_beta) {
+                if (prob_score >= prob_beta)
+                {
                     prob_score = -search(pos, -prob_beta, -prob_beta + 1, prob_depth - 1, temp, !cut_node, ss + 1);
                 }
 
                 accumulator_stack.pop();
                 pos.unmake_move(picked_move);
 
-                if (prob_score >= prob_beta) {
-                    TT::write(entry, pos.state->key, picked_move, prob_depth, ss->plies, raw_static_eval,
+                if (prob_score >= prob_beta)
+                {
+                    TT::write(entry, tt_key, picked_move, prob_depth, ss->plies, raw_static_eval,
                               prob_score, lower_bound);
                     return prob_score;
                 }
@@ -343,23 +406,76 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
     std::pair<Move, int16_t> picked;
     MovePicker move_picker(&pos, false, tt_move, ss);
 
-    if (not_in_check && (is_pv || cut_node) && !move_picker.pv && depth >= 3) depth--;
+    if (not_in_check && (is_pv || cut_node) && !move_picker.pv && depth >= 3 && !ss->excluded) depth--;
     const int late_move_margin = lmp[improving][std::min(depth - 1, 15)];
 
-    while ((picked = move_picker.next_move()).first) {
+    while ((picked = move_picker.next_move()).first)
+    {
         auto [picked_move, picked_score] = picked;
 
-        if (move_picker.stage == quiet_moves && !root_node) {
-            if (not_in_check && move_searched >= late_move_margin && std::abs(best_score) < mate_in_max_ply) {
+        if (picked_move == ss->excluded) continue;
+
+        if (move_picker.stage == quiet_moves && !root_node)
+        {
+            if (not_in_check && move_searched >= late_move_margin && std::abs(best_score) < mate_in_max_ply)
+            {
                 move_picker.current = move_picker.moves.last;
                 continue;
             }
-            if (picked_score < INT16_MAX && best_score > -mate_in_max_ply) {
-                if (futility_pruning_allowed) {
+            if (picked_score < INT16_MAX && best_score > -mate_in_max_ply)
+            {
+                if (futility_pruning_allowed)
+                {
                     move_picker.current = move_picker.moves.last;
                     continue;
                 }
                 if (depth <= 7 && picked_score < -600 * depth) continue;
+            }
+        }
+
+        int extension = 0;
+        if (!root_node && tt_hit && !ss->excluded && ss->plies < 2 * root_depth && ss->double_extensions < 2 * root_depth)
+        {
+            if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != upper_bound &&
+                std::abs(tt_score) < mate_in_max_ply)
+            {
+                const auto singular_beta = std::max(tt_score - 2 * depth / 3, -mate_in_max_ply);
+                const auto singular_depth = (depth - 1) / 2;
+                std::list<Move> tmp_pv;
+
+                ss->excluded = tt_move;
+                const auto singular_score = search(pos, singular_beta - 1, singular_beta, singular_depth, tmp_pv,
+                                                   cut_node, ss);
+                ss->excluded = null_move;
+
+                if (singular_score < singular_beta)
+                {
+                    if (!is_pv && picked_move.is_quiet())
+                    {
+                        if (singular_beta - singular_score > 120 && ss->double_extensions <= 5)
+                        {
+                            extension = 3;
+                            ss->double_extensions = (ss - 1)->double_extensions + 1;
+                        }
+                        else if (singular_beta - singular_score > 30 && ss->double_extensions <= 4)
+                        {
+                            extension = 2;
+                            ss->double_extensions = (ss - 1)->double_extensions + 1;
+                        }
+                        else extension = 1;
+                    }
+                    else
+                    {
+                        extension = 1;
+                    }
+                }
+                else if (singular_beta >= beta)
+                {
+                    return singular_beta;
+                }
+                else if (tt_score >= beta) extension = -2 + is_pv;
+                else if (cut_node) extension = -2;
+                else if (tt_score <= alpha) extension = -1;
             }
         }
 
@@ -374,7 +490,10 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
         pos.make_move(picked_move, st);
         accumulator_stack.push(pos, picked_move);
 
-        if (depth >= 2 && move_searched >= 2 + root_node) {
+        const auto new_depth = depth + extension;
+
+        if (depth >= 2 && move_searched >= 2 + root_node)
+        {
             int reduction = 1;
 
             reduction += reductions[depth - 1][std::min(move_searched - 1, 62)];
@@ -387,19 +506,23 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
                 reduction -= 2;
             else if (move_picker.stage == quiet_moves) reduction -= std::clamp(picked_score / 4096, -3, 3);
 
-            reduction = std::clamp(reduction, 1, depth - 1);
+            reduction = std::clamp(reduction, 1, new_depth - 1);
 
-            score = -search(pos, -alpha - 1, -alpha, depth - reduction, local_pv, true, ss + 1);
+            score = -search(pos, -alpha - 1, -alpha, new_depth - reduction, local_pv, true, ss + 1);
 
-            if (score > alpha) {
-                score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv, !cut_node, ss + 1);
+            if (score > alpha && reduction > 1)
+            {
+                score = -search(pos, -alpha - 1, -alpha, new_depth - 1, local_pv, !cut_node, ss + 1);
             }
-        } else if (!is_pv || move_searched) {
-            score = -search(pos, -alpha - 1, -alpha, depth - 1, local_pv, !cut_node, ss + 1);
+        }
+        else if (!is_pv || move_searched)
+        {
+            score = -search(pos, -alpha - 1, -alpha, new_depth - 1, local_pv, !cut_node, ss + 1);
         }
 
-        if (is_pv && (!move_searched || score > alpha)) {
-            score = -search(pos, -beta, -alpha, depth - 1, local_pv, false, ss + 1);
+        if (is_pv && (!move_searched || score > alpha))
+        {
+            score = -search(pos, -beta, -alpha, new_depth - 1, local_pv, false, ss + 1);
         }
 
         accumulator_stack.pop();
@@ -408,23 +531,32 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
         if (is_search_cancelled) return alpha;
         ++move_searched;
 
-        if (score > best_score) {
+        if (score > best_score)
+        {
             best_score = score;
             depth_best_move = picked_move;
-            if (score > alpha) {
+            if (score > alpha)
+            {
                 pv.clear();
                 pv.push_back(picked_move);
                 pv.splice(pv.end(), local_pv);
 
-                if (score >= beta) {
-                    if (pos.is_quiet(picked_move)) {
+                if (score >= beta)
+                {
+                    if (pos.is_quiet(picked_move))
+                    {
                         update_quiet_histories(pos, depth, picked_move, ss, quiets_searched);
-                    } else {
-                        if (uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil) {
+                    }
+                    else
+                    {
+                        if (uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil)
+                        {
                             Capture::update(capture_searched, pos.side_to_move, moving_piece, captured,
                                             picked_move.to(),
                                             depth);
-                        } else if (picked_move.flag() == ep_capture) {
+                        }
+                        else if (picked_move.flag() == ep_capture)
+                        {
                             Capture::update(capture_searched, pos.side_to_move, moving_piece, P, picked_move.to(),
                                             depth);
                         }
@@ -437,34 +569,48 @@ inline int search(Position &pos, int alpha, int beta, int depth, std::list<Move>
             }
         }
 
-        if (pos.is_quiet(picked_move)) {
+        if (pos.is_quiet(picked_move))
+        {
             quiets_searched.push_front(picked_move);
-        } else {
-            if (uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil) {
+        }
+        else
+        {
+            if (uint8_t captured = pos.piece_on[picked_move.to()]; captured != nil)
+            {
                 capture_searched.emplace_front(moving_piece, captured, picked_move.to());
-            } else if (picked_move.flag() == ep_capture) {
+            }
+            else if (picked_move.flag() == ep_capture)
+            {
                 capture_searched.emplace_front(moving_piece, P, picked_move.to());
             }
         }
     }
 
-    if (move_searched == 0) {
-        if (not_in_check) {
+    if (move_searched == 0)
+    {
+        if (ss->excluded) return alpha;
+        if (not_in_check)
+        {
             return draw;
         }
         return -mate_value + ss->plies;
     }
 
-    TT::write(entry, pos.state->key, depth_best_move, depth, ss->plies, raw_static_eval, best_score,
+    TT::write(entry, tt_key, depth_best_move, depth, ss->plies, raw_static_eval, best_score,
               type);
 
-    if (not_in_check && ((depth_best_move.flag() != capture && depth_best_move.flag() < knight_promo_capture &&
-                          depth_best_move.flag() != ep_capture) || !depth_best_move)) {
-        if (const int16_t delta = best_score - ss->static_eval;
-            !(type == lower_bound && delta < 0) && !(type == upper_bound && delta > 0)) {
-            Corrections::update(delta, pos, depth);
+    if (!ss->excluded)
+    {
+        if (not_in_check && ((depth_best_move.flag() != capture && depth_best_move.flag() < knight_promo_capture &&
+            depth_best_move.flag() != ep_capture) || !depth_best_move))
+        {
+            if (const int16_t delta = best_score - ss->static_eval;
+                !(type == lower_bound && delta < 0) && !(type == upper_bound && delta > 0))
+            {
+                Corrections::update(delta, pos, depth);
+            }
         }
-        }
+    }
 
     return best_score;
 }
@@ -475,31 +621,44 @@ inline void start_search(const int depth_param, const int movetime_param, const 
     int allocated_time_ms;
     int search_depth;
 
-    if (movetime_param > 0) {
+    if (movetime_param > 0)
+    {
         allocated_time_ms = movetime_param;
         search_depth = 127;
-    } else if (depth_param > 0 && depth_param < 127) {
+    }
+    else if (depth_param > 0 && depth_param < 127)
+    {
         search_depth = depth_param;
         allocated_time_ms = -1;
-    } else if (wtime_param > 0 || btime_param > 0) {
+    }
+    else if (wtime_param > 0 || btime_param > 0)
+    {
         const int remaining_time = (position.side_to_move == white) ? wtime_param : btime_param;
         const int increment = (position.side_to_move == white) ? winc_param : binc_param;
 
-        if (movestogo_param > 0) {
+        if (movestogo_param > 0)
+        {
             allocated_time_ms = remaining_time / movestogo_param + increment;
-        } else {
+        }
+        else
+        {
             allocated_time_ms = remaining_time / 30 + increment;
         }
         allocated_time_ms = std::max(allocated_time_ms, 100);
 
         search_depth = 127;
-    } else {
+    }
+    else
+    {
         search_depth = 127;
         allocated_time_ms = 6000000;
     }
-    if (allocated_time_ms > 0) {
+    if (allocated_time_ms > 0)
+    {
         Timer::start(allocated_time_ms);
-    } else {
+    }
+    else
+    {
         Timer::start(6000000);
     }
 
@@ -515,23 +674,30 @@ inline void start_search(const int depth_param, const int movetime_param, const 
 
     int window = pawn_weight / 3;
 
-    for (root_depth = 1; root_depth <= search_depth; root_depth++) {
+    for (root_depth = 1; root_depth <= search_depth; root_depth++)
+    {
         if (is_search_cancelled) break;
 
         seldepth = 0;
         int score;
 
-        while (true) {
+        while (true)
+        {
             score = search(position, alpha, beta, root_depth, principal_variation, false, &search_stack[4]);
 
             if (is_search_cancelled) break;
 
-            if (score <= alpha) {
+            if (score <= alpha)
+            {
                 beta = (alpha + beta) / 2;
                 alpha = std::max(score - window, static_cast<int>(negative_infinity));
-            } else if (score >= beta) {
+            }
+            else if (score >= beta)
+            {
                 beta = std::min(score + window, static_cast<int>(infinity));
-            } else {
+            }
+            else
+            {
                 break;
             }
             window += window / 2;
@@ -546,17 +712,19 @@ inline void start_search(const int depth_param, const int movetime_param, const 
         else std::cout << " cp " << score;
 
         std::cout << " nodes " << node_searched
-                << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000
-                << " hashfull " << TT::full()
-                << " time " << elapsed / 1000
-                << " pv ";
+            << " nps " << std::fixed << std::setprecision(0) << node_searched / elapsed * 1000000
+            << " hashfull " << TT::full()
+            << " time " << elapsed / 1000
+            << " pv ";
 
-        for (auto x: principal_variation) {
+        for (auto x : principal_variation)
+        {
             std::cout << x.get_move_string() << " ";
         }
         std::cout << std::endl;
 
-        if (!principal_variation.empty()) {
+        if (!principal_variation.empty())
+        {
             best_move = principal_variation.front();
         }
     }
@@ -564,7 +732,8 @@ inline void start_search(const int depth_param, const int movetime_param, const 
     Timer::stop();
     Timer::timer_thread.join();
 
-    if (!best_move) {
+    if (!best_move)
+    {
         best_move = legals<all>(position)[0];
     }
 

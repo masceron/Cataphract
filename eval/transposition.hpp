@@ -29,16 +29,6 @@ struct Entry
     Move best_move;
     uint8_t depth;
     uint8_t age_type;
-
-    void save(const uint64_t _key, const uint8_t _depth, const int16_t _static_eval, const int16_t _score , const Move _best_move, const uint8_t _age_type)
-    {
-        key = _key;
-        depth = _depth;
-        score = _score;
-        static_eval = _static_eval;
-        best_move = _best_move;
-        age_type = _age_type;
-    }
 };
 #pragma pack(pop)
 
@@ -76,7 +66,8 @@ namespace TT
 
     inline void resize(const uint32_t new_size_in_mb)
     {
-        if (new_size_in_mb != table_size_in_mb) {
+        if (new_size_in_mb != table_size_in_mb)
+        {
             free_tt();
             table_size_in_mb = new_size_in_mb;
             table_size = table_size_in_mb * 1048576 / sizeof(Entry);
@@ -94,10 +85,12 @@ namespace TT
         return (static_cast<unsigned __int128>(key) * static_cast<unsigned __int128>(table_size)) >> 64;
     }
 
-    inline std::tuple<Entry*, int, uint8_t, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply, int& score)
+    inline std::tuple<Entry*, int, uint8_t, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply,
+                                                             int& score)
     {
         Entry* entry = &table[index_of(key)];
-        if (entry->key == key) {
+        if (entry->key == key)
+        {
             match = true;
             score = static_cast<int>(entry->score);
             if (score < mated_in_max_ply)
@@ -108,24 +101,41 @@ namespace TT
         return {entry, entry->depth, entry->age_type, entry->best_move, entry->static_eval};
     }
 
-    inline void write(Entry* entry, const uint64_t key, const Move best_move, const int depth, const uint8_t ply, const int static_eval, int score, const NodeType type)
+    inline void write(Entry* entry, const uint64_t key, const Move best_move, const int depth, const uint8_t ply,
+                      const int static_eval, int score, const NodeType type)
     {
-        if (score < mated_in_max_ply) {
+        if (score < mated_in_max_ply)
+        {
             score -= ply;
         }
-        else if (score > mate_in_max_ply) {
+        else if (score > mate_in_max_ply)
+        {
             score += ply;
         }
 
-        entry->save(key, static_cast<uint8_t>(depth), static_cast<int16_t>(static_eval), static_cast<int16_t>(score), best_move, current_age + type);
+        if (best_move || entry->key != key)
+        {
+            entry->best_move = best_move;
+        }
+
+        if (const bool is_old = (entry->age_type & 0b11111100) != current_age; type == exact || is_old || key != entry->
+            key || depth + 4 >= entry->depth)
+        {
+            entry->key = key;
+            entry->depth = depth;
+            entry->score = static_cast<int16_t>(score);
+            entry->static_eval = static_cast<int16_t>(static_eval);
+            entry->age_type = current_age + type;
+        }
     }
 
     inline uint16_t full()
     {
-        uint16_t hashfull = 0;
-        for (int i = 0; i < 1000; i++) {
-            if ((table[i].age_type & 0b11111100) == current_age) hashfull++;
+        uint16_t hash_full = 0;
+        for (int i = 0; i < 1000; i++)
+        {
+            if ((table[i].age_type & 0b11111100) == current_age) hash_full++;
         }
-        return hashfull;
+        return hash_full;
     }
 }

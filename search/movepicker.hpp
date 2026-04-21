@@ -22,26 +22,44 @@ enum Stages: uint8_t
 
 struct MovePicker
 {
-    MoveList moves;
-    Move pv = null_move;
-    Move* non_captures_start;
-    Stages stage = generating_capture_moves;
     Position* pos;
     SearchEntry* ss;
+    Move pv = null_move;
+    Move* non_captures_start;
     Move* current;
     Move* bad_captures_end;
-    bool capture_only;
-    int16_t scores[256];
+    MoveList moves;
     int threshold;
+    int16_t scores[256];
+    bool capture_only;
+    Stages stage = generating_capture_moves;
 
-    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss, int _threshold = 0): pos(_pos), ss(_ss), capture_only(_capture_only)
+    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss,
+                        const int _threshold = 0) : pos(_pos), ss(_ss), capture_only(_capture_only)
     {
         bad_captures_end = &moves.list[255];
         threshold = _threshold;
-        if (_pv && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() < knight_promo_capture && _pv.flag() != ep_capture)) {
-            if (!pos->state->checker
-                || pos->state->check_blocker & 1ull << _pv.to()
-                || pos->piece_on[_pv.from()] == K || pos->piece_on[_pv.from()] == k) {
+        if (_pv && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() <
+            knight_promo_capture && _pv.flag() != ep_capture))
+        {
+            bool is_valid = true;
+
+            if (pos->state->checker) {
+                if (pos->piece_on[_pv.from()] != K && pos->piece_on[_pv.from()] != k) {
+                    if (std::popcount(pos->state->checker) > 1) {
+                        is_valid = false;
+                    }
+                    else if (_pv.flag() == ep_capture) {
+                        const int ep_capture_sq = _pv.to() + Delta<Up>(pos->side_to_move);
+                        is_valid = pos->state->check_blocker & (1ull << ep_capture_sq);
+                    }
+                    else {
+                        is_valid = pos->state->check_blocker & (1ull << _pv.to());
+                    }
+                }
+            }
+
+            if (is_valid) {
                 pv = _pv;
                 stage = TT_moves;
             }
@@ -50,72 +68,85 @@ struct MovePicker
 
     std::pair<Move, int16_t> pick()
     {
-        switch (stage) {
-            case TT_moves:
-                stage = generating_capture_moves;
-                return {pv, 0};
-            case generating_capture_moves:
-                stage = good_capture_moves;
-                pseudo_legals<captures>(*pos, moves);
-                sort_mvv_capthist(moves.begin(), moves.last);
-                non_captures_start = moves.last;
-                current = moves.begin() - 1;
-                [[fallthrough]];
-            case good_capture_moves:
-                current++;
-                if (*current == pv) current++;
-                if (current >= non_captures_start) {
-                    stage = generating_quiet_moves;
-                }
-                else {
-                    while (current < non_captures_start && (*current == pv || static_exchange_evaluation(*pos, *current) < threshold)) {
-                        if (*current != pv) {
-                            *bad_captures_end-- = *current;
-                        }
-                        current++;
+        switch (stage)
+        {
+        case TT_moves:
+            stage = generating_capture_moves;
+            return {pv, 0};
+        case generating_capture_moves:
+            stage = good_capture_moves;
+            pseudo_legals<captures>(*pos, moves);
+            sort_mvv_capthist(moves.begin(), moves.last);
+            non_captures_start = moves.last;
+            current = moves.begin() - 1;
+            [[fallthrough]];
+        case good_capture_moves:
+            current++;
+            if (*current == pv) current++;
+            if (current >= non_captures_start)
+            {
+                stage = generating_quiet_moves;
+            }
+            else
+            {
+                while (current < non_captures_start && (*current == pv || static_exchange_evaluation(*pos, *current) <
+                    threshold))
+                {
+                    if (*current != pv)
+                    {
+                        *bad_captures_end-- = *current;
                     }
+                    current++;
+                }
 
-                    if (current < non_captures_start) {
-                        return {*current, scores[current - moves.begin()]};
-                    }
-                    stage = generating_quiet_moves;
-                }
-                [[fallthrough]];
-            case generating_quiet_moves:
-                if (!capture_only) {
-                    pseudo_legals<quiet>(*pos, moves);
-                    sort_history(non_captures_start, moves.last);
-                    stage = quiet_moves;
-                    current = non_captures_start - 1;
-                }
-                else {
-                    stage = none;
-                    return {null_move, 0};
-                }
-                [[fallthrough]];
-            case quiet_moves:
-                current++;
-                if (*current == pv) current++;
-                if (current >= moves.last) {
-                    stage = bad_capture_moves;
-                    current = &moves.list[255] + 1;
-                }
-                else {
+                if (current < non_captures_start)
+                {
                     return {*current, scores[current - moves.begin()]};
                 }
-                [[fallthrough]];
-            case bad_capture_moves:
-                current--;
-                if (*current == pv) current--;
-                if (current <= bad_captures_end) {
-                    stage = none;
-                }
-                else {
-                    return {*current, -1};
-                }
-                [[fallthrough]];
-            case none: default:
+                stage = generating_quiet_moves;
+            }
+            [[fallthrough]];
+        case generating_quiet_moves:
+            if (!capture_only)
+            {
+                pseudo_legals<quiet>(*pos, moves);
+                sort_history(non_captures_start, moves.last);
+                stage = quiet_moves;
+                current = non_captures_start - 1;
+            }
+            else
+            {
+                stage = none;
                 return {null_move, 0};
+            }
+            [[fallthrough]];
+        case quiet_moves:
+            current++;
+            if (*current == pv) current++;
+            if (current >= moves.last)
+            {
+                stage = bad_capture_moves;
+                current = &moves.list[255] + 1;
+            }
+            else
+            {
+                return {*current, scores[current - moves.begin()]};
+            }
+            [[fallthrough]];
+        case bad_capture_moves:
+            current--;
+            if (*current == pv) current--;
+            if (current <= bad_captures_end)
+            {
+                stage = none;
+            }
+            else
+            {
+                return {*current, -1};
+            }
+            [[fallthrough]];
+        case none: default:
+            return {null_move, 0};
         }
     }
 
@@ -123,7 +154,8 @@ struct MovePicker
     {
         auto move = pick();
         if (!move.first) return {null_move, 0};
-        while (!check_move_legality(*pos, move.first)) {
+        while (!check_move_legality(*pos, move.first))
+        {
             move = pick();
             if (!move.first) return {null_move, 0};
         }
@@ -147,7 +179,8 @@ struct MovePicker
 
         Move* start = begin + 1;
 
-        while (start < end) {
+        while (start < end)
+        {
             int i = start - begin;
 
             Move* tmpm = start;
@@ -162,8 +195,9 @@ struct MovePicker
             scores[i] = mvv[captured] + Capture::table[stm][moved][captured][start->to()];
             if (start->flag() >= knight_promo_capture) scores[i] += value_of(start->promoted_to<false>());
 
-            while (i > 0 && scores[i - 1] < scores[i]) {
-                std::swap(scores[i-1], scores[i]);
+            while (i > 0 && scores[i - 1] < scores[i])
+            {
+                std::swap(scores[i - 1], scores[i]);
                 std::swap(*(tmpm - 1), *tmpm);
 
                 i--;
@@ -184,33 +218,37 @@ struct MovePicker
         const int16_t prev2 = (ss - 2)->piece_to != UINT16_MAX ? (ss - 2)->piece_to : 0;
 
         if (Killers::find(*begin, ss->plies)) scores[offset] = INT16_MAX;
-        else {
+        else
+        {
             moved = pos->piece_on[begin->from()];
             if (moved >= 6) moved -= 6;
             scores[offset] =
                 (ButterflyHistory::table[pos->side_to_move][begin->from()][begin->to()]
                     + PieceToHistory::table[pos->side_to_move][moved][begin->to()]) / 2
-            + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->to()]
-            + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->to()];
+                + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][begin->to()]
+                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][begin->to()];
         }
 
         Move* start = begin + 1;
 
-        while (start < end) {
+        while (start < end)
+        {
             int i = offset + start - begin;
             Move* tmpm = start;
 
             if (Killers::find(*tmpm, ss->plies)) scores[i] = INT16_MAX;
-            else {
+            else
+            {
                 moved = pos->piece_on[tmpm->from()];
                 if (moved >= 6) moved -= 6;
                 scores[i] = (ButterflyHistory::table[pos->side_to_move][tmpm->from()][tmpm->to()]
-                    + PieceToHistory::table[pos->side_to_move][moved][tmpm->to()]) / 2
-                + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->to()]
-                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->to()];
+                        + PieceToHistory::table[pos->side_to_move][moved][tmpm->to()]) / 2
+                    + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][tmpm->to()]
+                    + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][tmpm->to()];
             }
-            while (i > offset && scores[i - 1] < scores[i]) {
-                std::swap(scores[i-1], scores[i]);
+            while (i > offset && scores[i - 1] < scores[i])
+            {
+                std::swap(scores[i - 1], scores[i]);
                 std::swap(*(tmpm - 1), *tmpm);
 
                 i--;

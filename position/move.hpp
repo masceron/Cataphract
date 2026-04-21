@@ -154,4 +154,4 @@ struct Move
 };
 #pragma pack(pop)
 
-const Move null_move(0);
+inline const Move null_move(0);

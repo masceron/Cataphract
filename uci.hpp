@@ -265,7 +265,7 @@ namespace UCI
 
             if (Timer::running)
             {
-                if (input == "stop" && !is_search_cancelled)
+                if (input == "stop" && !Timer::is_search_cancelled)
                 {
                     Timer::stop();
                 }

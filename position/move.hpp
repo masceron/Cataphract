@@ -22,40 +22,41 @@ enum flag: uint16_t
     queen_promo_capture
 };
 
-inline int algebraic_to_num(const std::string_view &algebraic)
+inline int algebraic_to_num(const std::string_view& algebraic)
 {
     if (algebraic.length() != 2) return -1;
     int rank = 0;
     int file = 0;
     if (algebraic[1] >= '1' && algebraic[1] <= '8') rank = 8 - (algebraic[1] - '0');
     else return -1;
-    switch (algebraic[0]) {
-        case 'a':
-            file = 0;
-            break;
-        case 'b':
-            file = 1;
-            break;
-        case 'c':
-            file = 2;
-            break;
-        case 'd':
-            file = 3;
-            break;
-        case 'e':
-            file = 4;
-            break;
-        case 'f':
-            file = 5;
-            break;
-        case 'g':
-            file = 6;
-            break;
-        case 'h':
-            file = 7;
-            break;
-        default:
-            return -1;
+    switch (algebraic[0])
+    {
+    case 'a':
+        file = 0;
+        break;
+    case 'b':
+        file = 1;
+        break;
+    case 'c':
+        file = 2;
+        break;
+    case 'd':
+        file = 3;
+        break;
+    case 'e':
+        file = 4;
+        break;
+    case 'f':
+        file = 5;
+        break;
+    case 'g':
+        file = 6;
+        break;
+    case 'h':
+        file = 7;
+        break;
+    default:
+        return -1;
     }
     return rank * 8 + file;
 }
@@ -100,7 +101,8 @@ struct Move
 
     [[nodiscard]] bool is_quiet() const
     {
-        return flag() < capture;
+        const auto _flag = flag();
+        return !(_flag == capture || _flag == ep_capture || _flag == queen_promotion || _flag == queen_promo_capture);
     }
 
     [[nodiscard]] explicit operator bool() const
@@ -108,11 +110,12 @@ struct Move
         return move != 0;
     }
 
-    template<const bool side_needed>
+    template <const bool side_needed>
     [[nodiscard]] Pieces promoted_to(const bool side = white) const
     {
         if constexpr (!side_needed) return static_cast<Pieces>((flag() & 0b11) + 1);
-        else {
+        else
+        {
             if (side == white) return static_cast<Pieces>((flag() & 0b11) + 1);
             return static_cast<Pieces>(6 + ((flag() & 0b11) + 1));
         }
@@ -126,22 +129,24 @@ struct Move
         std::stringstream s;
         s << num_to_algebraic(from()) << num_to_algebraic(to());
 
-        if (flag() >= knight_promotion) {
-            switch (promoted_to<false>()) {
-                case N:
-                    s << "n";
-                    break;
-                case B:
-                    s << "b";
-                    break;
-                case R:
-                    s << "r";
-                    break;
-                case Q:
-                    s << "q";
-                    break;
-                default:
-                    break;
+        if (flag() >= knight_promotion)
+        {
+            switch (promoted_to<false>())
+            {
+            case N:
+                s << "n";
+                break;
+            case B:
+                s << "b";
+                break;
+            case R:
+                s << "r";
+                break;
+            case Q:
+                s << "q";
+                break;
+            default:
+                break;
             }
         }
         return s.str();

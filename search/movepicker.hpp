@@ -31,35 +31,45 @@ struct MovePicker
     MoveList moves;
     int threshold;
     int16_t scores[256];
-    bool capture_only;
+    bool non_quiet_only;
     Stages stage = generating_capture_moves;
 
     explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss,
-                        const int _threshold = 0) : pos(_pos), ss(_ss), capture_only(_capture_only)
+                        const int _threshold = 0) : pos(_pos), ss(_ss), non_quiet_only(_capture_only)
     {
         bad_captures_end = &moves.list[255];
         threshold = _threshold;
-        if (_pv && pos->is_pseudo_legal(_pv) && !(capture_only && _pv.flag() != capture && _pv.flag() <
-            knight_promo_capture && _pv.flag() != ep_capture))
+        if (_pv && pos->is_pseudo_legal(_pv)
+            && !(non_quiet_only
+            && _pv.flag() != queen_promotion
+            && _pv.flag() != capture
+            && _pv.flag() < knight_promo_capture
+            && _pv.flag() != ep_capture))
         {
             bool is_valid = true;
 
-            if (pos->state->checker) {
-                if (pos->piece_on[_pv.from()] != K && pos->piece_on[_pv.from()] != k) {
-                    if (std::popcount(pos->state->checker) > 1) {
+            if (pos->state->checker)
+            {
+                if (pos->piece_on[_pv.from()] != K && pos->piece_on[_pv.from()] != k)
+                {
+                    if (std::popcount(pos->state->checker) > 1)
+                    {
                         is_valid = false;
                     }
-                    else if (_pv.flag() == ep_capture) {
+                    else if (_pv.flag() == ep_capture)
+                    {
                         const int ep_capture_sq = _pv.to() + Delta<Up>(pos->side_to_move);
                         is_valid = pos->state->check_blocker & (1ull << ep_capture_sq);
                     }
-                    else {
+                    else
+                    {
                         is_valid = pos->state->check_blocker & (1ull << _pv.to());
                     }
                 }
             }
 
-            if (is_valid) {
+            if (is_valid)
+            {
                 pv = _pv;
                 stage = TT_moves;
             }
@@ -75,7 +85,7 @@ struct MovePicker
             return {pv, 0};
         case generating_capture_moves:
             stage = good_capture_moves;
-            pseudo_legals<captures>(*pos, moves);
+            pseudo_legals<noisy>(*pos, moves);
             sort_mvv_capthist(moves.begin(), moves.last);
             non_captures_start = moves.last;
             current = moves.begin() - 1;
@@ -107,7 +117,7 @@ struct MovePicker
             }
             [[fallthrough]];
         case generating_quiet_moves:
-            if (!capture_only)
+            if (!non_quiet_only)
             {
                 pseudo_legals<quiet>(*pos, moves);
                 sort_history(non_captures_start, moves.last);

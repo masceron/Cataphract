@@ -56,7 +56,7 @@ inline int quiesce(Position& pos, int alpha, int beta, SearchEntry* ss)
         seldepth = ss->plies;
     }
 
-    if (is_search_cancelled) return alpha;
+    if (Timer::is_search_cancelled) return alpha;
 
     const bool not_in_check = !pos.state->checker;
     if (ss->plies > max_ply)
@@ -172,7 +172,7 @@ inline int quiesce(Position& pos, int alpha, int beta, SearchEntry* ss)
         accumulator_stack.pop();
         pos.unmake_move(picked_move);
 
-        if (is_search_cancelled) return alpha;
+        if (Timer::is_search_cancelled) return alpha;
 
         move_searched++;
 
@@ -229,7 +229,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                   SearchEntry* ss)
 {
     node_searched++;
-    if (is_search_cancelled) return alpha;
+    if (Timer::is_search_cancelled) return alpha;
 
     if (ss->plies > seldepth)
     {
@@ -381,7 +381,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                 const int null_score = -search(pos, -beta, -beta + 1, depth - r, local_pv, !cut_node, ss + 1);
                 pos.unmake_null_move();
 
-                if (is_search_cancelled) return alpha;
+                if (Timer::is_search_cancelled) return alpha;
                 if (null_score >= beta) return beta;
             }
         }
@@ -562,7 +562,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         accumulator_stack.pop();
         pos.unmake_move(picked_move);
 
-        if (is_search_cancelled) return alpha;
+        if (Timer::is_search_cancelled) return alpha;
         ++move_searched;
 
         if (score > best_score)
@@ -688,7 +688,7 @@ inline void start_search(const int depth_param, const int move_time, const int w
 
     for (root_depth = 1; root_depth <= search_depth; root_depth++)
     {
-        if (is_search_cancelled) break;
+        if (Timer::is_search_cancelled) break;
 
         seldepth = 0;
         int score;
@@ -697,7 +697,7 @@ inline void start_search(const int depth_param, const int move_time, const int w
         {
             score = search(position, alpha, beta, root_depth, principal_variation, false, &search_stack[4]);
 
-            if (is_search_cancelled) break;
+            if (Timer::is_search_cancelled) break;
 
             if (score <= alpha)
             {
@@ -714,7 +714,7 @@ inline void start_search(const int depth_param, const int move_time, const int w
             }
             window += window / 2;
         }
-        if (is_search_cancelled) break;
+        if (Timer::is_search_cancelled) break;
 
         const double elapsed = Timer::elapsed();
         std::print("info depth {} seldepth {} score ", root_depth, seldepth);

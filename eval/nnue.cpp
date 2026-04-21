@@ -7,15 +7,15 @@
 struct Network;
 
 #ifdef __AVX512F__
-alignas(64) unsigned char data[] = {
+alignas(64) inline unsigned char data[] = {
 #embed "../net.bin"
 };
 #elifdef __AVX2__
-alignas(32) unsigned char data[] = {
+alignas(32) inline unsigned char data[] = {
 #embed "../net.bin"
 };
 #else
-unsigned char data[] = {
+inline unsigned char data[] = {
 #embed "../net.bin"
 };
 #endif

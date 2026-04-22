@@ -520,7 +520,7 @@ inline void accumulator_stack_update(Network* network)
                     const auto new_white = new_mirrors.first
                                                ? horizontal_mirror(new_bitboards[piece])
                                                : new_bitboards[piece];
-                    auto white_adds = __builtin_bswap64(new_white & ~old_white);
+                    auto white_adds = std::byteswap(new_white & ~old_white);
 
                     while (white_adds)
                     {
@@ -533,7 +533,7 @@ inline void accumulator_stack_update(Network* network)
                         white_adds &= white_adds - 1;
                     }
 
-                    auto white_subs = __builtin_bswap64(old_white & ~new_white);
+                    auto white_subs = std::byteswap(old_white & ~new_white);
 
                     while (white_subs)
                     {

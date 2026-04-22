@@ -82,7 +82,8 @@ inline void set_bit(uint64_t& bitboard, const uint8_t index)
 
 inline int lsb(const uint64_t bitboard)
 {
-    return __builtin_ctzll(bitboard);
+    [[assume(bitboard != 0)]];
+    return std::countr_zero(bitboard);
 }
 
 inline void print_bitboard(const uint64_t bitboard)

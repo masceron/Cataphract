@@ -43,8 +43,10 @@ inline auto lmp = []
     return prunes;
 }();
 
-inline static uint32_t node_searched = 0;
-inline static int seldepth;
+inline int root_depth;
+inline uint32_t node_searched;
+inline int seldepth;
+inline uint32_t max_nodes;
 
 inline static constexpr int max_ply = 127;
 
@@ -54,6 +56,10 @@ inline int quiesce(Position& pos, int alpha, int beta, SearchEntry* ss)
     if (ss->plies > seldepth)
     {
         seldepth = ss->plies;
+    }
+    if (node_searched >= max_nodes)
+    {
+        Timer::stop();
     }
 
     if (Timer::is_search_cancelled) return alpha;
@@ -223,12 +229,14 @@ inline int quiesce(Position& pos, int alpha, int beta, SearchEntry* ss)
     return best_score;
 }
 
-inline int root_depth;
-
 inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, const bool cut_node,
                   SearchEntry* ss)
 {
     node_searched++;
+    if (node_searched >= max_nodes)
+    {
+        Timer::stop();
+    }
     if (Timer::is_search_cancelled) return alpha;
 
     if (ss->plies > seldepth)
@@ -650,7 +658,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
 }
 
 inline void start_search(const int depth_param, const int move_time, const int wtime, const int btime,
-                         const int winc, const int binc, const int moves_to_go)
+                         const int winc, const int binc, const int moves_to_go, const uint32_t nodes)
 {
     int search_depth = 127;
     TimeManager tm;
@@ -671,10 +679,15 @@ inline void start_search(const int depth_param, const int move_time, const int w
 
         tm.init_time_control(&position, time_left, increment, moves_to_go);
     }
+    else if (nodes != UINT32_MAX)
+    {
+        tm.init_none();
+    }
 
     Timer::start(static_cast<uint32_t>(tm.max_time));
 
     node_searched = 0;
+    max_nodes = nodes;
     Move best_move = null_move;
     std::list<Move> principal_variation;
 

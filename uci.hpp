@@ -184,6 +184,7 @@ namespace UCI
         int winc = 0;
         int binc = 0;
         int movestogo = 0;
+        uint32_t nodes = UINT32_MAX;
         bool infinite = false;
         bool perft_cmd = false;
         int perft_depth = 0;
@@ -198,6 +199,10 @@ namespace UCI
             else if (token == "movetime")
             {
                 ss >> movetime;
+            }
+            else if (token == "nodes")
+            {
+                ss >> nodes;
             }
             else if (token == "wtime")
             {
@@ -237,7 +242,7 @@ namespace UCI
         {
             if (infinite) depth = 127;
 
-            search_thread = std::thread(start_search, depth, movetime, wtime, btime, winc, binc, movestogo);
+            search_thread = std::thread(start_search, depth, movetime, wtime, btime, winc, binc, movestogo, nodes);
             search_thread.detach();
         }
     }

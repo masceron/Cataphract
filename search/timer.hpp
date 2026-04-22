@@ -3,15 +3,16 @@
 #include <mutex>
 #include <thread>
 #include <condition_variable>
+#include <atomic>
 
 struct Timer
 {
     static inline std::condition_variable timer_cv;
     static inline std::mutex timer_lock;
     static inline std::thread timer_thread;
-    static inline volatile bool running{false};
+    static inline std::atomic<bool> running{false};
     static inline std::chrono::time_point<std::chrono::high_resolution_clock> begin_time;
-    static inline volatile bool is_search_cancelled;
+    static inline std::atomic<bool> is_search_cancelled;
 
     static uint64_t elapsed()
     {

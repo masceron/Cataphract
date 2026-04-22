@@ -2,6 +2,8 @@
 
 #include <cstdint>
 #include <cstring>
+#include <bit>
+#include <tuple>
 #include "../position/move.hpp"
 
 enum Values: int
@@ -34,14 +36,22 @@ struct Entry
 
 namespace TT
 {
-    inline uint32_t table_size_in_mb = 256;
-    inline uint32_t table_size = table_size_in_mb * 1048576 / sizeof(Entry);
-    inline uint8_t current_age = 4;
-    inline Entry* table;
+    static uint64_t closest_2_pow(const uint32_t mb)
+    {
+        [[assume(mb != 0)]];
+        const uint64_t total_bytes = static_cast<uint64_t>(mb) << 20;
+        return std::bit_floor(total_bytes / sizeof(Entry));
+    }
+
+    inline static uint32_t table_size_in_mb = 256;
+    inline static uint64_t table_size = closest_2_pow(table_size_in_mb);
+    inline static uint64_t hash_mask = table_size - 1;
+    inline static uint8_t current_generation = 4;
+    inline static Entry* table;
 
     inline void clear()
     {
-        current_age = 4;
+        current_generation = 4;
         memset(&table[0], 0, table_size * sizeof(Entry));
     }
 
@@ -70,19 +80,20 @@ namespace TT
         {
             free_tt();
             table_size_in_mb = new_size_in_mb;
-            table_size = table_size_in_mb * 1048576 / sizeof(Entry);
+            table_size = closest_2_pow(new_size_in_mb);
+            hash_mask = table_size - 1;
             alloc();
         }
     }
 
-    inline void age()
+    inline void advance()
     {
-        current_age += 4;
+        current_generation += 4;
     }
 
     inline uint64_t index_of(const uint64_t& key)
     {
-        return (static_cast<unsigned __int128>(key) * static_cast<unsigned __int128>(table_size)) >> 64;
+        return key & hash_mask;
     }
 
     inline std::tuple<Entry*, int, uint8_t, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply,
@@ -118,14 +129,16 @@ namespace TT
             entry->best_move = best_move;
         }
 
-        if (const bool is_old = (entry->age_type & 0b11111100) != current_age; type == exact || is_old || key != entry->
-            key || depth + 4 >= entry->depth)
+        if (type == exact
+            || (entry->age_type & 252) != current_generation
+            || key !=entry->key
+            || depth + 4 >= entry->depth)
         {
             entry->key = key;
             entry->depth = depth;
             entry->score = static_cast<int16_t>(score);
             entry->static_eval = static_cast<int16_t>(static_eval);
-            entry->age_type = current_age + type;
+            entry->age_type = current_generation + type;
         }
     }
 
@@ -134,7 +147,7 @@ namespace TT
         uint16_t hash_full = 0;
         for (int i = 0; i < 1000; i++)
         {
-            if ((table[i].age_type & 0b11111100) == current_age) hash_full++;
+            if ((table[i].age_type & 0b11111100) == current_generation) hash_full++;
         }
         return hash_full;
     }

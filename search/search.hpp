@@ -37,8 +37,8 @@ inline auto lmp = []
     std::array<std::array<uint8_t, 16>, 2> prunes;
     for (int i = 0; i < 16; i++)
     {
-        prunes[0][i] = std::floor(5 + i * i / 2);
-        prunes[1][i] = std::floor(5 + i * i);
+        prunes[0][i] = static_cast<uint8_t>(std::floor(5 + i * i / 2));
+        prunes[1][i] = static_cast<uint8_t>(std::floor(5 + i * i));
     }
     return prunes;
 }();
@@ -331,16 +331,16 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                 raw_static_eval = eval(pos);
             }
 
-            ss->static_eval = Corrections::correct(raw_static_eval, pos);
+            ss->static_eval = static_cast<int16_t>(Corrections::correct(raw_static_eval, pos));
 
             if (!((ss->static_eval > tt_score && entry_type == lower_bound) || (
                 ss->static_eval < tt_score && entry_type == upper_bound)))
-                ss->static_eval = tt_score;
+                ss->static_eval = static_cast<int16_t>(tt_score);
         }
         else
         {
             raw_static_eval = eval(pos);
-            ss->static_eval = Corrections::correct(raw_static_eval, pos);
+            ss->static_eval = static_cast<int16_t>(Corrections::correct(raw_static_eval, pos));
         }
 
         if (int16_t two_plies_ago; (two_plies_ago = (ss - 2)->static_eval) != score_none)
@@ -729,7 +729,7 @@ inline void start_search(const int depth_param, const int move_time, const int w
         }
         if (Timer::is_search_cancelled) break;
 
-        const double elapsed = Timer::elapsed();
+        const auto elapsed = static_cast<double>(Timer::elapsed());
         std::print("info depth {} seldepth {} score ", root_depth, seldepth);
 
         if (score < -mate_in_max_ply) std::print("mate {} ", -std::ceil((mate_value + score) / 2.0));

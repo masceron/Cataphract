@@ -129,8 +129,10 @@ inline void accumulators_set(const Network* network, const uint64_t* boards, int
             auto [white_add, black_add] = input_index_of(i, lsb(board), mirror);
             for (int iter = 0; iter < HL_SIZE; iter++)
             {
-                accumulators[iter] += network->accumulator_weights[white_bucket][white_add][iter];
-                accumulators[iter + HL_SIZE] += network->accumulator_weights[black_bucket][black_add][iter];
+                accumulators[iter] = static_cast<int16_t>(accumulators[iter]
+                    + network->accumulator_weights[white_bucket][white_add][iter]);
+                accumulators[iter + HL_SIZE] = static_cast<int16_t>(accumulators[iter + HL_SIZE] + network->
+                    accumulator_weights[black_bucket][black_add][iter]);
             }
 
             board &= board - 1;
@@ -433,8 +435,10 @@ void accumulators_add2sub2(Network* network, const int16_t* __restrict prev, int
 }
 
 template <const int exclude>
-void update_from_move(Network* network, int16_t* prev, int16_t* cur, const std::pair<uint8_t, int8_t>* add,
-                      const std::pair<uint8_t, int8_t>* sub, const std::pair<bool, bool>& mirrors,
+void update_from_move(Network* network, int16_t* __restrict prev, int16_t* __restrict cur,
+                      const std::pair<uint8_t, int8_t>* add,
+                      const std::pair<uint8_t, int8_t>* sub,
+                      const std::pair<bool, bool>& mirrors,
                       const std::pair<uint8_t, uint8_t>& buckets)
 {
     if (sub[1].second != -1)
@@ -528,7 +532,8 @@ inline void accumulator_stack_update(Network* network)
                         const int input_index = index_added + piece * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
-                            saved_accumulators[iter] += network->accumulator_weights[white_bucket][input_index][iter];
+                            saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] + network->
+                                accumulator_weights[white_bucket][input_index][iter]);
                         }
                         white_adds &= white_adds - 1;
                     }
@@ -541,7 +546,8 @@ inline void accumulator_stack_update(Network* network)
                         const int input_index = index_subbed + piece * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
-                            saved_accumulators[iter] -= network->accumulator_weights[white_bucket][input_index][iter];
+                            saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] - network->
+                                accumulator_weights[white_bucket][input_index][iter]);
                         }
                         white_subs &= white_subs - 1;
                     }
@@ -571,8 +577,8 @@ inline void accumulator_stack_update(Network* network)
                         const int input_index = index_added + flip_color(piece) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
-                            saved_accumulators[iter + HL_SIZE] += network->accumulator_weights[black_bucket][
-                                input_index][iter];
+                            saved_accumulators[iter + HL_SIZE] = static_cast<int16_t>(saved_accumulators[iter + HL_SIZE]
+                                + network->accumulator_weights[black_bucket][input_index][iter]);
                         }
                         black_adds &= black_adds - 1;
                     }
@@ -585,9 +591,8 @@ inline void accumulator_stack_update(Network* network)
                         const int input_index = index_subbed + flip_color(piece) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
-                            saved_accumulators[iter + HL_SIZE] -= network->accumulator_weights[black_bucket][
-                                input_index][
-                                iter];
+                            saved_accumulators[iter + HL_SIZE] = static_cast<int16_t>(saved_accumulators[iter + HL_SIZE]
+                                - network->accumulator_weights[black_bucket][input_index][iter]);
                         }
                         black_subs &= black_subs - 1;
                     }

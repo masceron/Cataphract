@@ -1,42 +1,139 @@
 #pragma once
+
+#include <bit>
+#include <immintrin.h>
 #include <cstdint>
 #include <random>
+
+#include "bishop.hpp"
 #include "rook.hpp"
 
+#ifndef __BMI2__
 struct Magic
 {
     mutable uint64_t magic;
     mutable uint8_t shift;
     mutable uint64_t mask;
-    mutable uint64_t *attacks;
+    mutable uint64_t* attacks;
 };
+
+inline std::array<uint64_t, 5248> bishop_table{};
+inline std::array<uint64_t, 102400> rook_table{};
 
 constexpr std::array bishop_magic_numbers = {
-    31667043057275136ull, 2379101304879329763ull, 757774626364359168ull, 1130437606901761ull, 299342208567552ull, 6919818245755111425ull, 288309576557134080ull, 1166471911811854848ull, 666537555356944513ull, 9657072616707719304ull, 146371420331458576ull, 4415503213601ull, 2254007712153856ull, 2314852412072429571ull, 74310510568554500ull, 13794482025931264ull, 37155865770862592ull, 1175457129307376640ull, 4611967527797655824ull, 11294338126450760ull, 1298162740776415300ull, 1495230608820412420ull, 2595551132080670720ull, 1811291477835792900ull, 1179780358606848ull, 1175448301254807824ull, 650910900486656ull, 578721348212359328ull, 27167285806374927ull, 845524475593984ull, 4612825129930490880ull, 576619632841064592ull, 288551710574536768ull, 4630281027829498464ull, 9224498076348317952ull, 1152956723341099088ull, 9594922305721729060ull, 3612731626762601216ull, 1298729987836478144ull, 289356868847960129ull, 289392697515463209ull, 149567980456202ull, 6194657135534336ull, 5782622059385323776ull, 2377979772450906176ull, 10665122069403959328ull, 307414689409663072ull, 391428857397376ull, 145496853450784ull, 9516391889969354752ull, 91199009431224320ull, 4629700710102077504ull, 36453896241315840ull, 1549310324757504304ull, 342282379391537280ull, 364792675301359620ull, 22011827982336ull, 4505801144666265ull, 73192290625528320ull, 36046394173818880ull, 2305843147726922248ull, 1154068875593384192ull, 144695867687875075ull, 2450538748027404802ull
+    31667043057275136ull, 2379101304879329763ull, 757774626364359168ull, 1130437606901761ull, 299342208567552ull,
+    6919818245755111425ull, 288309576557134080ull, 1166471911811854848ull, 666537555356944513ull,
+    9657072616707719304ull, 146371420331458576ull, 4415503213601ull, 2254007712153856ull, 2314852412072429571ull,
+    74310510568554500ull, 13794482025931264ull, 37155865770862592ull, 1175457129307376640ull, 4611967527797655824ull,
+    11294338126450760ull, 1298162740776415300ull, 1495230608820412420ull, 2595551132080670720ull,
+    1811291477835792900ull, 1179780358606848ull, 1175448301254807824ull, 650910900486656ull, 578721348212359328ull,
+    27167285806374927ull, 845524475593984ull, 4612825129930490880ull, 576619632841064592ull, 288551710574536768ull,
+    4630281027829498464ull, 9224498076348317952ull, 1152956723341099088ull, 9594922305721729060ull,
+    3612731626762601216ull, 1298729987836478144ull, 289356868847960129ull, 289392697515463209ull, 149567980456202ull,
+    6194657135534336ull, 5782622059385323776ull, 2377979772450906176ull, 10665122069403959328ull, 307414689409663072ull,
+    391428857397376ull, 145496853450784ull, 9516391889969354752ull, 91199009431224320ull, 4629700710102077504ull,
+    36453896241315840ull, 1549310324757504304ull, 342282379391537280ull, 364792675301359620ull, 22011827982336ull,
+    4505801144666265ull, 73192290625528320ull, 36046394173818880ull, 2305843147726922248ull, 1154068875593384192ull,
+    144695867687875075ull, 2450538748027404802ull
 };
 constexpr std::array rook_magic_numbers = {
-    36029381405065216ull, 4917931480292786503ull, 9367522960133327360ull, 324276767504467970ull, 4755803406063895568ull, 2738189681551737872ull, 9367489423962800388ull, 2341877446648791168ull, 13961299583410643072ull, 1196337372594240ull, 613052782746013824ull, 563019210310148ull, 1450299851869946880ull, 9147953923096704ull, 578853362620039296ull, 562954252616706ull, 3179541888826884096ull, 144256476393775108ull, 282575025225752ull, 945794404805775361ull, 2252349737533568ull, 2315414262228976640ull, 4611690418890932808ull, 9223378633975042124ull, 594545521704599584ull, 9024792514543648ull, 162164773113303040ull, 2594090981846951168ull, 72061994240313344ull, 4611688219606516736ull, 578713668817129480ull, 6972839281471588500ull, 9511752221541269544ull, 18049584026619904ull, 140806216228874ull, 294000681902147584ull, 1125919242586112ull, 4611826773104001536ull, 14988067531086891009ull, 81909495281746961ull, 72093053297393664ull, 18019346848972864ull, 578732345476120640ull, 3459046607281520675ull, 5066566897106960ull, 72620612845174788ull, 18015508490354728ull, 72146105815662596ull, 2392538378469632ull, 35186523769472ull, 10376434416389980288ull, 18296011060412672ull, 288239172311875712ull, 873733530336626689ull, 1272557174668731392ull, 1169347059200ull, 598688380491270ull, 281614564212745ull, 76737115748077825ull, 4939604503868739585ull, 5066687154229250ull, 2533309217243651ull, 72075463384764676ull, 147493163278303490ull
+    36029381405065216ull, 4917931480292786503ull, 9367522960133327360ull, 324276767504467970ull, 4755803406063895568ull,
+    2738189681551737872ull, 9367489423962800388ull, 2341877446648791168ull, 13961299583410643072ull,
+    1196337372594240ull, 613052782746013824ull, 563019210310148ull, 1450299851869946880ull, 9147953923096704ull,
+    578853362620039296ull, 562954252616706ull, 3179541888826884096ull, 144256476393775108ull, 282575025225752ull,
+    945794404805775361ull, 2252349737533568ull, 2315414262228976640ull, 4611690418890932808ull, 9223378633975042124ull,
+    594545521704599584ull, 9024792514543648ull, 162164773113303040ull, 2594090981846951168ull, 72061994240313344ull,
+    4611688219606516736ull, 578713668817129480ull, 6972839281471588500ull, 9511752221541269544ull, 18049584026619904ull,
+    140806216228874ull, 294000681902147584ull, 1125919242586112ull, 4611826773104001536ull, 14988067531086891009ull,
+    81909495281746961ull, 72093053297393664ull, 18019346848972864ull, 578732345476120640ull, 3459046607281520675ull,
+    5066566897106960ull, 72620612845174788ull, 18015508490354728ull, 72146105815662596ull, 2392538378469632ull,
+    35186523769472ull, 10376434416389980288ull, 18296011060412672ull, 288239172311875712ull, 873733530336626689ull,
+    1272557174668731392ull, 1169347059200ull, 598688380491270ull, 281614564212745ull, 76737115748077825ull,
+    4939604503868739585ull, 5066687154229250ull, 2533309217243651ull, 72075463384764676ull, 147493163278303490ull
 };
-
-std::array<Magic, 64> generate_magics(bool is_bishop);
-
-inline std::array<Magic, 64> bishop_magics = generate_magics(true);
-inline std::array<Magic, 64> rook_magics = generate_magics(false);
-
-constexpr uint64_t occupancy_board(int set_index, int mask_bits_count, uint64_t attack_board);
 
 inline uint64_t generate_random_number()
 {
     std::random_device rd;
     std::mt19937_64 gnr(rd());
     std::uniform_int_distribution<uint64_t> dis;
-    return (dis(gnr) & 0xFFFF) | ((dis(gnr) & 0xFFFF) << 16) | ((dis(gnr) & 0xFFFF) << 32) | ((dis(gnr) & 0xFFFF) << 48);
+    return (dis(gnr) & 0xFFFF) | ((dis(gnr) & 0xFFFF) << 16) | ((dis(gnr) & 0xFFFF) << 32) | ((dis(gnr) & 0xFFFF) <<
+        48);
 }
 
 inline uint64_t random_uint64_few_bits()
 {
     return generate_random_number() & generate_random_number() & generate_random_number();
 }
+
+constexpr uint64_t occupancy_board(const int set_index, const int mask_bits_count, uint64_t attack_board)
+{
+    uint64_t occupancy = 0;
+    for (int count = 0; count < mask_bits_count; count++)
+    {
+        const int index = std::popcount((attack_board & -attack_board) - 1);
+        attack_board = attack_board & (attack_board - 1);
+        if (set_index & (1ull << count))
+        {
+            occupancy |= 1ull << index;
+        }
+    }
+    return occupancy;
+}
+
+inline std::array<Magic, 64> generate_magics(const bool is_bishop)
+{
+    constexpr std::array<Magic, 64> magics = {};
+    int size = 0, count = 0;
+    std::array<int, 4096> epoch{};
+    std::array<uint64_t, 4096> occupancy{};
+    std::array<uint64_t, 4096> references{};
+    for (int sq = 0; sq < 64; sq++)
+    {
+        uint64_t temp = 0;
+        const uint64_t mask = is_bishop ? mask_bishop_attack(sq) : mask_rook_attack(sq);
+        const Magic& magic = magics[sq];
+        magic.shift = 64 - std::popcount(mask);
+        magic.mask = mask;
+        if (sq == 0)
+            magic.attacks = is_bishop ? bishop_table.data() : rook_table.data();
+        else
+            magic.attacks = magics[sq - 1].attacks + size;
+        size = 0;
+        do
+        {
+            occupancy[size] = temp;
+            references[size] = is_bishop ? generate_bishop_attack(sq, temp) : generate_rook_attack(sq, temp);
+            size++;
+            temp = (temp - mask) & mask;
+        }
+        while (temp);
+        for (int i = 0; i < size; i++)
+        {
+            const uint64_t magic_number = is_bishop ? bishop_magic_numbers[sq] : rook_magic_numbers[sq];
+            // uint64_t magic_number = 0;
+            // while (std::popcount((magic_number * mask) >> 56) < 6) {
+            //     magic_number = random_uint64_few_bits();
+            // }
+
+            magic.magic = magic_number;
+            for (++count, i = 0; i < size; ++i)
+            {
+                if (const uint64_t index = ((occupancy[i] & mask) * magic_number) >> magic.shift; epoch[index] < count)
+                {
+                    epoch[index] = count;
+                    magic.attacks[index] = references[i];
+                }
+                else if (magic.attacks[index] != references[i])
+                    break;
+            }
+        }
+    }
+    return magics;
+}
+
+inline std::array<Magic, 64> bishop_magics = generate_magics(true);
+inline std::array<Magic, 64> rook_magics = generate_magics(false);
 
 inline uint64_t get_bishop_attack(const int index, const uint64_t occupancy)
 {
@@ -59,5 +156,122 @@ inline uint64_t get_queen_attack(const int index, const uint64_t occupancy)
     return attacks_r[((rook & mask_r) * magic_r) >> shift_r] | attacks_b[((occupancy & mask_b) * magic_b) >> shift_b];
 }
 
-inline std::array<uint64_t, 5248> bishop_table{};
-inline std::array<uint64_t, 102400> rook_table{};
+#else
+
+static constexpr std::array<uint64_t, 64> bishop_masks = []() consteval
+{
+    std::array<uint64_t, 64> masks;
+    for (int sq = 0; sq < 64; sq++)
+    {
+        masks[sq] = mask_bishop_attack(sq);
+    }
+    return masks;
+}();
+
+static constexpr std::array<uint64_t, 64> rook_masks = []() consteval
+{
+    std::array<uint64_t, 64> masks;
+    for (int sq = 0; sq < 64; sq++)
+    {
+        masks[sq] = mask_rook_attack(sq);
+    }
+    return masks;
+}();
+
+static constexpr std::array<uint64_t, 64> bishop_offsets = []() consteval
+{
+    std::array<uint64_t, 64> offsets;
+    uint32_t offset = 0;
+    for (int sq = 0; sq < 64; sq++)
+    {
+        const uint32_t perm_amount = 1 << std::popcount(bishop_masks[sq]);
+        offsets[sq] = offset;
+        offset += perm_amount;
+    }
+
+    return offsets;
+}();
+static constexpr std::array<uint64_t, 64> rook_offsets = []() consteval
+{
+    std::array<uint64_t, 64> offsets;
+    uint32_t offset = 0;
+    for (int sq = 0; sq < 64; sq++)
+    {
+        const uint32_t perm_amount = 1 << std::popcount(rook_masks[sq]);
+        offsets[sq] = offset;
+        offset += perm_amount;
+    }
+
+    return offsets;
+}();
+
+constexpr uint64_t pdep(const uint64_t val, uint64_t mask)
+{
+    if consteval
+    {
+        uint64_t res = 0;
+        for (uint64_t bb = 1; mask; bb += bb) {
+            if (val & bb)
+                res |= mask & -mask;
+            mask &= mask - 1;
+        }
+        return res;
+    }
+    return _pdep_u64(val, mask);
+}
+
+static constexpr std::array<uint64_t, 5248> bishop_table = []() consteval
+{
+    std::array<uint64_t, 5248> bishop_pext;
+    uint32_t offset = 0;
+    for (int sq = 0; sq < 64; ++sq)
+    {
+        const uint32_t mask_bits = std::popcount(bishop_masks[sq]);
+        const uint32_t perm_amount = 1 << mask_bits;
+
+        for (uint32_t perm = 0; perm < perm_amount; ++perm)
+        {
+            const uint64_t blocker = pdep(perm, bishop_masks[sq]);
+            bishop_pext[offset + perm] = generate_bishop_attack(sq, blocker);
+        }
+        offset += perm_amount;
+    }
+
+    return bishop_pext;
+}();
+
+static const std::array<uint64_t, 102400> rook_table = []()
+{
+    std::array<uint64_t, 102400> rook_pext;
+    uint32_t offset = 0;
+    for (int sq = 0; sq < 64; ++sq)
+    {
+        const uint32_t mask_bits = std::popcount(rook_masks[sq]);
+        const uint32_t perm_amount = 1 << mask_bits;
+
+        for (uint32_t perm = 0; perm < perm_amount; ++perm)
+        {
+            const uint64_t blocker = pdep(perm, rook_masks[sq]);
+            rook_pext[offset + perm] = generate_rook_attack(sq, blocker);
+        }
+        offset += perm_amount;
+    }
+
+    return rook_pext;
+}();
+
+inline uint64_t get_bishop_attack(const int index, const uint64_t occupancy)
+{
+    return bishop_table[bishop_offsets[index] + static_cast<uint32_t>(_pext_u64(occupancy, bishop_masks[index]))];
+}
+
+inline uint64_t get_rook_attack(const int index, const uint64_t occupancy)
+{
+    return rook_table[rook_offsets[index] + static_cast<uint32_t>(_pext_u64(occupancy, rook_masks[index]))];
+}
+
+inline uint64_t get_queen_attack(const int index, const uint64_t occupancy)
+{
+    return get_rook_attack(index, occupancy) | get_bishop_attack(index, occupancy);
+}
+#endif

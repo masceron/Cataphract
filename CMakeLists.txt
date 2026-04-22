@@ -25,7 +25,6 @@ add_executable(Cataphract main.cpp
         board/pieces/bishop.hpp
         board/pieces/rook.hpp
         board/pieces/slider.hpp
-        board/pieces/slider.cpp
         position/fen.hpp
         position/position.hpp
         board/lines.hpp

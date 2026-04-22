@@ -3,6 +3,5 @@
 int main()
 {
     UCI::start();
-
     UCI::process();
 }

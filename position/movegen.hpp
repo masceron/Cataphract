@@ -29,7 +29,7 @@ enum MoveType: uint8_t
 template <const bool us, const MoveType type, const bool evasive>
 void pawn_move_generator(const Position& cr_pos, Move*& pos)
 {
-    const int ep_square = cr_pos.state->en_passant_square;
+    const auto ep_square = cr_pos.state->en_passant_square;
     static constexpr bool enemy = !us;
     static constexpr int board_index = us == white ? P : p;
     static constexpr uint64_t last_line = us == white ? 0xFF00ull : 0xFF000000000000ull;

@@ -12,7 +12,7 @@ inline size_t perft(const int depth)
     }
 
     const MoveList moves = legals<all>(position);
-    const int n = moves.size();
+    const auto n = moves.size();
     uint64_t nodes = 0;
 
     if (depth == 1)
@@ -37,7 +37,7 @@ inline void divide(const int depth)
 
     const auto start = std::chrono::high_resolution_clock::now();
     const MoveList moves = legals<all>(position);
-    const int n = moves.size();
+    const auto n = moves.size();
 
     State st;
 
@@ -53,8 +53,10 @@ inline void divide(const int depth)
     const auto time_taken = std::chrono::duration<double>(std::chrono::high_resolution_clock::now() - start);
     std::println("Nodes searched: {}", total);
     std::println("Time taken: {:.2f}s",
-                 std::chrono::duration_cast<std::chrono::milliseconds>(time_taken).count() / 1000.0);
+                 static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(time_taken).count()) /
+                 1000.0);
     std::println("Average: {:.2f} nodes per second.",
-                 total / (std::chrono::duration_cast<std::chrono::nanoseconds>(time_taken).count() / 1000000000.0));
+                 static_cast<double>(total) / static_cast<double>(std::chrono::duration_cast<
+                     std::chrono::nanoseconds>(time_taken).count()) / 1000000000.0);
     std::fflush(stdout);
 }

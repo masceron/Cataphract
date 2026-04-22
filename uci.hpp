@@ -140,7 +140,7 @@ namespace UCI
                 else begin = std::string::npos;
             }
         }
-        TT::age();
+        TT::advance();
         NNUE::refresh_accumulators(position);
     }
 
@@ -162,7 +162,7 @@ namespace UCI
             int32_t new_size = 0;
             std::from_chars(value.data(), value.data() + value.size(), new_size);
 
-            if (new_size < 1 || new_size > 1024) return;
+            if (new_size < 1 || new_size > 2048) return;
             TT::resize(static_cast<uint32_t>(new_size));
         }
         else if (name == "Clear Hash")
@@ -314,7 +314,7 @@ namespace UCI
                 {
                     std::println("id name Cataphract");
                     std::println("id author masceron\n");
-                    std::println("option name Hash type spin default 256 min 1 max 1024");
+                    std::println("option name Hash type spin default 256 min 1 max 2048");
                     std::println("option name Clear Hash type button");
                     std::println("uciok");
                     std::fflush(stdout);

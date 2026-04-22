@@ -152,7 +152,7 @@ void Position::make_move(const Move move, State& st)
             pawn_attack_tables[side_to_move][to + (side_to_move == white ? 8 : -8)] & boards[
                 side_to_move == white ? p : P])
         {
-            st.en_passant_square = to + (side_to_move == white ? 8 : -8);
+            st.en_passant_square = static_cast<int8_t>(to + (side_to_move == white ? 8 : -8));
 
             st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
         }
@@ -234,7 +234,7 @@ void Position::make_move(const Move move, State& st)
             tst = tst->previous->previous;
             if (st.key == tst->key)
             {
-                st.repetition = tst->repetition + 1;
+                st.repetition = static_cast<int8_t>(tst->repetition + 1);
                 break;
             }
         }
@@ -298,8 +298,8 @@ bool Position::is_pseudo_legal(const Move move)
         }
         return false;
     }
-    const int8_t from = move.from();
-    const int8_t to = move.to();
+    const auto from = static_cast<int8_t>(move.from());
+    const auto to = static_cast<int8_t>(move.to());
     const Pieces moved_piece = piece_on[from];
 
     if (moved_piece == nil || color_of(moved_piece) != side_to_move) return false;

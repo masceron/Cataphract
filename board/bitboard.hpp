@@ -22,9 +22,9 @@ enum Castling_rights: uint8_t
     white_king = 1, white_queen = 2, black_king = 4, black_queen = 8
 };
 
-enum Pieces: uint8_t {P, N, B, R, Q, K, p, n, b, r, q, k, nil};
+enum Pieces: uint8_t { P, N, B, R, Q, K, p, n, b, r, q, k, nil };
 
-constexpr char piece_icons[] {'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', '.'};
+constexpr char piece_icons[]{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', '.'};
 
 enum Direction
 {
@@ -33,42 +33,52 @@ enum Direction
     Upleft = 9,
 };
 
-template<const Direction direction, const bool side>
+template <const Direction direction, const bool side>
 uint64_t Shift(const uint64_t& board)
 {
-    if constexpr (direction == Up && side == white) {
+    if constexpr (direction == Up && side == white)
+    {
         return board >> 8;
     }
-    else if constexpr (direction == Up && side == black) {
+    else if constexpr (direction == Up && side == black)
+    {
         return board << 8;
     }
-    else if constexpr (direction == Upleft && side == white) {
+    else if constexpr (direction == Upleft && side == white)
+    {
         return (board >> 9) & not_h_file;
     }
-    else if constexpr (direction == Upleft && side == black) {
+    else if constexpr (direction == Upleft && side == black)
+    {
         return (board << 9) & not_a_file;
     }
-    else if constexpr (direction == Upright && side == white) {
+    else if constexpr (direction == Upright && side == white)
+    {
         return (board >> 7) & not_a_file;
     }
-    else if constexpr (direction == Upright && side == black) {
+    else if constexpr (direction == Upright && side == black)
+    {
         return (board << 7) & not_h_file;
     }
 }
 
-template <const Direction direction> int8_t Delta(const bool side)
+template <const Direction direction>
+int8_t Delta(const bool side)
 {
-    if constexpr (direction == Up) {
+    if constexpr (direction == Up)
+    {
         if (side == white)
             return -8;
         return 8;
     }
-    if constexpr (direction == Upleft) {
+    if constexpr (direction == Upleft)
+    {
         if (side == white)
             return -9;
         return 9;
     }
-    if constexpr (direction == Upright) {
+    if constexpr (direction == Upright)
+    {
         if (side == white)
             return -7;
         return 7;
@@ -90,9 +100,11 @@ inline void print_bitboard(const uint64_t bitboard)
 {
     std::stringstream board;
     board << "   a b c d e f g h\n";
-    for (int rank = 0; rank < 8; rank++) {
-        board << (8-rank) << "  ";
-        for (int file = 0; file < 8; file++) {
+    for (int rank = 0; rank < 8; rank++)
+    {
+        board << (8 - rank) << "  ";
+        for (int file = 0; file < 8; file++)
+        {
             board << (bitboard >> (rank * 8 + file) & 1) << " ";
         }
     }

@@ -121,7 +121,7 @@ struct Move
         }
     }
 
-    bool operator==(const Move _move) const { return _move.move == this->move; };
+    bool operator==(const Move _move) const { return _move.move == this->move; }
 
     [[nodiscard]] std::string get_move_string() const
     {

@@ -37,7 +37,7 @@ namespace UCI
         Cuckoo::init();
         TT::alloc();
 
-        std::println("Cataphract v1.3 by masceron");
+        std::println("Cataphract v1.4 by masceron");
         std::fflush(stdout);
     }
 
@@ -87,7 +87,7 @@ namespace UCI
             const auto _move = Move(from, to, flag);
             for (const auto& move_test : moves.list)
             {
-                if ((move_test.move) == _move.move)
+                if (move_test.move == _move.move)
                 {
                     position.do_move(move_test);
                     return;
@@ -189,7 +189,6 @@ namespace UCI
         bool perft_cmd = false;
         int perft_depth = 0;
 
-        // Parse go parameters
         while (ss >> token)
         {
             if (token == "depth")
@@ -242,7 +241,15 @@ namespace UCI
         {
             if (infinite) depth = 127;
 
-            search_thread = std::thread(start_search, depth, movetime, wtime, btime, winc, binc, movestogo, nodes);
+            search_thread = std::thread(start_search,
+                                        depth,
+                                        movetime,
+                                        wtime,
+                                        btime,
+                                        winc,
+                                        binc,
+                                        movestogo,
+                                        nodes);
             search_thread.detach();
         }
     }

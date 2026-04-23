@@ -131,7 +131,7 @@ namespace TT
 
         if (type == exact
             || (entry->age_type & 252) != current_generation
-            || key !=entry->key
+            || key != entry->key
             || depth + 4 >= entry->depth)
         {
             entry->key = key;

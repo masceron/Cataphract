@@ -13,7 +13,8 @@ inline constexpr int16_t queen_weight = 2538;
 inline int16_t eval(const Position& pos)
 {
     const auto back = accumulator_stack[accumulator_stack.size - 1];
-    if (back->is_dirty) {
+    if (back->is_dirty)
+    {
         NNUE::update_accumulators();
     }
 

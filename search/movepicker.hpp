@@ -43,12 +43,12 @@ struct MovePicker
     {
         bad_captures_end = &moves.list[255];
         threshold = _threshold;
-        if (_pv && pos->is_pseudo_legal(_pv)
+        if (const auto pv_flag = pv.flag(); _pv && pos->is_pseudo_legal(_pv)
             && !(noisy_only
-                && _pv.flag() != queen_promotion
-                && _pv.flag() != capture
-                && _pv.flag() < knight_promo_capture
-                && _pv.flag() != ep_capture))
+                && pv_flag != queen_promotion
+                && pv_flag != capture
+                && pv_flag < knight_promo_capture
+                && pv_flag != ep_capture))
         {
             bool is_valid = true;
 

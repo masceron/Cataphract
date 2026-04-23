@@ -4,6 +4,7 @@
 #include <cmath>
 
 #include "../eval/transposition.hpp"
+#include "../position/position.hpp"
 
 enum class TimeControlMode: uint8_t {
     None,

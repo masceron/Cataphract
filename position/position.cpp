@@ -226,7 +226,7 @@ void Position::make_move(const Move move, State& st)
     side_to_move = !side_to_move;
 
     st.repetition = 1;
-    if (const uint16_t cutoff = std::min(st.rule_50, st.ply); cutoff >= 4)
+    if (const uint16_t cutoff = std::min(static_cast<uint16_t>(st.rule_50), st.ply); cutoff >= 4)
     {
         const State* tst = st.previous->previous;
         for (int cr = 4; cr <= cutoff; cr += 2)
@@ -500,7 +500,7 @@ uint64_t Position::get_check_blocker_of(const bool side) const
 
 bool Position::upcoming_repetition(const int ply) const
 {
-    const auto end = std::min(state->rule_50, state->ply);
+    const auto end = std::min(static_cast<uint16_t>(state->rule_50), state->ply);
 
     if (end < 3) return false;
 

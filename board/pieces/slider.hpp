@@ -210,7 +210,8 @@ constexpr uint64_t pdep(const uint64_t val, uint64_t mask)
     if consteval
     {
         uint64_t res = 0;
-        for (uint64_t bb = 1; mask; bb += bb) {
+        for (uint64_t bb = 1; mask; bb += bb)
+        {
             if (val & bb)
                 res |= mask & -mask;
             mask &= mask - 1;
@@ -240,7 +241,7 @@ static constexpr std::array<uint64_t, 5248> bishop_table = []() consteval
     return bishop_pext;
 }();
 
-static const std::array<uint64_t, 102400> rook_table = []()
+static const std::array<uint64_t, 102400> rook_table = []
 {
     std::array<uint64_t, 102400> rook_pext;
     uint32_t offset = 0;

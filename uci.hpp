@@ -9,140 +9,14 @@
 #include <iostream>
 #include <print>
 
-#include "eval/nnue.hpp"
-#include "position/cuckoo.hpp"
-#include "position/fen.hpp"
+#include "cataphract.hpp"
+#include "position/bench.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
 
 namespace UCI
 {
     static std::jthread search_thread;
-
-    inline void new_game()
-    {
-        TT::clear();
-        ButterflyHistory::clear();
-        PieceToHistory::clear();
-        Killers::clear();
-        Capture::clear();
-        Corrections::clear();
-        Continuation::clear();
-    }
-
-    inline void start()
-    {
-        Zobrist::generate_keys();
-        generate_lines();
-        Cuckoo::init();
-        TT::alloc();
-
-        std::println("Cataphract v1.4 by masceron");
-        std::fflush(stdout);
-    }
-
-    inline void process_move(const std::string_view move)
-    {
-        if (move.length() == 4)
-        {
-            const MoveList moves = legals<all>(position);
-            const int from = algebraic_to_num(move.substr(0, 2));
-            const int to = algebraic_to_num(move.substr(2, 2));
-            if (from == -1 || to == -1) return;
-            const auto _move = Move(from, to, 0);
-            for (int i = 0; i < moves.size(); i++)
-            {
-                if (const auto move_test = moves[i]; (move_test.move & 0xFFF) == _move.move)
-                {
-                    position.do_move(move_test);
-                    return;
-                }
-            }
-        }
-        else if (move.length() == 5)
-        {
-            const int from = algebraic_to_num(move.substr(0, 2));
-            const int to = algebraic_to_num(move.substr(2, 2));
-            int flag = 0;
-            if (from == -1 || to == -1) return;
-            switch (move[4])
-            {
-            case 'n':
-                flag = 8;
-                break;
-            case 'b':
-                flag = 9;
-                break;
-            case 'r':
-                flag = 10;
-                break;
-            case 'q':
-                flag = 11;
-                break;
-            default:
-                return;
-            }
-            flag += (abs(from - to) % 8 == 0) ? 0 : 4;
-            const MoveList moves = legals<all>(position);
-            const auto _move = Move(from, to, flag);
-            for (const auto& move_test : moves.list)
-            {
-                if (move_test.move == _move.move)
-                {
-                    position.do_move(move_test);
-                    return;
-                }
-            }
-        }
-    }
-
-    inline void set_board(const std::string_view fen)
-    {
-        const auto moves_pos = fen.find("moves ");
-
-        if (fen.starts_with("startpos"))
-        {
-            fen_parse("startpos");
-        }
-        else if (fen.starts_with("fen "))
-        {
-            if (moves_pos == std::string::npos)
-            {
-                if (fen_parse(fen.substr(4, std::string::npos)) == -1)
-                {
-                    return;
-                }
-            }
-            else if (fen_parse(fen.substr(4, moves_pos - 5)) == -1)
-            {
-                return;
-            }
-        }
-        else
-        {
-            return;
-        }
-
-        if (moves_pos != std::string::npos)
-        {
-            auto moves = fen.substr(moves_pos + 6, std::string::npos);
-
-            auto limiter = moves.find(' ');
-            size_t begin = 0;
-            while (begin != std::string::npos)
-            {
-                process_move(moves.substr(begin, limiter - begin));
-                if (limiter != std::string::npos)
-                {
-                    begin = limiter + 1;
-                    limiter = moves.find(' ', begin);
-                }
-                else begin = std::string::npos;
-            }
-        }
-        TT::advance();
-        NNUE::refresh_accumulators(position);
-    }
 
     inline void perft(const std::string_view depth)
     {
@@ -169,6 +43,27 @@ namespace UCI
         {
             TT::clear();
         }
+    }
+
+    inline void bench(std::string_view args)
+    {
+        auto tokens = args | std::views::split(' ');
+        auto it = tokens.begin();
+
+        if (it != tokens.end()) ++it;
+
+        int depth = 15;
+        uint32_t tt_size = 256;
+        if (it != tokens.end())
+        {
+            std::from_chars((*it).begin(), (*it).end(), depth);
+            ++it;
+        }
+        if (it != tokens.end())
+        {
+            std::from_chars((*it).begin(), (*it).end(), tt_size);
+        }
+        Bench::run(depth, tt_size);
     }
 
     inline void go(const std::string_view input)
@@ -253,22 +148,21 @@ namespace UCI
         {
             if (infinite) depth = 127;
 
-            search_thread = std::jthread(start_search,
-                                        depth,
-                                        movetime,
-                                        wtime,
-                                        btime,
-                                        winc,
-                                        binc,
-                                        movestogo,
-                                        nodes);
+            search_thread = std::jthread(start_search<false>,
+                                         depth,
+                                         movetime,
+                                         wtime,
+                                         btime,
+                                         winc,
+                                         binc,
+                                         movestogo,
+                                         nodes);
         }
     }
 
     inline void process()
     {
-        fen_parse("startpos");
-        NNUE::refresh_accumulators(position);
+        Cataphract::set_board("startpos");
 
         std::string input;
         bool quit = false;
@@ -307,8 +201,7 @@ namespace UCI
 
                 if (command == "position")
                 {
-                    set_board(input_view.substr(9));
-                    NNUE::refresh_accumulators(position);
+                    Cataphract::set_board(input_view.substr(9));
                 }
                 else if (command == "go")
                 {
@@ -320,9 +213,7 @@ namespace UCI
                 }
                 else if (command == "ucinewgame")
                 {
-                    new_game();
-                    fen_parse("startpos");
-                    NNUE::refresh_accumulators(position);
+                    Cataphract::new_game();
                 }
                 else if (command == "uci")
                 {
@@ -345,6 +236,10 @@ namespace UCI
                 else if (command == "setoption")
                 {
                     set_option(input_view.substr(10, std::string::npos));
+                }
+                else if (command == "bench")
+                {
+                    bench(input_view);
                 }
                 else if (command == "quit")
                 {

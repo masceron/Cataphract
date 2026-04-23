@@ -657,8 +657,9 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     return best_score;
 }
 
-inline void start_search(const int depth_param, const int move_time, const int wtime, const int btime,
-                         const int winc, const int binc, const int moves_to_go, const uint32_t nodes)
+template <bool silent>
+void start_search(const int depth_param, const int move_time, const int wtime, const int btime,
+                  const int winc, const int binc, const int moves_to_go, const uint32_t nodes)
 {
     int search_depth = 127;
     TimeManager tm;
@@ -729,23 +730,26 @@ inline void start_search(const int depth_param, const int move_time, const int w
         }
         if (Timer::is_search_cancelled) break;
 
-        const auto elapsed = static_cast<double>(Timer::elapsed());
-        std::print("info depth {} seldepth {} score ", root_depth, seldepth);
-
-        if (score < -mate_in_max_ply) std::print("mate {} ", -std::ceil((mate_value + score) / 2.0));
-        else if (score > mate_in_max_ply) std::print("mate {} ", std::ceil((mate_value - score) / 2.0));
-        else std::print("cp {} ", score);
-
-        std::print("nodes {} nps {} hashfull {} time {} pv ",
-                   node_searched, static_cast<uint64_t>(node_searched / elapsed * 1000000), TT::full(),
-                   static_cast<uint64_t>(elapsed / 1000));
-
-        for (auto x : principal_variation)
+        if constexpr (!silent)
         {
-            std::print("{} ", x.get_move_string());
+            const auto elapsed = static_cast<double>(Timer::elapsed());
+            std::print("info depth {} seldepth {} score ", root_depth, seldepth);
+
+            if (score < -mate_in_max_ply) std::print("mate {} ", -std::ceil((mate_value + score) / 2.0));
+            else if (score > mate_in_max_ply) std::print("mate {} ", std::ceil((mate_value - score) / 2.0));
+            else std::print("cp {} ", score);
+
+            std::print("nodes {} nps {} hashfull {} time {} pv ",
+                       node_searched, static_cast<uint64_t>(node_searched / elapsed * 1000000), TT::full(),
+                       static_cast<uint64_t>(elapsed / 1000));
+
+            for (auto x : principal_variation)
+            {
+                std::print("{} ", x.get_move_string());
+            }
+            std::println();
+            std::fflush(stdout);
         }
-        std::println();
-        std::fflush(stdout);
 
         if (!principal_variation.empty())
         {
@@ -763,11 +767,13 @@ inline void start_search(const int depth_param, const int move_time, const int w
     Timer::stop();
     Timer::timer_thread.join();
 
-    if (!best_move)
+    if constexpr (!silent)
     {
-        best_move = legals<all>(position)[0];
+        if (!best_move)
+        {
+            best_move = legals<all>(position)[0];
+        }
+        std::println("bestmove {}", best_move.get_move_string());
+        std::fflush(stdout);
     }
-
-    std::println("bestmove {}", best_move.get_move_string());
-    std::fflush(stdout);
 }

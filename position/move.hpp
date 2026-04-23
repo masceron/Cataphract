@@ -22,7 +22,7 @@ enum flag: uint16_t
     queen_promo_capture
 };
 
-inline int algebraic_to_num(const std::string_view& algebraic)
+constexpr int algebraic_to_num(const std::string_view& algebraic)
 {
     if (algebraic.length() != 2) return -1;
     int rank = 0;
@@ -61,14 +61,13 @@ inline int algebraic_to_num(const std::string_view& algebraic)
     return rank * 8 + file;
 }
 
-inline std::string num_to_algebraic(const int sq)
+constexpr std::string num_to_algebraic(const int sq)
 {
     static constexpr char files[] = "abcdefgh";
 
     return files[sq % 8] + std::to_string(8 - sq / 8);
 }
 
-#pragma pack(push, 1)
 struct Move
 {
     uint16_t move;
@@ -126,32 +125,23 @@ struct Move
     [[nodiscard]] std::string get_move_string() const
     {
         if (move == 0) return "0000";
-        std::stringstream s;
-        s << num_to_algebraic(from()) << num_to_algebraic(to());
 
         if (flag() >= knight_promotion)
         {
+            char promo_char = '?';
             switch (promoted_to<false>())
             {
-            case N:
-                s << "n";
-                break;
-            case B:
-                s << "b";
-                break;
-            case R:
-                s << "r";
-                break;
-            case Q:
-                s << "q";
-                break;
-            default:
-                break;
+            case N: promo_char = 'n'; break;
+            case B: promo_char = 'b'; break;
+            case R: promo_char = 'r'; break;
+            case Q: promo_char = 'q'; break;
+            default: break;
             }
+            return std::format("{}{}{}", num_to_algebraic(from()), num_to_algebraic(to()), promo_char);
         }
-        return s.str();
+
+        return std::format("{}{}", num_to_algebraic(from()), num_to_algebraic(to()));
     }
 };
-#pragma pack(pop)
 
 inline const Move null_move(0);

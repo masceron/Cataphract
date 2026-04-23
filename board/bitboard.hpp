@@ -98,15 +98,14 @@ inline int lsb(const uint64_t bitboard)
 
 inline void print_bitboard(const uint64_t bitboard)
 {
-    std::stringstream board;
-    board << "   a b c d e f g h\n";
+    std::print("   a b c d e f g h\n");
     for (int rank = 0; rank < 8; rank++)
     {
-        board << (8 - rank) << "  ";
+        std::print("{}  ", 8 - rank);
         for (int file = 0; file < 8; file++)
         {
-            board << (bitboard >> (rank * 8 + file) & 1) << " ";
+            std::print("{} ", bitboard >> (rank * 8 + file) & 1);
         }
+        std::println();
     }
-    std::println("{}", board.str());
 }

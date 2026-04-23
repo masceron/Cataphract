@@ -38,9 +38,9 @@ namespace Killers
         killers_of_ply[1] = killers_of_ply[0];
         killers_of_ply[0] = move;
     }
-    inline bool find(const Move move, const int ply)
+    inline Move get(const int ply, const int order)
     {
-        return table[ply][0] == move || table[ply][1] == move;
+        return table[ply][order];
     }
 }
 

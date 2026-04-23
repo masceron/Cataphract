@@ -16,6 +16,8 @@ enum Stages: uint8_t
     TT_moves,
     generating_capture_moves,
     good_capture_moves,
+    killer_1,
+    killer_2,
     generating_quiet_moves,
     quiet_moves,
     bad_capture_moves,
@@ -33,16 +35,16 @@ struct MovePicker
     MoveList moves;
     int threshold;
     int16_t scores[256];
-    bool non_quiet_only;
+    bool noisy_only;
     Stages stage = generating_capture_moves;
 
-    explicit MovePicker(Position* _pos, const bool _capture_only, const Move _pv, SearchEntry* _ss,
-                        const int _threshold = 0) : pos(_pos), ss(_ss), non_quiet_only(_capture_only)
+    explicit MovePicker(Position* _pos, const bool _noisy_only, const Move _pv, SearchEntry* _ss,
+                        const int _threshold = 0) : pos(_pos), ss(_ss), noisy_only(_noisy_only)
     {
         bad_captures_end = &moves.list[255];
         threshold = _threshold;
         if (_pv && pos->is_pseudo_legal(_pv)
-            && !(non_quiet_only
+            && !(noisy_only
                 && _pv.flag() != queen_promotion
                 && _pv.flag() != capture
                 && _pv.flag() < knight_promo_capture
@@ -88,43 +90,51 @@ struct MovePicker
         case generating_capture_moves:
             stage = good_capture_moves;
             pseudo_legals<noisy>(*pos, moves);
-            sort_mvv_capthist(moves.begin(), moves.last);
+            score_mvv_caphist(moves.begin(), moves.last);
             non_captures_start = moves.last;
-            current = moves.begin() - 1;
+            current = moves.begin();
             [[fallthrough]];
         case good_capture_moves:
-            current++;
-            if (*current == pv) current++;
-            if (current >= non_captures_start)
+            while (current < non_captures_start)
             {
-                stage = generating_quiet_moves;
-            }
-            else
-            {
-                while (current < non_captures_start && (*current == pv || static_exchange_evaluation(*pos, *current) <
-                    threshold))
+                select_highest(current, non_captures_start);
+                Move move = *current;
+                int16_t score = scores[current - moves.begin()];
+                current++;
+
+                if (move == pv) continue; // Skip TT move
+
+                if (static_exchange_evaluation(*pos, move) < threshold)
                 {
-                    if (*current != pv)
-                    {
-                        *bad_captures_end-- = *current;
-                    }
-                    current++;
+                    *bad_captures_end-- = move;
+                    continue;
                 }
 
-                if (current < non_captures_start)
-                {
-                    return {*current, scores[current - moves.begin()]};
-                }
-                stage = generating_quiet_moves;
+                return {move, score};
+            }
+            stage = killer_1;
+            [[fallthrough]];
+        case killer_1:
+            stage = killer_2;
+            if (const Move killer = Killers::get(ss->plies, 0); killer != pv && pos->is_pseudo_legal(killer))
+            {
+                return {killer, UINT16_MAX};
+            }
+            [[fallthrough]];
+        case killer_2:
+            stage = generating_quiet_moves;
+            if (const Move killer = Killers::get(ss->plies, 1); killer != pv && pos->is_pseudo_legal(killer))
+            {
+                return {killer, UINT16_MAX};
             }
             [[fallthrough]];
         case generating_quiet_moves:
-            if (!non_quiet_only)
+            if (!noisy_only)
             {
                 pseudo_legals<quiet>(*pos, moves);
-                sort_history(non_captures_start, moves.last);
+                score_history(non_captures_start, moves.last);
                 stage = quiet_moves;
-                current = non_captures_start - 1;
+                current = non_captures_start;
             }
             else
             {
@@ -133,29 +143,34 @@ struct MovePicker
             }
             [[fallthrough]];
         case quiet_moves:
-            current++;
-            if (*current == pv) current++;
-            if (current >= moves.last)
+            while (current < moves.last)
             {
-                stage = bad_capture_moves;
-                current = &moves.list[255] + 1;
+                select_highest(current, moves.last);
+                Move move = *current;
+                int16_t score = scores[current - moves.begin()];
+                current++;
+
+                if (move == pv ||
+                    move == Killers::get(ss->plies, 0) ||
+                    move == Killers::get(ss->plies, 1))
+                {
+                    continue;
+                }
+
+                return {move, score};
             }
-            else
-            {
-                return {*current, scores[current - moves.begin()]};
-            }
+
+            stage = bad_capture_moves;
+            current = &moves.list[255];
             [[fallthrough]];
         case bad_capture_moves:
-            current--;
-            if (*current == pv) current--;
-            if (current <= bad_captures_end)
+            while (current > bad_captures_end)
             {
-                stage = none;
+                Move move = *current;
+                current--;
+                return {move, -1};
             }
-            else
-            {
-                return {*current, -1};
-            }
+            stage = none;
             [[fallthrough]];
         case none: default:
             return {null_move, 0};
@@ -174,14 +189,15 @@ struct MovePicker
         return move;
     }
 
-    void sort_mvv_capthist(Move* begin, Move*& end)
+    void score_mvv_caphist(const Move* begin, const Move* end)
     {
         if (begin == end) return;
 
         const bool stm = pos->side_to_move;
 
-        const auto captured_history = [&](const long long index, const Move* move)
+        for (const Move* move = begin; move < end; ++move)
         {
+            const auto index = move - begin;
             const auto from = move->from();
             const auto to = move->to();
 
@@ -196,33 +212,10 @@ struct MovePicker
             if (move->flag() >= knight_promo_capture)
                 scores[index] = static_cast<int16_t>(scores[index]
                     + value_of(move->promoted_to<false>()));
-        };
-
-        captured_history(0, begin);
-
-        Move* start = begin + 1;
-
-        while (start < end)
-        {
-            auto i = start - begin;
-
-            Move* tmp = start;
-
-            captured_history(i, tmp);
-
-            while (i > 0 && scores[i - 1] < scores[i])
-            {
-                std::swap(scores[i - 1], scores[i]);
-                std::swap(*(tmp - 1), *tmp);
-
-                i--;
-                tmp--;
-            }
-            start++;
         }
     }
 
-    void sort_history(Move* begin, const Move* end)
+    void score_history(const Move* begin, const Move* end)
     {
         if (begin == end) return;
 
@@ -230,43 +223,36 @@ struct MovePicker
         const auto prev = (ss - 1)->piece_to != UINT16_MAX ? (ss - 1)->piece_to : 0;
         const auto prev2 = (ss - 2)->piece_to != UINT16_MAX ? (ss - 2)->piece_to : 0;
 
-        const auto quiet_history_score = [&](const long long index, const Move* move)
+        for (const Move* move = begin; move < end; ++move)
         {
-            if (Killers::find(*move, ss->plies)) scores[index] = INT16_MAX;
-            else
-            {
-                const auto from = move->from();
-                const auto to = move->to();
-                int moved = pos->piece_on[from];
-                if (moved >= 6) moved -= 6;
-                scores[index] = static_cast<int16_t>(
-                    (ButterflyHistory::table[pos->side_to_move][from][to]
-                        + PieceToHistory::table[pos->side_to_move][moved][to]) / 2
-                    + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][to]
-                    + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][to]);
-            }
-        };
-
-        quiet_history_score(offset, begin);
-
-        Move* start = begin + 1;
-
-        while (start < end)
-        {
-            auto i = offset + start - begin;
-            Move* tmp = start;
-
-            quiet_history_score(i, tmp);
-
-            while (i > offset && scores[i - 1] < scores[i])
-            {
-                std::swap(scores[i - 1], scores[i]);
-                std::swap(*(tmp - 1), *tmp);
-
-                i--;
-                tmp--;
-            }
-            start++;
+            const auto index = offset + (move - begin);
+            const auto from = move->from();
+            const auto to = move->to();
+            int moved = pos->piece_on[from];
+            if (moved >= 6) moved -= 6;
+            scores[index] = static_cast<int16_t>(
+                (ButterflyHistory::table[pos->side_to_move][from][to]
+                    + PieceToHistory::table[pos->side_to_move][moved][to]) / 2
+                + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][to]
+                + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][to]);
         }
+    }
+
+    void select_highest(Move* start, const Move* end)
+    {
+        Move* best = start;
+        int16_t best_score = scores[start - moves.begin()];
+
+        for (Move* it = start + 1; it < end; ++it)
+        {
+            if (const int16_t score = scores[it - moves.begin()]; score > best_score)
+            {
+                best_score = score;
+                best = it;
+            }
+        }
+
+        std::swap(*start, *best);
+        std::swap(scores[start - moves.begin()], scores[best - moves.begin()]);
     }
 };

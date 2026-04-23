@@ -158,8 +158,8 @@ void accumulators_addsub(Network* network, const int16_t* __restrict prev, int16
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m512i v_prev = _mm512_load_si512(&prev[i * 32]);
-            const __m512i v_add = _mm512_loadu_si512(&w_add[i * 32]);
-            const __m512i v_sub = _mm512_loadu_si512(&w_sub[i * 32]);
+            const __m512i v_add = _mm512_load_si512(&w_add[i * 32]);
+            const __m512i v_sub = _mm512_load_si512(&w_sub[i * 32]);
             _mm512_store_si512(&accs[i * 32], _mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub));
         }
     }
@@ -170,8 +170,8 @@ void accumulators_addsub(Network* network, const int16_t* __restrict prev, int16
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m512i v_prev = _mm512_load_si512(&prev[i * 32 + HL_SIZE]);
-            const __m512i v_add = _mm512_loadu_si512(&b_add[i * 32]);
-            const __m512i v_sub = _mm512_loadu_si512(&b_sub[i * 32]);
+            const __m512i v_add = _mm512_load_si512(&b_add[i * 32]);
+            const __m512i v_sub = _mm512_load_si512(&b_sub[i * 32]);
             _mm512_store_si512(&accs[i * 32 + HL_SIZE], _mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub));
         }
     }
@@ -185,8 +185,8 @@ void accumulators_addsub(Network* network, const int16_t* __restrict prev, int16
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16]));
-            const __m256i v_add = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_add[i * 16]));
-            const __m256i v_sub = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_sub[i * 16]));
+            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add[i * 16]));
+            const __m256i v_sub = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub[i * 16]));
             _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16]),
                                _mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub));
         }
@@ -198,8 +198,8 @@ void accumulators_addsub(Network* network, const int16_t* __restrict prev, int16
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16 + HL_SIZE]));
-            const __m256i v_add = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_add[i * 16]));
-            const __m256i v_sub = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_sub[i * 16]));
+            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add[i * 16]));
+            const __m256i v_sub = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub[i * 16]));
             _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16 + HL_SIZE]),
                                _mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub));
         }
@@ -243,9 +243,9 @@ void accumulators_addsub2(Network* network, const int16_t* __restrict prev, int1
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m512i v_prev = _mm512_load_si512(&prev[i * 32]);
-            const __m512i v_add = _mm512_loadu_si512(&w_add[i * 32]);
-            const __m512i v_sub1 = _mm512_loadu_si512(&w_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_loadu_si512(&w_sub2[i * 32]);
+            const __m512i v_add = _mm512_load_si512(&w_add[i * 32]);
+            const __m512i v_sub1 = _mm512_load_si512(&w_sub1[i * 32]);
+            const __m512i v_sub2 = _mm512_load_si512(&w_sub2[i * 32]);
             _mm512_store_si512(&accs[i * 32],
                                _mm512_sub_epi16(_mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub1), v_sub2));
         }
@@ -258,9 +258,9 @@ void accumulators_addsub2(Network* network, const int16_t* __restrict prev, int1
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m512i v_prev = _mm512_load_si512(&prev[i * 32 + HL_SIZE]);
-            const __m512i v_add = _mm512_loadu_si512(&b_add[i * 32]);
-            const __m512i v_sub1 = _mm512_loadu_si512(&b_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_loadu_si512(&b_sub2[i * 32]);
+            const __m512i v_add = _mm512_load_si512(&b_add[i * 32]);
+            const __m512i v_sub1 = _mm512_load_si512(&b_sub1[i * 32]);
+            const __m512i v_sub2 = _mm512_load_si512(&b_sub2[i * 32]);
             _mm512_store_si512(&accs[i * 32 + HL_SIZE],
                                _mm512_sub_epi16(_mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub1), v_sub2));
         }
@@ -276,9 +276,9 @@ void accumulators_addsub2(Network* network, const int16_t* __restrict prev, int1
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16]));
-            const __m256i v_add = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_add[i * 16]));
-            const __m256i v_sub1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_sub2[i * 16]));
+            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add[i * 16]));
+            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub1[i * 16]));
+            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub2[i * 16]));
             _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16]),
                                _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub1), v_sub2));
         }
@@ -291,9 +291,9 @@ void accumulators_addsub2(Network* network, const int16_t* __restrict prev, int1
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16 + HL_SIZE]));
-            const __m256i v_add = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_add[i * 16]));
-            const __m256i v_sub1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_sub2[i * 16]));
+            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add[i * 16]));
+            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub1[i * 16]));
+            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub2[i * 16]));
             _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16 + HL_SIZE]),
                                _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub1), v_sub2));
         }
@@ -342,10 +342,10 @@ void accumulators_add2sub2(Network* network, const int16_t* __restrict prev, int
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m512i v_prev = _mm512_load_si512(&prev[i * 32]);
-            const __m512i v_add1 = _mm512_loadu_si512(&w_add1[i * 32]);
-            const __m512i v_add2 = _mm512_loadu_si512(&w_add2[i * 32]);
-            const __m512i v_sub1 = _mm512_loadu_si512(&w_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_loadu_si512(&w_sub2[i * 32]);
+            const __m512i v_add1 = _mm512_load_si512(&w_add1[i * 32]);
+            const __m512i v_add2 = _mm512_load_si512(&w_add2[i * 32]);
+            const __m512i v_sub1 = _mm512_load_si512(&w_sub1[i * 32]);
+            const __m512i v_sub2 = _mm512_load_si512(&w_sub2[i * 32]);
 
             const __m512i sum = _mm512_add_epi16(v_prev, _mm512_add_epi16(v_add1, v_add2));
             _mm512_store_si512(&accs[i * 32], _mm512_sub_epi16(_mm512_sub_epi16(sum, v_sub1), v_sub2));
@@ -360,10 +360,10 @@ void accumulators_add2sub2(Network* network, const int16_t* __restrict prev, int
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m512i v_prev = _mm512_load_si512(&prev[i * 32 + HL_SIZE]);
-            const __m512i v_add1 = _mm512_loadu_si512(&b_add1[i * 32]);
-            const __m512i v_add2 = _mm512_loadu_si512(&b_add2[i * 32]);
-            const __m512i v_sub1 = _mm512_loadu_si512(&b_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_loadu_si512(&b_sub2[i * 32]);
+            const __m512i v_add1 = _mm512_load_si512(&b_add1[i * 32]);
+            const __m512i v_add2 = _mm512_load_si512(&b_add2[i * 32]);
+            const __m512i v_sub1 = _mm512_load_si512(&b_sub1[i * 32]);
+            const __m512i v_sub2 = _mm512_load_si512(&b_sub2[i * 32]);
 
             const __m512i sum = _mm512_add_epi16(v_prev, _mm512_add_epi16(v_add1, v_add2));
             _mm512_store_si512(&accs[i * 32 + HL_SIZE], _mm512_sub_epi16(_mm512_sub_epi16(sum, v_sub1), v_sub2));
@@ -381,10 +381,10 @@ void accumulators_add2sub2(Network* network, const int16_t* __restrict prev, int
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16]));
-            const __m256i v_add1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_add1[i * 16]));
-            const __m256i v_add2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_add2[i * 16]));
-            const __m256i v_sub1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&w_sub2[i * 16]));
+            const __m256i v_add1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add1[i * 16]));
+            const __m256i v_add2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add2[i * 16]));
+            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub1[i * 16]));
+            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub2[i * 16]));
 
             const __m256i sum = _mm256_add_epi16(v_prev, _mm256_add_epi16(v_add1, v_add2));
             _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16]),
@@ -400,10 +400,10 @@ void accumulators_add2sub2(Network* network, const int16_t* __restrict prev, int
         for (int i = 0; i < CHUNKS; i++)
         {
             const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16 + HL_SIZE]));
-            const __m256i v_add1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_add1[i * 16]));
-            const __m256i v_add2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_add2[i * 16]));
-            const __m256i v_sub1 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_loadu_si256(reinterpret_cast<const __m256i*>(&b_sub2[i * 16]));
+            const __m256i v_add1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add1[i * 16]));
+            const __m256i v_add2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add2[i * 16]));
+            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub1[i * 16]));
+            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub2[i * 16]));
 
             const __m256i sum = _mm256_add_epi16(v_prev, _mm256_add_epi16(v_add1, v_add2));
             _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16 + HL_SIZE]),

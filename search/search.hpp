@@ -667,7 +667,7 @@ inline void start_search(const int depth_param, const int move_time, const int w
     {
         tm.init_move_time(move_time);
     }
-    else if (depth_param > 0 && depth_param < 127)
+    else if (depth_param > 0 && depth_param <= 127)
     {
         search_depth = depth_param;
         tm.init_none();

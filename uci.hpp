@@ -17,7 +17,7 @@
 
 namespace UCI
 {
-    static std::thread search_thread;
+    static std::jthread search_thread;
 
     inline void new_game()
     {
@@ -173,9 +173,8 @@ namespace UCI
 
     inline void go(const std::string_view input)
     {
-        std::stringstream ss(input);
-        std::string token;
-        ss >> token;
+        auto tokens = input | std::views::split(' ');
+        auto it = tokens.begin();
 
         int depth = 0;
         int movetime = 0;
@@ -189,39 +188,49 @@ namespace UCI
         bool perft_cmd = false;
         int perft_depth = 0;
 
-        while (ss >> token)
+        if (it != tokens.end()) ++it;
+
+        while (it != tokens.end())
         {
-            if (token == "depth")
+            if (const std::string_view token{(*it).begin(), (*it).end()}; token == "depth")
             {
-                ss >> depth;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), depth);
             }
             else if (token == "movetime")
             {
-                ss >> movetime;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), movetime);
             }
             else if (token == "nodes")
             {
-                ss >> nodes;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), nodes);
             }
             else if (token == "wtime")
             {
-                ss >> wtime;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), wtime);
             }
             else if (token == "btime")
             {
-                ss >> btime;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), btime);
             }
             else if (token == "winc")
             {
-                ss >> winc;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), winc);
             }
             else if (token == "binc")
             {
-                ss >> binc;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), binc);
             }
             else if (token == "movestogo")
             {
-                ss >> movestogo;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), movestogo);
             }
             else if (token == "infinite")
             {
@@ -230,9 +239,12 @@ namespace UCI
             else if (token == "perft")
             {
                 perft_cmd = true;
-                ss >> perft_depth;
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), perft_depth);
             }
+            ++it;
         }
+
         if (perft_cmd)
         {
             perft(std::to_string(perft_depth));
@@ -241,7 +253,7 @@ namespace UCI
         {
             if (infinite) depth = 127;
 
-            search_thread = std::thread(start_search,
+            search_thread = std::jthread(start_search,
                                         depth,
                                         movetime,
                                         wtime,
@@ -250,7 +262,6 @@ namespace UCI
                                         binc,
                                         movestogo,
                                         nodes);
-            search_thread.detach();
         }
     }
 
@@ -284,10 +295,6 @@ namespace UCI
                 if (input == "quit")
                 {
                     Timer::stop();
-                    if (search_thread.joinable())
-                    {
-                        search_thread.join();
-                    }
                     quit = true;
                 }
             }

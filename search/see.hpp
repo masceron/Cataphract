@@ -24,26 +24,35 @@ inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64
 
 inline int16_t value_of(const Pieces piece)
 {
-    switch (piece) {
-        case P: case p:
-            return pawn_weight;
-        case N: case n:
-            return knight_weight;
-        case B: case b:
-            return bishop_weight;
-        case R: case r:
-            return rook_weight;
-        case Q: case q:
-            return queen_weight;
-        default:
-            return 0;
+    switch (piece)
+    {
+    case P:
+    case p:
+        return pawn_weight;
+    case N:
+    case n:
+        return knight_weight;
+    case B:
+    case b:
+        return bishop_weight;
+    case R:
+    case r:
+        return rook_weight;
+    case Q:
+    case q:
+        return queen_weight;
+    default:
+        return 0;
     }
 }
 
-inline uint64_t least_valuable_piece(const Position& pos, const uint64_t attackers, const uint8_t side, Pieces& attacker)
+inline uint64_t least_valuable_piece(const Position& pos, const uint64_t attackers, const uint8_t side,
+                                     Pieces& attacker)
 {
-    for (int i = P + side * 6; i <= Q + side * 6; i++) {
-        if (const uint64_t attack = attackers & pos.boards[i]) {
+    for (int i = P + side * 6; i <= Q + side * 6; i++)
+    {
+        if (const uint64_t attack = attackers & pos.boards[i])
+        {
             attacker = static_cast<Pieces>(i);
             return attack & ~(attack - 1);
         }
@@ -53,7 +62,8 @@ inline uint64_t least_valuable_piece(const Position& pos, const uint64_t attacke
 
 inline uint64_t get_x_ray(const Position& pos, const uint64_t from_set, const uint8_t to, const uint64_t occ)
 {
-    if (const uint8_t from = lsb(from_set); from / 8 == to / 8 || from % 8 == to % 8) {
+    if (const uint8_t from = lsb(from_set); from / 8 == to / 8 || from % 8 == to % 8)
+    {
         const uint64_t orthogonal_sliders = (pos.boards[R] | pos.boards[r] | pos.boards[Q] | pos.boards[q]) ^ from_set;
         return get_rook_attack(to, occ) & orthogonal_sliders;
     }
@@ -69,14 +79,16 @@ inline int16_t static_exchange_evaluation(const Position& pos, const Move captur
     const uint8_t to = capture.to();
     const uint8_t from = capture.from();
     uint64_t from_set = 1ull << from;
-    const uint64_t x_ray_able = pos.boards[P] | pos.boards[p] | pos.boards[B] | pos.boards[b] | pos.boards[R] | pos.boards[r] | pos.boards[Q] | pos.boards[q];
+    const uint64_t x_ray_able = pos.boards[P] | pos.boards[p] | pos.boards[B] | pos.boards[b] | pos.boards[R] | pos.
+        boards[r] | pos.boards[Q] | pos.boards[q];
     uint64_t occ = pos.occupations[2];
     uint64_t attackers = attackers_of(pos, to, occ);
     gains[depth] = value_of(pos.piece_on[to]);
     Pieces attacker = pos.piece_on[from];
     uint64_t attacked = 0;
 
-    do {
+    do
+    {
         depth++;
 
         gains[depth] = value_of(attacker) - gains[depth - 1];
@@ -85,16 +97,18 @@ inline int16_t static_exchange_evaluation(const Position& pos, const Move captur
         side = !side;
         attacked |= from_set;
 
-        if (from_set & x_ray_able) {
+        if (from_set & x_ray_able)
+        {
             attackers |= ~attacked & get_x_ray(pos, from_set, to, occ);
         }
         from_set = least_valuable_piece(pos, attackers, side, attacker);
+    }
+    while (from_set);
 
-    } while (from_set);
-
-    while (--depth) {
+    while (--depth)
+    {
         gains[depth - 1] = -std::max(static_cast<int16_t>(-gains[depth - 1]), gains[depth]);
     }
-    
+
     return gains[0];
 }

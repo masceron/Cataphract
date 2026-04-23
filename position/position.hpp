@@ -22,21 +22,21 @@ inline bool color_of(const Pieces piece)
 
 struct State
 {
-    uint16_t rule_50;
-    uint8_t castling_rights;
-    int8_t en_passant_square;
     uint64_t piece_key;
     uint64_t castling_key;
     uint64_t en_passant_key;
     uint64_t side_key;
     uint16_t ply;
+    uint8_t castling_rights;
+    uint8_t rule_50;
+    int8_t en_passant_square;
 
     uint64_t key = 0;
-    Pieces captured_piece;
     uint64_t pinned;
     uint64_t checker;
     uint64_t check_blocker;
     State* previous;
+    Pieces captured_piece;
     int8_t repetition;
 };
 

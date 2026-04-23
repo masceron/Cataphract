@@ -16,19 +16,25 @@ namespace Cuckoo
     inline uint64_t np_piece_attacks(const int from, const int to, const uint8_t piece)
     {
         const uint64_t to_board = 1ull << to;
-        switch (piece) {
-            case N: case n:
-                return knight_attack_tables[from] & to_board;
-            case K: case k:
-                return king_attack_tables[from] & to_board;
-            case B: case b:
-                return get_bishop_attack(from, 0ull) & to_board;
-            case R: case r:
-                return get_rook_attack(from, 0ull) & to_board;
-            case Q: case q:
-                return get_queen_attack(from, 0ull) & to_board;
-            default:
-                return 0ull;
+        switch (piece)
+        {
+        case N:
+        case n:
+            return knight_attack_tables[from] & to_board;
+        case K:
+        case k:
+            return king_attack_tables[from] & to_board;
+        case B:
+        case b:
+            return get_bishop_attack(from, 0ull) & to_board;
+        case R:
+        case r:
+            return get_rook_attack(from, 0ull) & to_board;
+        case Q:
+        case q:
+            return get_queen_attack(from, 0ull) & to_board;
+        default:
+            return 0ull;
         }
     }
 
@@ -44,16 +50,22 @@ namespace Cuckoo
 
     inline void init()
     {
-        for (int piece = 1; piece < 12; piece++) {
+        for (int piece = 1; piece < 12; piece++)
+        {
             if (piece == p) continue;
-            for (int sq0 = 0; sq0 < 64; sq0++) {
-                for (int sq1 = sq0 + 1; sq1 < 64; sq1++) {
-                    if (np_piece_attacks(sq0, sq1, piece)) {
+            for (int sq0 = 0; sq0 < 64; sq0++)
+            {
+                for (int sq1 = sq0 + 1; sq1 < 64; sq1++)
+                {
+                    if (np_piece_attacks(sq0, sq1, piece))
+                    {
                         Move move(sq0, sq1, quiet_move);
-                        uint64_t key = Zobrist::piece_keys[piece][sq0] ^ Zobrist::piece_keys[piece][sq1] ^ Zobrist::side_key;
+                        uint64_t key = Zobrist::piece_keys[piece][sq0] ^ Zobrist::piece_keys[piece][sq1] ^
+                            Zobrist::side_key;
 
                         uint64_t slot = hash1(key);
-                        while (true) {
+                        while (true)
+                        {
                             std::swap(cuckoo_key[slot], key);
                             std::swap(cuckoo_move[slot], move);
 

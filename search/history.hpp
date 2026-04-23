@@ -231,10 +231,10 @@ namespace Continuation
 
             apply(counter_moves, stm, prev_piece, prev_to, piece, move.to(), bonus);
 
-            for (const auto& tmpm: searched) {
-                uint8_t tmp = pos.piece_on[tmpm.from()];
+            for (const auto& tpm: searched) {
+                uint8_t tmp = pos.piece_on[tpm.from()];
                 if (tmp >= 6) tmp -= 6;
-                apply(counter_moves, stm, prev_piece, prev_to, tmp, tmpm.to(), -bonus);
+                apply(counter_moves, stm, prev_piece, prev_to, tmp, tpm.to(), -bonus);
             }
             if (counter_moves[stm][prev_piece][prev_to][piece][move.to()] >= max_continuation) scale_down(counter_moves);
         }
@@ -245,10 +245,10 @@ namespace Continuation
 
             apply(follow_up, stm, prev2_piece, prev2_to, piece, move.to(), bonus);
 
-            for (const auto& tmpm: searched) {
-                uint8_t tmp = pos.piece_on[tmpm.from()];
+            for (const auto& tmp_move: searched) {
+                uint8_t tmp = pos.piece_on[tmp_move.from()];
                 if (tmp >= 6) tmp -= 6;
-                apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmpm.to(), -bonus);
+                apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmp_move.to(), -bonus);
             }
             if (follow_up[stm][prev2_piece][prev2_to][piece][move.to()] >= max_continuation) scale_down(follow_up);
         }

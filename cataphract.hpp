@@ -37,14 +37,13 @@ namespace Cataphract
     {
         if (move.length() == 4)
         {
-            const MoveList moves = legals<all>(position);
             const int from = algebraic_to_num(move.substr(0, 2));
             const int to = algebraic_to_num(move.substr(2, 2));
             if (from == -1 || to == -1) return;
             const auto _move = Move(from, to, 0);
-            for (int i = 0; i < moves.size(); i++)
+            for (const auto& move_test : legals<all>(position).list)
             {
-                if (const auto move_test = moves[i]; (move_test.move & 0xFFF) == _move.move)
+                if ((move_test.move & 0xFFF) == _move.move)
                 {
                     position.do_move(move_test);
                     return;
@@ -74,10 +73,9 @@ namespace Cataphract
             default:
                 return;
             }
-            flag += (abs(from - to) % 8 == 0) ? 0 : 4;
-            const MoveList moves = legals<all>(position);
+            flag += abs(from - to) % 8 == 0 ? 0 : 4;
             const auto _move = Move(from, to, flag);
-            for (const auto& move_test : moves.list)
+            for (const auto& move_test : legals<all>(position).list)
             {
                 if (move_test.move == _move.move)
                 {
@@ -98,38 +96,19 @@ namespace Cataphract
         }
         else if (fen.starts_with("fen "))
         {
-            if (moves_pos == std::string::npos)
-            {
-                if (fen_parse(fen.substr(4, std::string::npos)) == -1)
-                {
-                    return;
-                }
-            }
-            else if (fen_parse(fen.substr(4, moves_pos - 5)) == -1)
+            if (fen_parse(fen.substr(4, moves_pos == std::string::npos ? std::string::npos : moves_pos - 5)) == -1)
             {
                 return;
             }
         }
-        else
-        {
-            return;
-        }
+        else return;
 
         if (moves_pos != std::string::npos)
         {
-            auto moves = fen.substr(moves_pos + 6, std::string::npos);
-
-            auto limiter = moves.find(' ');
-            size_t begin = 0;
-            while (begin != std::string::npos)
+            for (auto moves = fen.substr(moves_pos + 6, std::string::npos) | std::views::split(' ');
+                 auto move : moves)
             {
-                process_move(moves.substr(begin, limiter - begin));
-                if (limiter != std::string::npos)
-                {
-                    begin = limiter + 1;
-                    limiter = moves.find(' ', begin);
-                }
-                else begin = std::string::npos;
+                process_move(std::string_view{move});
             }
         }
         TT::advance();

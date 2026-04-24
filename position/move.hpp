@@ -22,7 +22,7 @@ enum flag: uint16_t
     queen_promo_capture
 };
 
-constexpr int algebraic_to_num(const std::string_view& algebraic)
+constexpr int algebraic_to_num(const std::string_view algebraic)
 {
     if (algebraic.length() != 2) return -1;
     int rank = 0;
@@ -72,8 +72,8 @@ struct Move
 {
     uint16_t move;
 
-    explicit Move(const uint16_t src, const uint16_t dest, const uint16_t flags) : move(
-        src | (dest << 6) | (flags << 12))
+    explicit Move(const uint16_t _from, const uint16_t _to, const uint16_t _flag) : move(
+        _from | (_to << 6) | (_flag << 12))
     {
     }
 
@@ -131,10 +131,14 @@ struct Move
             char promo_char = '?';
             switch (promoted_to<false>())
             {
-            case N: promo_char = 'n'; break;
-            case B: promo_char = 'b'; break;
-            case R: promo_char = 'r'; break;
-            case Q: promo_char = 'q'; break;
+            case N: promo_char = 'n';
+                break;
+            case B: promo_char = 'b';
+                break;
+            case R: promo_char = 'r';
+                break;
+            case Q: promo_char = 'q';
+                break;
             default: break;
             }
             return std::format("{}{}{}", num_to_algebraic(from()), num_to_algebraic(to()), promo_char);

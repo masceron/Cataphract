@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <cstring>
+#include <span>
 
 #include "../eval/transposition.hpp"
 
@@ -19,7 +20,8 @@ struct SearchEntry
 
 inline void search_stack_init(std::vector<SearchEntry>& stack)
 {
-    for (unsigned long long i = 0; i < stack.size(); i++) {
+    for (unsigned long long i = 0; i < stack.size(); i++)
+    {
         stack[i].plies = i - 4;
     }
 }
@@ -27,10 +29,12 @@ inline void search_stack_init(std::vector<SearchEntry>& stack)
 namespace Killers
 {
     inline std::array<std::array<Move, 2>, 128> table;
+
     inline void clear()
     {
         memset(table.data(), 0, table.size() * 2 * sizeof(Move));
     }
+
     inline void insert(const Move move, const int ply)
     {
         auto killers_of_ply = table[ply];
@@ -38,6 +42,7 @@ namespace Killers
         killers_of_ply[1] = killers_of_ply[0];
         killers_of_ply[0] = move;
     }
+
     inline Move get(const int ply, const int order)
     {
         return table[ply][order];
@@ -50,7 +55,8 @@ struct CaptureEntry
     uint8_t captured;
     uint8_t sq;
 
-    CaptureEntry(const uint8_t _moved, const uint8_t _captured, const uint8_t _sq): moved(_moved), captured(_captured), sq(_sq)
+    CaptureEntry(const uint8_t _moved, const uint8_t _captured, const uint8_t _sq) : moved(_moved), captured(_captured),
+        sq(_sq)
     {
         if (captured >= 6) captured -= 6;
     }
@@ -62,36 +68,38 @@ namespace Capture
     static constexpr int16_t max_capture = 32000;
 
     inline std::array<std::array<std::array<std::array<int16_t, 64>, 5>, 6>, 2> table;
+
     inline void clear()
     {
         memset(table.data(), 0, 7680);
     }
+
     inline void scale_down()
     {
-        for (auto& sides: table) {
-            for (auto& capturers: sides) {
-                for (auto& captured: capturers) {
-                    for (auto& sq: captured) {
-                        sq >>= 1;
-                    }
-                }
-            }
+        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 5 * 64);
+             int16_t& score : flat_view)
+        {
+            score >>= 1;
         }
     }
 
-    inline void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq, const int16_t bonus)
+    inline void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq,
+                      const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, min_capture, max_capture);
-        table[stm][moved_piece][captured_piece][sq] += clamped_bonus - table[stm][moved_piece][captured_piece][sq] * abs(clamped_bonus) / max_capture;
+        table[stm][moved_piece][captured_piece][sq] += clamped_bonus - table[stm][moved_piece][captured_piece][sq] *
+            abs(clamped_bonus) / max_capture;
     }
 
-    inline void update(const std::forward_list<CaptureEntry>& searched, const bool stm, const uint8_t moved_piece, uint8_t captured_piece, const uint8_t sq, const uint8_t depth)
+    inline void update(const std::forward_list<CaptureEntry>& searched, const bool stm, const uint8_t moved_piece,
+                       uint8_t captured_piece, const uint8_t sq, const uint8_t depth)
     {
         if (captured_piece >= 6) captured_piece -= 6;
-        const int16_t bonus = 100 * depth;
+        const auto bonus = static_cast<int16_t>(100 * depth);
         apply(stm, moved_piece, captured_piece, sq, bonus);
 
-        for (const auto&[_moved, _captured, _sq]: searched) {
+        for (const auto& [_moved, _captured, _sq] : searched)
+        {
             apply(stm, _moved, _captured, _sq, -bonus);
         }
         if (table[stm][moved_piece][captured_piece][sq] >= max_capture) scale_down();
@@ -112,12 +120,10 @@ namespace ButterflyHistory
 
     inline void scale_down()
     {
-        for (auto& sides: table) {
-            for (auto& sqf: sides) {
-                for (auto& sqt: sqf) {
-                    sqt >>= 1;
-                }
-            }
+        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 64 * 64);
+             int16_t& score : flat_view)
+        {
+            score >>= 1;
         }
     }
 
@@ -127,12 +133,14 @@ namespace ButterflyHistory
         table[side][from][to] += clamped_bonus - table[side][from][to] * abs(clamped_bonus) / max_butterfly;
     }
 
-    inline void update(const std::forward_list<Move>& searched, const bool side, const int from, const int to, const uint8_t depth)
+    inline void update(const std::forward_list<Move>& searched, const bool side, const int from, const int to,
+                       const uint8_t depth)
     {
-        const int16_t bonus = 25 * depth - 12;
+        const auto bonus = static_cast<int16_t>(25 * depth - 12);
         apply(side, from, to, bonus);
 
-        for (const Move move: searched) {
+        for (const Move move : searched)
+        {
             apply(side, move.from(), move.to(), -bonus);
         }
         if (table[side][from][to] >= max_butterfly) scale_down();
@@ -153,12 +161,10 @@ namespace PieceToHistory
 
     inline void scale_down()
     {
-        for (auto& sides: table) {
-            for (auto& pieces: sides) {
-                for (auto& sqt: pieces) {
-                    sqt >>= 1;
-                }
-            }
+        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 64);
+             int16_t& score : flat_view)
+        {
+            score >>= 1;
         }
     }
 
@@ -168,13 +174,15 @@ namespace PieceToHistory
         table[side][piece][to] += clamped_bonus - table[side][piece][to] * abs(clamped_bonus) / max_piece_to;
     }
 
-    inline void update(const Position& pos, const std::forward_list<Move>& searched, const bool side, Pieces piece, const int to, const uint8_t depth)
+    inline void update(const Position& pos, const std::forward_list<Move>& searched, const bool side, Pieces piece,
+                       const int to, const uint8_t depth)
     {
         if (piece >= 6) piece = static_cast<Pieces>(static_cast<uint8_t>(piece) - 6);
-        const int16_t bonus = 25 * depth - 12;
+        const auto bonus = static_cast<int16_t>(25 * depth - 12);
         apply(side, piece, to, bonus);
 
-        for (const Move move: searched) {
+        for (const Move move : searched)
+        {
             uint8_t p = pos.piece_on[move.from()];
             if (p >= 6) p -= 6;
 
@@ -199,53 +207,55 @@ namespace Continuation
 
     inline void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
     {
-        for (auto& sides: table) {
-            for (auto& piece_prev: sides) {
-                for (auto& prev_to: piece_prev) {
-                    for (auto& pto: prev_to) {
-                        for (auto& to: pto) {
-                            to >>= 1;
-                        }
-                    }
-                }
-            }
+        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 64 * 6 * 64 * 6 * 2);
+             int16_t& score : flat_view)
+        {
+            score >>= 1;
         }
     }
 
-    void apply(auto& table, const bool stm, const uint8_t prev_piece, const uint8_t prev_to, const uint8_t piece, const uint8_t to, const int16_t bonus)
+    void apply(auto& table, const bool stm, const uint8_t prev_piece, const uint8_t prev_to, const uint8_t piece,
+               const uint8_t to, const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, min_continuation, max_continuation);
-        table[stm][prev_piece][prev_to][piece][to] += clamped_bonus - table[stm][prev_piece][prev_to][piece][to] * abs(clamped_bonus) / max_continuation;
+        table[stm][prev_piece][prev_to][piece][to] += clamped_bonus - table[stm][prev_piece][prev_to][piece][to] *
+            abs(clamped_bonus) / max_continuation;
     }
 
-    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move move, const uint8_t depth, const SearchEntry* ss)
+    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move move,
+                       const uint8_t depth, const SearchEntry* ss)
     {
-        const int16_t bonus = 25 * depth - 12;
+        const auto bonus = static_cast<int16_t>(25 * depth - 12);
         const bool stm = pos.side_to_move;
         uint8_t piece = pos.piece_on[move.from()];
         if (piece >= 6) piece -= 6;
 
-        if (const auto prev = ss - 1; (ss - 1)->piece_to != UINT16_MAX) {
+        if (const auto prev = ss - 1; (ss - 1)->piece_to != UINT16_MAX)
+        {
             const uint8_t prev_piece = prev->piece_to >> 6;
             const uint8_t prev_to = prev->piece_to & 0b111111;
 
             apply(counter_moves, stm, prev_piece, prev_to, piece, move.to(), bonus);
 
-            for (const auto& tpm: searched) {
+            for (const auto& tpm : searched)
+            {
                 uint8_t tmp = pos.piece_on[tpm.from()];
                 if (tmp >= 6) tmp -= 6;
                 apply(counter_moves, stm, prev_piece, prev_to, tmp, tpm.to(), -bonus);
             }
-            if (counter_moves[stm][prev_piece][prev_to][piece][move.to()] >= max_continuation) scale_down(counter_moves);
+            if (counter_moves[stm][prev_piece][prev_to][piece][move.to()] >= max_continuation)
+                scale_down(counter_moves);
         }
 
-        if (const auto prev2 = ss - 2; (ss - 2)->piece_to != UINT16_MAX) {
+        if (const auto prev2 = ss - 2; (ss - 2)->piece_to != UINT16_MAX)
+        {
             const uint8_t prev2_piece = prev2->piece_to >> 6;
             const uint8_t prev2_to = prev2->piece_to & 0b111111;
 
             apply(follow_up, stm, prev2_piece, prev2_to, piece, move.to(), bonus);
 
-            for (const auto& tmp_move: searched) {
+            for (const auto& tmp_move : searched)
+            {
                 uint8_t tmp = pos.piece_on[tmp_move.from()];
                 if (tmp >= 6) tmp -= 6;
                 apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmp_move.to(), -bonus);
@@ -255,12 +265,14 @@ namespace Continuation
     }
 }
 
-inline void update_quiet_histories(const Position& pos, const int depth, const Move picked_move, const SearchEntry* ss, const std::forward_list<Move>& quiets_searched)
+inline void update_quiet_histories(const Position& pos, const int depth, const Move picked_move, const SearchEntry* ss,
+                                   const std::forward_list<Move>& quiets_searched)
 {
     Killers::insert(picked_move, ss->plies);
     ButterflyHistory::update(quiets_searched, pos.side_to_move, picked_move.from(), picked_move.to(),
-                    depth);
-    PieceToHistory::update(pos, quiets_searched, pos.side_to_move, pos.piece_on[picked_move.from()], picked_move.to(), depth);
+                             depth);
+    PieceToHistory::update(pos, quiets_searched, pos.side_to_move, pos.piece_on[picked_move.from()], picked_move.to(),
+                           depth);
     Continuation::update(pos, quiets_searched, picked_move, depth, ss);
 }
 
@@ -301,9 +313,12 @@ namespace Corrections
         const int correction_minor = *minor * (correction_scale - new_weight) + scaled_delta * new_weight;
         const int correction_major = *major * (correction_scale - new_weight) + scaled_delta * new_weight;
 
-        *pawns = std::clamp(static_cast<int16_t>(correction_pawns / correction_scale), static_cast<int16_t>(-correction_limit), correction_limit);
-        *minor = std::clamp(static_cast<int16_t>(correction_minor / correction_scale), static_cast<int16_t>(-correction_limit), correction_limit);
-        *major = std::clamp(static_cast<int16_t>(correction_major / correction_scale), static_cast<int16_t>(-correction_limit), correction_limit);
+        *pawns = std::clamp(static_cast<int16_t>(correction_pawns / correction_scale),
+                            static_cast<int16_t>(-correction_limit), correction_limit);
+        *minor = std::clamp(static_cast<int16_t>(correction_minor / correction_scale),
+                            static_cast<int16_t>(-correction_limit), correction_limit);
+        *major = std::clamp(static_cast<int16_t>(correction_major / correction_scale),
+                            static_cast<int16_t>(-correction_limit), correction_limit);
     }
 
     inline int correct(int static_eval, const Position& pos)

@@ -209,22 +209,9 @@ void Position::make_move(const Move move, State& st)
 
     side_to_move = !side_to_move;
 
-    if (!side_to_move)
-    {
-        st.checker = get_checker_of<white>();
-        if (st.checker)
-        {
-            st.check_blocker = get_check_blocker_of<white>();
-        }
-    }
-    else
-    {
-        st.checker = get_checker_of<black>();
-        if (st.checker)
-        {
-            st.check_blocker = get_check_blocker_of<black>();
-        }
-    }
+    get_checks();
+    st.attacks = UINT64_MAX;
+    st.pinned = UINT64_MAX;
 
     st.repetition = 1;
     if (const uint16_t cutoff = std::min(static_cast<uint16_t>(st.rule_50), st.ply); cutoff >= 4)
@@ -441,6 +428,7 @@ void Position::make_null_move(State& st)
     }
 
     side_to_move = !side_to_move;
+    st.attacks = UINT64_MAX;
     state = &st;
 }
 
@@ -458,6 +446,26 @@ void Position::get_pinned() const
 void Position::get_attacks() const
 {
     state->attacks = side_to_move == white ? get_attacked_map_of<white>() : get_attacked_map_of<black>();
+}
+
+void Position::get_checks() const
+{
+    if (!side_to_move)
+    {
+        state->checker = get_checker_of<white>();
+        if (state->checker)
+        {
+            state->check_blocker = get_check_blocker_of<white>();
+        }
+    }
+    else
+    {
+        state->checker = get_checker_of<black>();
+        if (state->checker)
+        {
+            state->check_blocker = get_check_blocker_of<black>();
+        }
+    }
 }
 
 bool Position::upcoming_repetition(const int ply) const

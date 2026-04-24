@@ -278,22 +278,9 @@ inline int fen_parse(std::string_view fen)
         boards[r];
     temp.occupations[2] = temp.occupations[white] | temp.occupations[black];
 
-    if (!temp.side_to_move)
-    {
-        st.checker = temp.get_checker_of<white>();
-        if (st.checker)
-        {
-            st.check_blocker = temp.get_check_blocker_of<white>();
-        }
-    }
-    else
-    {
-        st.checker = temp.get_checker_of<black>();
-        if (st.checker)
-        {
-            st.check_blocker = temp.get_check_blocker_of<black>();
-        }
-    }
+    temp.get_checks();
+    st.attacks = UINT64_MAX;
+    st.pinned = UINT64_MAX;
 
     st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
 

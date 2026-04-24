@@ -33,7 +33,7 @@ namespace Cataphract
         std::fflush(stdout);
     }
 
-    inline void process_move(const std::string_view move)
+    inline void process_move(const std::string_view move, MoveList& list)
     {
         if (move.length() == 4)
         {
@@ -41,7 +41,8 @@ namespace Cataphract
             const int to = algebraic_to_num(move.substr(2, 2));
             if (from == -1 || to == -1) return;
             const auto _move = Move(from, to, 0);
-            for (const auto& move_test : legals<all>(position).list)
+            legals<all>(position, list);
+            for (const auto& move_test : list)
             {
                 if ((move_test.move & 0xFFF) == _move.move)
                 {
@@ -75,7 +76,10 @@ namespace Cataphract
             }
             flag += abs(from - to) % 8 == 0 ? 0 : 4;
             const auto _move = Move(from, to, flag);
-            for (const auto& move_test : legals<all>(position).list)
+
+            legals<all>(position, list);
+
+            for (const auto& move_test : list)
             {
                 if (move_test.move == _move.move)
                 {
@@ -105,10 +109,12 @@ namespace Cataphract
 
         if (moves_pos != std::string::npos)
         {
+            MoveList list;
             for (auto moves = fen.substr(moves_pos + 6, std::string::npos) | std::views::split(' ');
                  auto move : moves)
             {
-                process_move(std::string_view{move});
+                list.reset();
+                process_move(std::string_view{move}, list);
             }
         }
         TT::advance();

@@ -19,6 +19,11 @@ struct MoveList
     MoveList() : last(list)
     {
     }
+
+    void reset()
+    {
+        last = list;
+    }
 };
 
 enum MoveType: uint8_t
@@ -328,7 +333,7 @@ void pseudo_legals(const Position& cr_pos, MoveList& list)
     }
 }
 
-inline bool check_move_legality(Position& cr_pos, const Move move)
+inline bool check_move_legality(const Position& cr_pos, const Move move)
 {
     if (const int king_sq = lsb(cr_pos.boards[cr_pos.side_to_move == white ? K : k]);
         (cr_pos.state->pinned & (1ull << move.from())
@@ -341,9 +346,11 @@ inline bool check_move_legality(Position& cr_pos, const Move move)
 }
 
 template <const MoveType type>
-MoveList legals(Position& cr_pos)
+void legals(const Position& cr_pos, MoveList& list)
 {
-    MoveList list;
+    cr_pos.get_attacks();
+    cr_pos.get_pinned();
+
     pseudo_legals<type>(cr_pos, list);
     Move* current = list.begin();
 
@@ -358,5 +365,4 @@ MoveList legals(Position& cr_pos)
             current++;
         }
     }
-    return list;
 }

@@ -11,7 +11,8 @@ inline size_t perft(const int depth)
         return 1;
     }
 
-    const MoveList moves = legals<all>(position);
+    MoveList moves;
+    legals<all>(position, moves);
     const auto n = moves.size();
     uint64_t nodes = 0;
 
@@ -36,7 +37,8 @@ inline void divide(const int depth)
     size_t total = 0;
 
     const auto start = std::chrono::high_resolution_clock::now();
-    const MoveList moves = legals<all>(position);
+    MoveList moves;
+    legals<all>(position, moves);
     const auto n = moves.size();
 
     State st;

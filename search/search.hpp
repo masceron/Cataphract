@@ -771,7 +771,9 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
     {
         if (!best_move)
         {
-            best_move = legals<all>(position)[0];
+            MoveList list;
+            legals<all>(position, list);
+            best_move = list[0];
         }
         std::println("bestmove {}", best_move.get_move_string());
         std::fflush(stdout);

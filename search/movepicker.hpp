@@ -43,6 +43,8 @@ struct MovePicker
     {
         bad_captures_end = &moves.list[255];
         threshold = _threshold;
+        pos->get_attacks();
+
         if (const auto pv_flag = pv.flag(); _pv && pos->is_pseudo_legal(_pv)
             && !(noisy_only
                 && pv_flag != queen_promotion
@@ -78,6 +80,8 @@ struct MovePicker
                 stage = TT_moves;
             }
         }
+
+        pos->get_pinned();
     }
 
     std::pair<Move, int16_t> pick()

@@ -212,22 +212,18 @@ void Position::make_move(const Move move, State& st)
     if (!side_to_move)
     {
         st.checker = get_checker_of<white>();
-        st.pinned = get_pinned_board_of<white>();
         if (st.checker)
         {
             st.check_blocker = get_check_blocker_of<white>();
         }
-        st.attacks = get_attacked_map_of<white>();
     }
     else
     {
         st.checker = get_checker_of<black>();
-        st.pinned = get_pinned_board_of<black>();
         if (st.checker)
         {
             st.check_blocker = get_check_blocker_of<black>();
         }
-        st.attacks = get_attacked_map_of<black>();
     }
 
     st.repetition = 1;
@@ -321,7 +317,9 @@ bool Position::is_pseudo_legal(const Move move) const
 
         if (!(pawn_attack_tables[side_to_move][from] & occupations[!side_to_move] & to_board)
             && !(from + Delta<Up>(side_to_move) == to && piece_on[to] == nil)
-            && !(from + 2 * Delta<Up>(side_to_move) == to && piece_on[to] == nil && piece_on[to - Delta<Up>(side_to_move)] == nil
+            && !(from + 2 * Delta<Up>(side_to_move) == to
+                && piece_on[to] == nil
+                && piece_on[to - Delta<Up>(side_to_move)] == nil
                 && (side_to_move == white ? from / 8 == 6 : from / 8 == 1)))
             return false;
     }
@@ -340,7 +338,8 @@ bool Position::is_pseudo_legal(const Move move) const
     else if (moved_piece == Q || moved_piece == q)
     {
         if (!((get_bishop_attack(from, occupations[2]) | get_rook_attack(from, occupations[2])) & to_board & ~
-            occupations[side_to_move])) return false;
+            occupations[side_to_move]))
+            return false;
     }
     else if (moved_piece == K || moved_piece == k)
     {
@@ -376,7 +375,7 @@ bool Position::is_quiet(const Move move) const
     return piece_on[move.to()] == nil && flag < knight_promotion && flag != ep_capture;
 }
 
-bool Position::is_legal(const Move move)
+bool Position::is_legal(const Move move) const
 {
     const bool us = side_to_move;
     const auto from = move.from();
@@ -395,15 +394,12 @@ bool Position::is_legal(const Move move)
 
         return !((get_bishop_attack(king_index, occ) & (eq | eb)) | (get_rook_attack(king_index, occ) & (eq | er)));
     }
-    else if (piece_on[from] == king)
+    if (piece_on[from] == king)
     {
-        occupations[2] ^= king_board;
         if ((1ull << to) & state->attacks)
         {
-            occupations[2] ^= king_board;
             return false;
         }
-        occupations[2] ^= king_board;
     }
 
     return !(state->pinned & 1ull << from) || lines_intersect[from][to] & king_board;
@@ -445,9 +441,6 @@ void Position::make_null_move(State& st)
     }
 
     side_to_move = !side_to_move;
-
-    if (side_to_move == white) st.pinned = get_pinned_board_of<white>();
-    else st.pinned = get_pinned_board_of<black>();
     state = &st;
 }
 
@@ -455,6 +448,16 @@ void Position::unmake_null_move()
 {
     state = state->previous;
     side_to_move = !side_to_move;
+}
+
+void Position::get_pinned() const
+{
+    state->pinned = side_to_move == white ? get_pinned_board_of<white>() : get_pinned_board_of<black>();
+}
+
+void Position::get_attacks() const
+{
+    state->attacks = side_to_move == white ? get_attacked_map_of<white>() : get_attacked_map_of<black>();
 }
 
 bool Position::upcoming_repetition(const int ply) const

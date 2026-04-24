@@ -126,7 +126,7 @@ inline void accumulators_set(const Network* network, const uint64_t* boards, int
 
         while (board)
         {
-            auto [white_add, black_add] = input_index_of(i, lsb(board), mirror);
+            auto [white_add, black_add] = input_index_of(i, pop_lsb(board), mirror);
             for (int iter = 0; iter < HL_SIZE; iter++)
             {
                 accumulators[iter] = static_cast<int16_t>(accumulators[iter]
@@ -134,8 +134,6 @@ inline void accumulators_set(const Network* network, const uint64_t* boards, int
                 accumulators[iter + HL_SIZE] = static_cast<int16_t>(accumulators[iter + HL_SIZE] + network->
                     accumulator_weights[black_bucket][black_add][iter]);
             }
-
-            board &= board - 1;
         }
     }
 }
@@ -528,28 +526,26 @@ inline void accumulator_stack_update(Network* network)
 
                     while (white_adds)
                     {
-                        const int index_added = lsb(white_adds);
+                        const int index_added = pop_lsb(white_adds);
                         const int input_index = index_added + piece * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
                             saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] + network->
                                 accumulator_weights[white_bucket][input_index][iter]);
                         }
-                        white_adds &= white_adds - 1;
                     }
 
                     auto white_subs = std::byteswap(old_white & ~new_white);
 
                     while (white_subs)
                     {
-                        const int index_subbed = lsb(white_subs);
+                        const int index_subbed = pop_lsb(white_subs);
                         const int input_index = index_subbed + piece * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
                             saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] - network->
                                 accumulator_weights[white_bucket][input_index][iter]);
                         }
-                        white_subs &= white_subs - 1;
                     }
                 }
 
@@ -573,28 +569,26 @@ inline void accumulator_stack_update(Network* network)
 
                     while (black_adds)
                     {
-                        const int index_added = lsb(black_adds);
+                        const int index_added = pop_lsb(black_adds);
                         const int input_index = index_added + flip_color(piece) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
                             saved_accumulators[iter + HL_SIZE] = static_cast<int16_t>(saved_accumulators[iter + HL_SIZE]
                                 + network->accumulator_weights[black_bucket][input_index][iter]);
                         }
-                        black_adds &= black_adds - 1;
                     }
 
                     auto black_subs = old_black & ~new_black;
 
                     while (black_subs)
                     {
-                        const int index_subbed = lsb(black_subs);
+                        const int index_subbed = pop_lsb(black_subs);
                         const int input_index = index_subbed + flip_color(piece) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
                             saved_accumulators[iter + HL_SIZE] = static_cast<int16_t>(saved_accumulators[iter + HL_SIZE]
                                 - network->accumulator_weights[black_bucket][input_index][iter]);
                         }
-                        black_subs &= black_subs - 1;
                     }
                 }
                 update_from_move<black>(network, previous_accumulators, current_accumulators, stack_entry->adds,

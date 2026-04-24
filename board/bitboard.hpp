@@ -96,6 +96,13 @@ inline int lsb(const uint64_t bitboard)
     return std::countr_zero(bitboard);
 }
 
+inline int pop_lsb(uint64_t& bitboard)
+{
+    const int sq = lsb(bitboard);
+    bitboard &= bitboard - 1;
+    return sq;
+}
+
 inline void print_bitboard(const uint64_t bitboard)
 {
     std::print("   a b c d e f g h\n");

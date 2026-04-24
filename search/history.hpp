@@ -293,9 +293,9 @@ namespace Corrections
 
     inline void clear()
     {
-        memset(pawn_corrections.data(), 0, 2 * 16384);
-        memset(minor_piece_corrections.data(), 0, 2 * correction_size);
-        memset(major_piece_corrections.data(), 0, 2 * correction_size);
+        memset(pawn_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
+        memset(minor_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
+        memset(major_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
     }
 
     inline void update(const int16_t delta, const Position& pos, const uint8_t depth)

@@ -281,22 +281,18 @@ inline int fen_parse(std::string_view fen)
     if (!temp.side_to_move)
     {
         st.checker = temp.get_checker_of<white>();
-        st.pinned = temp.get_pinned_board_of<white>();
         if (st.checker)
         {
             st.check_blocker = temp.get_check_blocker_of<white>();
         }
-        st.attacks = temp.get_attacked_map_of<white>();
     }
     else
     {
         st.checker = temp.get_checker_of<black>();
-        st.pinned = temp.get_pinned_board_of<black>();
         if (st.checker)
         {
             st.check_blocker = temp.get_check_blocker_of<black>();
         }
-        st.attacks = temp.get_attacked_map_of<black>();
     }
 
     st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;

@@ -67,6 +67,8 @@ struct Position
 
     void make_null_move(State& st);
     void unmake_null_move();
+    void get_pinned() const;
+    void get_attacks() const;
 
     [[nodiscard]] bool upcoming_repetition(int ply) const;
 
@@ -162,7 +164,7 @@ struct Position
         return attacks | king_attack_tables[lsb(boards[enemy_king])];
     }
 
-    [[nodiscard]] bool is_legal(Move move);
+    [[nodiscard]] bool is_legal(Move move) const;
     [[nodiscard]] bool is_pseudo_legal(Move move) const;
     [[nodiscard]] bool is_quiet(Move move) const;
 

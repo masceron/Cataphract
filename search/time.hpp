@@ -27,7 +27,11 @@ struct TimeManager {
     void init_time_control(Position* _position, const int time_left_ms, const int inc_ms, int moves_to_go = 40) {
         mode = TimeControlMode::Tournament;
         position = _position;
-        single_reply = legals<all>(*position).size() == 1;
+        {
+            MoveList list;
+            legals<all>(*position, list);
+            single_reply = list.size() == 1;
+        }
 
         if (moves_to_go <= 0) moves_to_go = 40;
 

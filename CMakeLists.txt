@@ -62,7 +62,6 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
                 -flto=auto -fwhole-program -static -s
         )
     endif ()
-
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 
     if (CMAKE_BUILD_TYPE MATCHES "Debug")
@@ -80,33 +79,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
                 -flto=full -static
         )
     endif ()
-
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     message(FATAL_ERROR "MSVC not supported.")
-endif ()
-
-set(PGO "NONE" CACHE STRING "PGO Build Type: NONE, GENERATE, USE")
-
-if (PGO STREQUAL "GENERATE")
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(Cataphract PRIVATE -fprofile-generate)
-        target_link_options(Cataphract PRIVATE -fprofile-generate)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_compile_options(Cataphract PRIVATE -fprofile-instr-generate)
-        target_link_options(Cataphract PRIVATE -fprofile-instr-generate)
-    endif()
-elseif (PGO STREQUAL "USE")
-    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        target_compile_options(Cataphract PRIVATE -fprofile-use -fprofile-correction)
-        target_link_options(Cataphract PRIVATE -fprofile-use -fprofile-correction)
-    elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-        target_compile_options(Cataphract PRIVATE -fprofile-instr-use=default.profdata)
-        target_link_options(Cataphract PRIVATE -fprofile-instr-use=default.profdata)
-    endif()
-endif()
-
-if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    set(MERGE_PROFILES COMMAND llvm-profdata merge -output=default.profdata default.profraw)
-else ()
-    set(MERGE_PROFILES "")
 endif ()

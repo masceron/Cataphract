@@ -43,7 +43,7 @@ namespace TT
         return std::bit_floor(total_bytes / sizeof(Entry));
     }
 
-    inline static uint32_t table_size_in_mb = 256;
+    inline static uint32_t table_size_in_mb = 64;
     inline static uint64_t table_size = closest_2_pow(table_size_in_mb);
     inline static uint64_t hash_mask = table_size - 1;
     inline static uint8_t current_generation = 4;

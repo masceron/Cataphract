@@ -28,20 +28,26 @@ namespace UCI
 
     inline void set_option(std::string_view option)
     {
-        const auto value_index = option.find(" value ");
+        auto tokens = option | std::views::split(' ');
+        auto it = tokens.begin();
+        ++it;
 
-        if (const std::string_view name = option.substr(0, value_index); name == "Hash")
+        if (const std::string_view name((*it).begin(), (*it).end()); name == "Hash")
         {
-            const std::string_view value = option.substr(value_index + 7);
+            ++it;
+            ++it;
+            const std::string_view value((*it).begin(), (*it).end());
             int32_t new_size = 0;
             std::from_chars(value.data(), value.data() + value.size(), new_size);
 
             if (new_size < 1 || new_size > 2048) return;
             TT::resize(static_cast<uint32_t>(new_size));
         }
-        else if (name == "Clear Hash")
+        else if (name == "Clear")
         {
-            TT::clear();
+            ++it;
+            if (std::string_view((*it).begin(), (*it).end()) == "Hash")
+                TT::clear();
         }
     }
 
@@ -53,7 +59,7 @@ namespace UCI
         if (it != tokens.end()) ++it;
 
         int depth = 15;
-        uint32_t tt_size = 256;
+        uint32_t tt_size = 64;
         if (it != tokens.end())
         {
             std::from_chars((*it).begin(), (*it).end(), depth);
@@ -219,7 +225,7 @@ namespace UCI
                 {
                     std::println("id name Cataphract");
                     std::println("id author masceron\n");
-                    std::println("option name Hash type spin default 256 min 1 max 2048");
+                    std::println("option name Hash type spin default 64 min 1 max 2048");
                     std::println("option name Clear Hash type button");
                     std::println("uciok");
                     std::fflush(stdout);

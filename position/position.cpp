@@ -207,23 +207,28 @@ void Position::make_move(const Move move, State& st)
 
     st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
 
+    side_to_move = !side_to_move;
+
     if (!side_to_move)
-    {
-        st.checker = get_checker_of<black>();
-        st.pinned = get_pinned_board_of<black>();
-    }
-    else
     {
         st.checker = get_checker_of<white>();
         st.pinned = get_pinned_board_of<white>();
+        if (st.checker)
+        {
+            st.check_blocker = get_check_blocker_of<white>();
+        }
+        st.attacks = get_attacked_map_of<white>();
     }
-
-    if (st.checker)
+    else
     {
-        st.check_blocker = get_check_blocker_of(!side_to_move);
+        st.checker = get_checker_of<black>();
+        st.pinned = get_pinned_board_of<black>();
+        if (st.checker)
+        {
+            st.check_blocker = get_check_blocker_of<black>();
+        }
+        st.attacks = get_attacked_map_of<black>();
     }
-
-    side_to_move = !side_to_move;
 
     st.repetition = 1;
     if (const uint16_t cutoff = std::min(static_cast<uint16_t>(st.rule_50), st.ply); cutoff >= 4)
@@ -285,7 +290,7 @@ void Position::unmake_move(const Move& move)
     state = state->previous;
 }
 
-bool Position::is_pseudo_legal(const Move move)
+bool Position::is_pseudo_legal(const Move move) const
 {
     const uint16_t flag = move.flag();
     if (flag >= knight_promotion || flag == ep_capture || flag == queen_castle || flag == king_castle)
@@ -355,13 +360,10 @@ bool Position::is_pseudo_legal(const Move move)
         }
         else
         {
-            occupations[2] ^= boards[moved_piece];
-            if (is_square_attacked_by(to, !side_to_move))
+            if ((1ull << to) & state->attacks)
             {
-                occupations[2] ^= boards[moved_piece];
                 return false;
             }
-            occupations[2] ^= boards[moved_piece];
         }
     }
 
@@ -377,7 +379,6 @@ bool Position::is_quiet(const Move move) const
 bool Position::is_legal(const Move move)
 {
     const bool us = side_to_move;
-    const bool enemy = !us;
     const auto from = move.from();
     const auto to = move.to();
     const auto flag = move.flag();
@@ -385,21 +386,7 @@ bool Position::is_legal(const Move move)
     const uint64_t king_board = boards[king];
     const auto king_index = lsb(king_board);
 
-    if (flag == king_castle)
-    {
-        for (int k = from; k <= from + 2; k++)
-        {
-            if (is_square_attacked_by(k, enemy)) return false;
-        }
-    }
-    else if (flag == queen_castle)
-    {
-        for (int k = from; k >= from - 2; k--)
-        {
-            if (is_square_attacked_by(k, enemy)) return false;
-        }
-    }
-    else if (flag == ep_capture)
+    if (flag == ep_capture)
     {
         const uint64_t eq = boards[us == white ? q : Q];
         const uint64_t eb = boards[us == white ? b : B];
@@ -411,7 +398,7 @@ bool Position::is_legal(const Move move)
     else if (piece_on[from] == king)
     {
         occupations[2] ^= king_board;
-        if (is_square_attacked_by(to, enemy))
+        if ((1ull << to) & state->attacks)
         {
             occupations[2] ^= king_board;
             return false;
@@ -430,8 +417,7 @@ uint64_t Position::construct_zobrist_key() const
         auto board = boards[piece];
         while (board)
         {
-            key ^= Zobrist::piece_keys[piece][lsb(board)];
-            board &= board - 1;
+            key ^= Zobrist::piece_keys[piece][pop_lsb(board)];
         }
     }
     if (side_to_move) key ^= Zobrist::side_key;
@@ -469,33 +455,6 @@ void Position::unmake_null_move()
 {
     state = state->previous;
     side_to_move = !side_to_move;
-}
-
-bool Position::is_square_attacked_by(const int index, const bool side) const
-{
-    if (!side)
-    {
-        if (get_rook_attack(index, occupations[2]) & (boards[R] | boards[Q])) return true;
-        if (get_bishop_attack(index, occupations[2]) & (boards[B] | boards[Q])) return true;
-        if (knight_attack_tables[index] & boards[N]) return true;
-        if (pawn_attack_tables[black][index] & boards[P]) return true;
-        if (king_attack_tables[index] & boards[K]) return true;
-    }
-    else
-    {
-        if (get_rook_attack(index, occupations[2]) & (boards[r] | boards[q])) return true;
-        if (get_bishop_attack(index, occupations[2]) & (boards[b] | boards[q])) return true;
-        if (knight_attack_tables[index] & boards[n]) return true;
-        if (pawn_attack_tables[white][index] & boards[p]) return true;
-        if (king_attack_tables[index] & boards[k]) return true;
-    }
-    return false;
-}
-
-
-uint64_t Position::get_check_blocker_of(const bool side) const
-{
-    return state->checker | lines_between[lsb(state->checker)][lsb(side == white ? boards[K] : boards[k])];
 }
 
 bool Position::upcoming_repetition(const int ply) const

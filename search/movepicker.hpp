@@ -43,7 +43,10 @@ struct MovePicker
     {
         bad_captures_end = &moves.list[255];
         threshold = _threshold;
-        pos->get_attacks();
+        if (pos->state->attacks == UINT64_MAX)
+        {
+            pos->get_attacks();
+        }
 
         if (const auto pv_flag = pv.flag(); _pv && pos->is_pseudo_legal(_pv)
             && !(noisy_only
@@ -81,7 +84,10 @@ struct MovePicker
             }
         }
 
-        pos->get_pinned();
+        if (pos->state->pinned == UINT64_MAX)
+        {
+            pos->get_pinned();
+        }
     }
 
     std::pair<Move, int16_t> pick()

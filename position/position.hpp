@@ -69,6 +69,7 @@ struct Position
     void unmake_null_move();
     void get_pinned() const;
     void get_attacks() const;
+    void get_checks() const;
 
     [[nodiscard]] bool upcoming_repetition(int ply) const;
 

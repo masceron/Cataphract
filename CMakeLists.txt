@@ -63,12 +63,28 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         )
     endif ()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-
     if (CMAKE_BUILD_TYPE MATCHES "Debug")
-        target_compile_options(Cataphract PRIVATE
-                -O0 -Wextra -fsanitize=undefined -g -march=native -fno-exceptions
+        target_compile_options(Cataphract PRIVATE -O0 -Wextra -g -march=native -fno-exceptions
+                -fsanitize=undefined -fsanitize=implicit-integer-truncation
+                -fsanitize=implicit-integer-arithmetic-value-change -fsanitize=implicit-integer-conversion
+                -fsanitize=implicit-conversion -fsanitize=signed-integer-overflow
+                -fsanitize=nullability -fsanitize=local-bounds
+                -fsanitize=float-divide-by-zero -fsanitize=integer-divide-by-zero
+                -fsanitize=implicit-unsigned-integer-truncation -fsanitize=implicit-signed-integer-truncation
+                -fsanitize=implicit-integer-sign-change
+                -fno-sanitize=shift
+
         )
-        target_link_options(Cataphract PRIVATE -fsanitize=undefined)
+        target_link_options(Cataphract PRIVATE
+                -fsanitize=undefined -fsanitize=implicit-integer-truncation
+                -fsanitize=implicit-integer-arithmetic-value-change -fsanitize=implicit-integer-conversion
+                -fsanitize=implicit-conversion -fsanitize=signed-integer-overflow
+                -fsanitize=nullability -fsanitize=local-bounds
+                -fsanitize=float-divide-by-zero -fsanitize=integer-divide-by-zero
+                -fsanitize=implicit-unsigned-integer-truncation -fsanitize=implicit-signed-integer-truncation
+                -fsanitize=implicit-integer-sign-change
+                -fno-sanitize=shift
+        )
 
     elseif (CMAKE_BUILD_TYPE MATCHES "Release")
         target_compile_options(Cataphract PRIVATE
@@ -76,7 +92,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         )
         target_compile_definitions(Cataphract PRIVATE NDEBUG)
         target_link_options(Cataphract PRIVATE
-                -flto=full -static
+                -flto=full -static -s
         )
     endif ()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")

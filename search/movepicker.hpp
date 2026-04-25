@@ -217,7 +217,7 @@ struct MovePicker
             scores[index] = static_cast<int16_t>(mvv[captured] + Capture::table[stm][moved][captured][to]);
             if (move->flag() >= knight_promo_capture)
                 scores[index] = static_cast<int16_t>(scores[index]
-                    + value_of(move->promoted_to<false>()));
+                    + value_of(move->promoted_to()));
         }
     }
 

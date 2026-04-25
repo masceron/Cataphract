@@ -142,7 +142,7 @@ void Position::make_move(const Move move, State& st)
     {
         if (flag >= knight_promotion)
         {
-            const Pieces promoted_to = move.promoted_to<true>(side_to_move);
+            const Pieces promoted_to = move.promoted_to(side_to_move);
             remove_piece(to);
             put_piece(promoted_to, to);
 

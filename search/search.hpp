@@ -283,7 +283,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     Entry* entry;
     NodeType entry_type;
     ss->double_extensions = (ss - 1)->double_extensions;
-    uint64_t tt_key = pos.state->key ^ (ss->excluded.move << 16);
+    uint64_t tt_key = pos.state->key ^ static_cast<uint64_t>(ss->excluded.move) << 16;
 
     int raw_static_eval;
     bool improving = false;

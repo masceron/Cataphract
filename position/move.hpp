@@ -61,11 +61,19 @@ constexpr int algebraic_to_num(const std::string_view algebraic)
     return rank * 8 + file;
 }
 
-constexpr std::string num_to_algebraic(const int sq)
-{
-    static constexpr char files[] = "abcdefgh";
+constexpr const char* num_to_algebraic(const int sq) {
+    static constexpr const char* table[64] = {
+        "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
+        "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
+        "a6", "b6", "c6", "d6", "e6", "f6", "g6", "h6",
+        "a5", "b5", "c5", "d5", "e5", "f5", "g5", "h5",
+        "a4", "b4", "c4", "d4", "e4", "f4", "g4", "h4",
+        "a3", "b3", "c3", "d3", "e3", "f3", "g3", "h3",
+        "a2", "b2", "c2", "d2", "e2", "f2", "g2", "h2",
+        "a1", "b1", "c1", "d1", "e1", "f1", "g1", "h1"
+    };
 
-    return files[sq % 8] + std::to_string(8 - sq / 8);
+    return table[sq];
 }
 
 struct Move
@@ -109,42 +117,34 @@ struct Move
         return move != 0;
     }
 
-    template <const bool side_needed>
     [[nodiscard]] Pieces promoted_to(const bool side = white) const
     {
-        if constexpr (!side_needed) return static_cast<Pieces>((flag() & 0b11) + 1);
-        else
-        {
-            if (side == white) return static_cast<Pieces>((flag() & 0b11) + 1);
-            return static_cast<Pieces>(6 + ((flag() & 0b11) + 1));
-        }
+        if (side == white) return static_cast<Pieces>((flag() & 0b11) + 1);
+        return static_cast<Pieces>(6 + ((flag() & 0b11) + 1));
     }
 
     bool operator==(const Move _move) const { return _move.move == this->move; }
 
-    [[nodiscard]] std::string get_move_string() const
+    [[nodiscard]] std::string_view get_move_string() const
     {
-        if (move == 0) return "0000";
+        static char buffer[5];
+        const auto from_sq = num_to_algebraic(from());
+        const auto to_sq = num_to_algebraic(to());
+        buffer[0] = from_sq[0];
+        buffer[1] = from_sq[1];
+        buffer[2] = to_sq[0];
+        buffer[3] = to_sq[1];
+
+        static auto promoted = "nbrqnbrq";
 
         if (flag() >= knight_promotion)
         {
-            char promo_char = '?';
-            switch (promoted_to<false>())
-            {
-            case N: promo_char = 'n';
-                break;
-            case B: promo_char = 'b';
-                break;
-            case R: promo_char = 'r';
-                break;
-            case Q: promo_char = 'q';
-                break;
-            default: break;
-            }
-            return std::format("{}{}{}", num_to_algebraic(from()), num_to_algebraic(to()), promo_char);
+            buffer[4] = promoted[flag() - 8];
+
+            return {buffer, 5};
         }
 
-        return std::format("{}{}", num_to_algebraic(from()), num_to_algebraic(to()));
+        return {buffer, 4};
     }
 };
 

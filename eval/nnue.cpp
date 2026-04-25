@@ -77,7 +77,7 @@ void Accumulator_entry::mark_changes(const Position& pos, const Move move)
     else
     {
         subs[0] = {!just_moved ? P : p, from};
-        adds[0] = {move.promoted_to<true>(just_moved), to};
+        adds[0] = {move.promoted_to(just_moved), to};
         if (flag >= knight_promo_capture)
         {
             subs[1] = {pos.state->captured_piece, to};

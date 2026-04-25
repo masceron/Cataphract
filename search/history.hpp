@@ -22,7 +22,7 @@ inline void search_stack_init(std::vector<SearchEntry>& stack)
 {
     for (unsigned long long i = 0; i < stack.size(); i++)
     {
-        stack[i].plies = i - 4;
+        stack[i].plies = static_cast<uint8_t>(i - 4);
     }
 }
 

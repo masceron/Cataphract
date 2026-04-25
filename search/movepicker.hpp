@@ -46,6 +46,7 @@ struct MovePicker
         if (pos->state->attacks == UINT64_MAX)
         {
             pos->get_attacks();
+            pos->get_pinned();
         }
 
         if (const auto pv_flag = pv.flag(); _pv && pos->is_pseudo_legal(_pv)
@@ -82,11 +83,6 @@ struct MovePicker
                 pv = _pv;
                 stage = TT_moves;
             }
-        }
-
-        if (pos->state->pinned == UINT64_MAX)
-        {
-            pos->get_pinned();
         }
     }
 

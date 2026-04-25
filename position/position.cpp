@@ -273,6 +273,35 @@ void Position::unmake_move(const Move& move)
     state = state->previous;
 }
 
+void Position::make_null_move(State& st)
+{
+    memcpy(&st, state, sizeof(State));
+
+    st.previous = state;
+    st.repetition = 1;
+    st.ply = 0;
+    st.key ^= Zobrist::side_key;
+    st.side_key ^= Zobrist::side_key;
+
+    if (st.en_passant_square != -1)
+    {
+        st.en_passant_square = -1;
+        st.key ^= st.en_passant_key;
+        st.en_passant_key = 0;
+    }
+
+    side_to_move = !side_to_move;
+    st.attacks = UINT64_MAX;
+    st.pinned = UINT64_MAX;
+    state = &st;
+}
+
+void Position::unmake_null_move()
+{
+    state = state->previous;
+    side_to_move = !side_to_move;
+}
+
 bool Position::is_pseudo_legal(const Move move) const
 {
     const uint16_t flag = move.flag();
@@ -294,8 +323,16 @@ bool Position::is_pseudo_legal(const Move move) const
     if ((flag == capture && piece_on[to] == nil) || (flag != capture && piece_on[to] != nil)) return false;
 
     const uint64_t to_board = 1ull << to;
-
     if (occupations[side_to_move] & to_board) return false;
+
+    if (state->pinned & (1ull << from))
+    {
+        if (const auto king_board = boards[side_to_move == white ? K : k];
+            !(lines_intersect[from][to] & king_board))
+        {
+            return false;
+        }
+    }
 
     static constexpr uint64_t rank18 = 0xFF000000000000FFull;
     if (moved_piece == P || moved_piece == p)
@@ -331,6 +368,7 @@ bool Position::is_pseudo_legal(const Move move) const
     else if (moved_piece == K || moved_piece == k)
     {
         if (!(king_attack_tables[from] & to_board & ~occupations[side_to_move])) return false;
+        if (to_board & state->attacks) return false;
     }
 
     if (state->checker)
@@ -343,13 +381,6 @@ bool Position::is_pseudo_legal(const Move move) const
             }
 
             if (!(state->check_blocker & to_board)) return false;
-        }
-        else
-        {
-            if ((1ull << to) & state->attacks)
-            {
-                return false;
-            }
         }
     }
 
@@ -365,31 +396,14 @@ bool Position::is_quiet(const Move move) const
 bool Position::is_legal(const Move move) const
 {
     const bool us = side_to_move;
-    const auto from = move.from();
     const auto to = move.to();
-    const auto flag = move.flag();
-    const auto king = us == white ? K : k;
-    const uint64_t king_board = boards[king];
-    const auto king_index = lsb(king_board);
+    const auto king_index = lsb(boards[us == white ? K : k]);
+    const uint64_t eq = boards[us == white ? q : Q];
+    const uint64_t eb = boards[us == white ? b : B];
+    const uint64_t er = boards[us == white ? r : R];
+    const uint64_t occ = (occupations[2] ^ (1ull << (to + (us == white ? 8 : -8))) ^ (1ull << move.from())) | (1ull << to);
 
-    if (flag == ep_capture)
-    {
-        const uint64_t eq = boards[us == white ? q : Q];
-        const uint64_t eb = boards[us == white ? b : B];
-        const uint64_t er = boards[us == white ? r : R];
-        const uint64_t occ = (occupations[2] ^ (1ull << (to + (us == white ? 8 : -8))) ^ (1ull << from)) | (1ull << to);
-
-        return !((get_bishop_attack(king_index, occ) & (eq | eb)) | (get_rook_attack(king_index, occ) & (eq | er)));
-    }
-    if (piece_on[from] == king)
-    {
-        if ((1ull << to) & state->attacks)
-        {
-            return false;
-        }
-    }
-
-    return !(state->pinned & 1ull << from) || lines_intersect[from][to] & king_board;
+    return !((get_bishop_attack(king_index, occ) & (eq | eb)) | (get_rook_attack(king_index, occ) & (eq | er)));
 }
 
 uint64_t Position::construct_zobrist_key() const
@@ -408,34 +422,6 @@ uint64_t Position::construct_zobrist_key() const
     key ^= Zobrist::castling_keys[state->castling_rights];
 
     return key;
-}
-
-void Position::make_null_move(State& st)
-{
-    memcpy(&st, state, sizeof(State));
-
-    st.previous = state;
-    st.repetition = 1;
-    st.ply = 0;
-    st.key ^= Zobrist::side_key;
-    st.side_key ^= Zobrist::side_key;
-
-    if (st.en_passant_square != -1)
-    {
-        st.en_passant_square = -1;
-        st.key ^= st.en_passant_key;
-        st.en_passant_key = 0;
-    }
-
-    side_to_move = !side_to_move;
-    st.attacks = UINT64_MAX;
-    state = &st;
-}
-
-void Position::unmake_null_move()
-{
-    state = state->previous;
-    side_to_move = !side_to_move;
 }
 
 void Position::get_pinned() const

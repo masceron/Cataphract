@@ -93,47 +93,60 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
         }
     }
 
-    if (uint64_t about_to_promote = board & last_line)
+    static constexpr int upshift = us == white ? -8 : 8;
+    if (const uint64_t promoting_pawns = board & last_line)
     {
-        while (about_to_promote)
+        if constexpr (type != quiet)
         {
-            const int from = pop_lsb(about_to_promote);
-            const uint64_t from_board = 1ull << from;
+            uint64_t left_promotions = Shift<Upleft, us>(promoting_pawns) & cr_pos.occupations[enemy];
+            uint64_t right_promotions = Shift<Upright, us>(promoting_pawns) & cr_pos.occupations[enemy];
 
-            if constexpr (type != quiet)
+            if constexpr (evasive)
             {
-                uint64_t promote_capture = (Shift<Upleft, us>(from_board) | Shift<Upright, us>(from_board)) & cr_pos.
-                    occupations[enemy];
-
-                if constexpr (evasive) promote_capture &= check_blocker;
-                while (promote_capture)
-                {
-                    const int to = pop_lsb(promote_capture);
-                    *pos++ = Move(from, to, queen_promo_capture);
-                    *pos++ = Move(from, to, rook_promo_capture);
-                    *pos++ = Move(from, to, bishop_promo_capture);
-                    *pos++ = Move(from, to, knight_promo_capture);
-                }
+                left_promotions &= check_blocker;
+                right_promotions &= check_blocker;
             }
 
-            uint64_t promote = Shift<Up, us>(from_board) & ~cr_pos.occupations[2];
-            if constexpr (evasive) promote &= check_blocker;
-
-            if (promote)
+            while (left_promotions)
             {
-                const int to = lsb(promote);
-                *pos++ = Move(from, to, queen_promotion);
-                if constexpr (type != noisy)
-                {
-                    *pos++ = Move(from, to, rook_promotion);
-                    *pos++ = Move(from, to, bishop_promotion);
-                    *pos++ = Move(from, to, knight_promotion);
-                }
+                const int to = pop_lsb(left_promotions);
+                const int from = to - upleft_shift;
+
+                *pos++ = Move(from, to, queen_promo_capture);
+                *pos++ = Move(from, to, rook_promo_capture);
+                *pos++ = Move(from, to, bishop_promo_capture);
+                *pos++ = Move(from, to, knight_promo_capture);
+            }
+
+            while (right_promotions)
+            {
+                const int to = pop_lsb(right_promotions);
+                const int from = to - upright_shift;
+
+                *pos++ = Move(from, to, queen_promo_capture);
+                *pos++ = Move(from, to, rook_promo_capture);
+                *pos++ = Move(from, to, bishop_promo_capture);
+                *pos++ = Move(from, to, knight_promo_capture);
+            }
+        }
+
+        uint64_t push_promotions = Shift<Up, us>(promoting_pawns) & ~cr_pos.occupations[2];
+        if constexpr (evasive) push_promotions &= check_blocker;
+
+        while (push_promotions)
+        {
+            const int to = pop_lsb(push_promotions);
+            const int from = to - upshift;
+
+            *pos++ = Move(from, to, queen_promotion);
+            if constexpr (type != noisy)
+            {
+                *pos++ = Move(from, to, rook_promotion);
+                *pos++ = Move(from, to, bishop_promotion);
+                *pos++ = Move(from, to, knight_promotion);
             }
         }
     }
-
-    static constexpr int upshift = us == white ? -8 : 8;
 
     if constexpr (type != noisy)
     {
@@ -176,6 +189,8 @@ void general_move_generator(const Position& cr_pos, Move*& pos)
                                     ? b
                                     : n;
 
+    constexpr int king = us == white ? K : k;
+    const int king_sq = lsb(cr_pos.boards[king]);
     board = cr_pos.boards[board_index];
 
     while (board)
@@ -197,6 +212,12 @@ void general_move_generator(const Position& cr_pos, Move*& pos)
         else if constexpr (piece == N)
         {
             movable = knight_attack_tables[from];
+        }
+
+        if (cr_pos.state->pinned & (1ull << from))
+        {
+            if constexpr (piece == N) continue;
+            movable &= lines_intersect[king_sq][from];
         }
 
         if constexpr (evasive) movable &= cr_pos.state->check_blocker;
@@ -228,9 +249,8 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
     const uint64_t eocc = cr_pos.occupations[!us];
     const uint64_t aocc = cr_pos.occupations[2];
 
-    uint64_t movable = king_attack_tables[king];
-    if constexpr (evasive) movable &= (~cr_pos.state->check_blocker & ~occ) | eocc;
-    else movable &= ~occ;
+    const uint64_t enemy_threats = cr_pos.state->attacks;
+    uint64_t movable = king_attack_tables[king] & ~enemy_threats & ~occ;
 
     uint64_t attacks = movable & eocc;
 
@@ -246,8 +266,6 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
 
         if constexpr (!evasive)
         {
-            const uint64_t attack_map = cr_pos.state->attacks;
-
             if (castling_rights)
             {
                 static constexpr uint64_t king_path = us == white ? 0x6000000000000000ull : 0x60ull;
@@ -258,14 +276,14 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
                 {
                     if (castling_rights & 0b0001)
                     {
-                        if (!(king_path & aocc) && !(king_path & attack_map))
+                        if (!(king_path & aocc) && !(king_path & enemy_threats))
                         {
                             *pos++ = Move(king, king + 2, king_castle);
                         }
                     }
                     if (castling_rights & 0b0010)
                     {
-                        if (!(queen_path & aocc) && !(queen_check_path & attack_map))
+                        if (!(queen_path & aocc) && !(queen_check_path & enemy_threats))
                         {
                             *pos++ = Move(king, king - 2, queen_castle);
                         }
@@ -275,14 +293,14 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
                 {
                     if (castling_rights & 0b0100)
                     {
-                        if (!(king_path & aocc) && !(king_path & attack_map))
+                        if (!(king_path & aocc) && !(king_path & enemy_threats))
                         {
                             *pos++ = Move(king, king + 2, king_castle);
                         }
                     }
                     if (castling_rights & 0b1000)
                     {
-                        if (!(queen_path & aocc) && !(queen_check_path & attack_map))
+                        if (!(queen_path & aocc) && !(queen_check_path & enemy_threats))
                         {
                             *pos++ = Move(king, king - 2, queen_castle);
                         }
@@ -335,10 +353,16 @@ void pseudo_legals(const Position& cr_pos, MoveList& list)
 
 inline bool check_move_legality(const Position& cr_pos, const Move move)
 {
-    if (const int king_sq = lsb(cr_pos.boards[cr_pos.side_to_move == white ? K : k]);
-        (cr_pos.state->pinned & (1ull << move.from())
-            || move.from() == king_sq
-            || move.flag() == ep_capture) && !cr_pos.is_legal(move))
+    if (const int from = move.from(); cr_pos.state->pinned & (1ull << from))
+    {
+        if (const auto king_board = cr_pos.boards[cr_pos.side_to_move == white ? K : k];
+            !(lines_intersect[from][move.to()] & king_board))
+        {
+            return false;
+        }
+    }
+
+    if (move.flag() == ep_capture && !cr_pos.is_legal(move))
     {
         return false;
     }

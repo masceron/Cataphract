@@ -56,33 +56,8 @@ struct MovePicker
                 && pv_flag < knight_promo_capture
                 && pv_flag != ep_capture))
         {
-            bool is_valid = true;
-
-            if (pos->state->checker)
-            {
-                if (pos->piece_on[_pv.from()] != K && pos->piece_on[_pv.from()] != k)
-                {
-                    if (std::popcount(pos->state->checker) > 1)
-                    {
-                        is_valid = false;
-                    }
-                    else if (_pv.flag() == ep_capture)
-                    {
-                        const int ep_capture_sq = _pv.to() + Delta<Up>(pos->side_to_move);
-                        is_valid = pos->state->check_blocker & (1ull << ep_capture_sq);
-                    }
-                    else
-                    {
-                        is_valid = pos->state->check_blocker & (1ull << _pv.to());
-                    }
-                }
-            }
-
-            if (is_valid)
-            {
-                pv = _pv;
-                stage = TT_moves;
-            }
+            pv = _pv;
+            stage = TT_moves;
         }
     }
 
@@ -187,7 +162,7 @@ struct MovePicker
     {
         auto move = pick();
         if (!move.first) return {null_move, 0};
-        while (!check_move_legality(*pos, move.first))
+        while (!pos->is_legal(move.first))
         {
             move = pick();
             if (!move.first) return {null_move, 0};

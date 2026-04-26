@@ -42,6 +42,10 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
 
     const uint64_t board = cr_pos.boards[board_index];
     const uint64_t check_blocker = cr_pos.state->checker ? cr_pos.state->check_blocker : 0ull;
+    const uint64_t pinned = cr_pos.state->pinned;
+
+    static constexpr int king = us == white ? K : k;
+    const int king_sq = lsb(cr_pos.boards[king]);
 
     static constexpr int8_t upleft_shift = us == white ? -9 : 9;
     static constexpr int8_t upright_shift = us == white ? -7 : 7;
@@ -60,13 +64,17 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
         while (left_capture)
         {
             const int to = pop_lsb(left_capture);
-            *pos++ = Move(to - upleft_shift, to, capture);
+            const int from = to - upleft_shift;
+            if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
+            *pos++ = Move(from, to, capture);
         }
 
         while (right_capture)
         {
             const int to = pop_lsb(right_capture);
-            *pos++ = Move(to - upright_shift, to, capture);
+            const int from = to - upright_shift;
+            if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
+            *pos++ = Move(from, to, capture);
         }
     }
 
@@ -111,6 +119,7 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
             {
                 const int to = pop_lsb(left_promotions);
                 const int from = to - upleft_shift;
+                if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
 
                 *pos++ = Move(from, to, queen_promo_capture);
                 *pos++ = Move(from, to, rook_promo_capture);
@@ -122,6 +131,7 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
             {
                 const int to = pop_lsb(right_promotions);
                 const int from = to - upright_shift;
+                if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
 
                 *pos++ = Move(from, to, queen_promo_capture);
                 *pos++ = Move(from, to, rook_promo_capture);
@@ -137,6 +147,8 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
         {
             const int to = pop_lsb(push_promotions);
             const int from = to - upshift;
+            //A pinned pawn can never quietly promote.
+            if (pinned & (1ull << from)) continue;
 
             *pos++ = Move(from, to, queen_promotion);
             if constexpr (type != noisy)
@@ -162,12 +174,16 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
         while (double_pawn_push)
         {
             const int to = pop_lsb(double_pawn_push);
-            *pos++ = Move(to - upshift - upshift, to, double_push);
+            const int from = to - upshift - upshift;
+            if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
+            *pos++ = Move(from, to, double_push);
         }
         while (single_pawn_push)
         {
             const int to = pop_lsb(single_pawn_push);
-            *pos++ = Move(to - upshift, to, quiet_move);
+            const int from = to - upshift;
+            if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
+            *pos++ = Move(from, to, quiet_move);
         }
     }
 }
@@ -351,24 +367,6 @@ void pseudo_legals(const Position& cr_pos, MoveList& list)
     }
 }
 
-inline bool check_move_legality(const Position& cr_pos, const Move move)
-{
-    if (const int from = move.from(); cr_pos.state->pinned & (1ull << from))
-    {
-        if (const auto king_board = cr_pos.boards[cr_pos.side_to_move == white ? K : k];
-            !(lines_intersect[from][move.to()] & king_board))
-        {
-            return false;
-        }
-    }
-
-    if (move.flag() == ep_capture && !cr_pos.is_legal(move))
-    {
-        return false;
-    }
-    return true;
-}
-
 template <const MoveType type>
 void legals(const Position& cr_pos, MoveList& list)
 {
@@ -380,7 +378,7 @@ void legals(const Position& cr_pos, MoveList& list)
 
     while (current != list.last)
     {
-        if (!check_move_legality(cr_pos, *current))
+        if (!cr_pos.is_legal(*current))
         {
             *current = *--list.last;
         }

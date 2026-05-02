@@ -84,6 +84,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
                 -fsanitize=implicit-unsigned-integer-truncation -fsanitize=implicit-signed-integer-truncation
                 -fsanitize=implicit-integer-sign-change
                 -fno-sanitize=shift
+                -fuse-ld=lld
         )
 
     elseif (CMAKE_BUILD_TYPE MATCHES "Release")
@@ -93,6 +94,7 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         target_compile_definitions(Cataphract PRIVATE NDEBUG)
         target_link_options(Cataphract PRIVATE
                 -flto=full -static -s
+                -fuse-ld=lld
         )
     endif ()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")

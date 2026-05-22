@@ -75,7 +75,7 @@ struct TimeManager {
         double scale = 1.0;
 
         if (single_reply) {
-            scale = 0.2;
+            scale = 0.15;
         }
 
         if (current_best_move == previous_best_move) {
@@ -90,9 +90,8 @@ struct TimeManager {
         else if (stability == 2) scale *= 0.90;
         else if (stability >= 3) scale *= 0.75;
 
-        if (previous_score != 0) {
-            if (const int score_diff = current_score - previous_score; score_diff < -30) scale *= 1.5;
-            else if (score_diff > 30) scale *= 0.8;
+        if (previous_score != negative_infinity) {
+            scale *= std::pow(2.0, static_cast<double>(std::clamp(previous_score - current_score, -180, 180)) / 180);
         }
         previous_score = current_score;
 

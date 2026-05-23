@@ -81,9 +81,9 @@ namespace Tuning {
 
     inline void print_options() {
         #define PARAM(type, name, def, min, max, step) \
-            std::println("option name {} type string default {}", #name, def);
+            std::println("option name {} type string default {} min {} max {}", #name, def, min, max);
         #define PARAM_CB(type, name, def, min, max, step, cb) \
-            std::println("option name {} type string default {}", #name, def);
+            std::println("option name {} type string default {} min {} max {}", #name, def, min, max);
 
         TUNABLE_PARAMETERS
 

@@ -358,8 +358,8 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         {
             if (ss->static_eval >= beta)
             {
-                const int r = std::min((ss->static_eval - beta) / null_search_div(), 2) + depth /
-                    null_search_depth_scale() + null_search_add() + improving;
+                const int r = std::min((ss->static_eval - beta) / null_search_div(), 2) + depth *
+                    null_search_depth_scale() / 1024 + 3 + improving;
                 State st;
                 std::list<Move> local_pv;
                 ss->piece_to = UINT16_MAX;

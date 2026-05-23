@@ -271,7 +271,7 @@ namespace UCI
 #ifdef SPSA_TUNE
                 else if (command == "spsa")
                 {
-                    Tuning::print_spsa_csv();
+                    Tuning::print_spsa_params();
                 }
 #endif
                 else if (command == "quit")

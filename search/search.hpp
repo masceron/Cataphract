@@ -12,36 +12,13 @@
 #include "history.hpp"
 #include "../position/movegen.hpp"
 #include "movepicker.hpp"
+#include "params.hpp"
 #include "../position/move.hpp"
 #include "see.hpp"
 #include "time.hpp"
 #include "timer.hpp"
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
-
-inline auto reductions = []
-{
-    std::array<std::array<uint8_t, 63>, 127> r;
-    for (int depth = 0; depth < 127; depth++)
-    {
-        for (int numMoves = 0; numMoves < 63; numMoves++)
-        {
-            r[depth][numMoves] = std::floor(0.5 + std::log(depth + 1) * std::log(numMoves + 1) / 3.5);
-        }
-    }
-    return r;
-}();
-
-inline auto lmp = []
-{
-    std::array<std::array<uint8_t, 16>, 2> prunes;
-    for (int i = 0; i < 16; i++)
-    {
-        prunes[0][i] = static_cast<uint8_t>(std::floor(5 + i * i / 2));
-        prunes[1][i] = static_cast<uint8_t>(std::floor(5 + i * i));
-    }
-    return prunes;
-}();
 
 inline int root_depth;
 inline uint32_t node_searched;
@@ -162,7 +139,7 @@ inline int quiesce(Position& pos, int alpha, int beta, SearchEntry* ss)
             const int captured_val = picked_move.flag() == ep_capture
                                          ? value_of(P)
                                          : value_of(pos.piece_on[picked_move.to()]);
-            if (stand_pat + captured_val + 150 < alpha)
+            if (stand_pat + captured_val + delta_margin() < alpha)
                 continue;
         }
 
@@ -360,15 +337,16 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
     {
         if (depth <= 9 && !ss->excluded)
         {
-            if (ss->static_eval < mate_in_max_ply && ss->static_eval - 120 * depth >= beta - improving * 70)
+            if (ss->static_eval < mate_in_max_ply && ss->static_eval - futility_cutoff_scale() * depth >= beta -
+                improving * futility_cutoff_scale_imp())
                 return beta + (ss->static_eval - beta) / 3;
 
-            if (ss->static_eval + 140 * depth <= alpha) futility_pruning_allowed = true;
+            if (ss->static_eval + futility_scale() * depth <= alpha) futility_pruning_allowed = true;
         }
 
         if (depth <= 5)
         {
-            if (ss->static_eval + 120 * depth <= alpha)
+            if (ss->static_eval + razoring_scale() * depth <= alpha)
             {
                 if (quiesce(pos, alpha, beta, ss) < alpha) return alpha;
             }
@@ -380,7 +358,8 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
         {
             if (ss->static_eval >= beta)
             {
-                const int r = std::min((ss->static_eval - beta) / 200, 2) + depth / 4 + 3 + improving;
+                const int r = std::min((ss->static_eval - beta) / null_search_div(), 2) + depth /
+                    null_search_depth_scale() + null_search_add() + improving;
                 State st;
                 std::list<Move> local_pv;
                 ss->piece_to = UINT16_MAX;
@@ -394,7 +373,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
             }
         }
 
-        const int prob_beta = beta + 230 - 50 * improving;
+        const int prob_beta = beta + probcut_margin() - probcut_scale() * improving;
         if (const int prob_depth = std::max(depth - 3, 1);
             depth >= 6 && std::abs(beta) < mate_in_max_ply &&
             !(tt_hit && tt_depth >= prob_depth && tt_score < prob_beta))
@@ -470,7 +449,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                     move_picker.current = move_picker.moves.last;
                     continue;
                 }
-                if (depth <= 7 && picked_score < -600 * depth) continue;
+                if (depth <= 7 && picked_score < -history_prune_scale() * depth) continue;
             }
         }
 
@@ -481,7 +460,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
             if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != upper_bound &&
                 std::abs(tt_score) < mate_in_max_ply)
             {
-                const auto singular_beta = std::max(tt_score - 2 * depth / 3, -mate_in_max_ply);
+                const auto singular_beta = std::max(tt_score - singular_margin() * depth / 1024, -mate_in_max_ply);
                 const auto singular_depth = (depth - 1) / 2;
                 std::list<Move> tmp_pv;
 
@@ -494,12 +473,12 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
                 {
                     if (!is_pv && picked_move.is_quiet())
                     {
-                        if (singular_beta - singular_score > 120 && ss->double_extensions <= 5)
+                        if (singular_beta - singular_score > singular_triple() && ss->double_extensions <= 5)
                         {
                             extension = 3;
                             ss->double_extensions = (ss - 1)->double_extensions + 1;
                         }
-                        else if (singular_beta - singular_score > 30 && ss->double_extensions <= 4)
+                        else if (singular_beta - singular_score > singular_double() && ss->double_extensions <= 4)
                         {
                             extension = 2;
                             ss->double_extensions = (ss - 1)->double_extensions + 1;
@@ -546,7 +525,7 @@ inline int search(Position& pos, int alpha, int beta, int depth, std::list<Move>
             reduction -= tt_hit && tt_depth >= depth;
             if (picked_score == INT16_MAX)
                 reduction -= 2;
-            else if (move_picker.stage == quiet_moves) reduction -= std::clamp(picked_score / 4096, -3, 3);
+            else if (move_picker.stage == quiet_moves) reduction -= std::clamp(picked_score / history_prune_div(), -3, 3);
 
             reduction = std::clamp(reduction, 1, new_depth - 1);
 

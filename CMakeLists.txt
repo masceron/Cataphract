@@ -7,6 +7,7 @@ endif ()
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+option(ENABLE_TUNING "Build with SPSA tuning hooks enabled" OFF)
 
 add_executable(Cataphract main.cpp
         board/bitboard.hpp
@@ -39,11 +40,17 @@ add_executable(Cataphract main.cpp
         search/time.hpp
         position/bench.hpp
         cataphract.hpp
+        search/params.hpp
+        search/params.cpp
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     target_link_libraries(Cataphract PRIVATE "-lstdc++exp")
 endif ()
+
+if(ENABLE_TUNING)
+    target_compile_definitions(Cataphract PRIVATE SPSA_TUNE)
+endif()
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 

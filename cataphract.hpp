@@ -8,6 +8,7 @@
 #include "position/position.hpp"
 #include "position/zobrist.hpp"
 #include "search/history.hpp"
+#include "search/params.hpp"
 
 namespace Cataphract
 {
@@ -24,6 +25,8 @@ namespace Cataphract
 
     inline void start()
     {
+        reduction_cal();
+        prune_cal();
         Zobrist::generate_keys();
         generate_lines();
         Cuckoo::init();

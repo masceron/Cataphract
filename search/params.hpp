@@ -4,6 +4,7 @@
 #include <print>
 #include <charconv>
 #include <string>
+#include <cmath>
 
 inline std::array<std::array<uint8_t, 63>, 127> reductions;
 inline std::array<std::array<uint8_t, 16>, 2> lmp;
@@ -14,16 +15,15 @@ void prune_cal();
 #define TUNABLE_PARAMETERS \
     PARAM_CB(float, lmr_base, 0.5, 0, 2, 0.1, reduction_cal) \
     PARAM_CB(float, lmr_div, 3.5, 1, 8, 0.2, reduction_cal) \
-    PARAM_CB(int, lmp_base, 5, 0, 10, 0.5, prune_cal) \
-    PARAM_CB(int, lmp_nidiv, 2, 1, 7, 0.5, prune_cal) \
-    PARAM_CB(int, lmp_idiv, 1, 1, 7, 0.5, prune_cal) \
+    PARAM_CB(int, lmp_base, 5, 0, 10, 1, prune_cal) \
+    PARAM_CB(float, lmp_nidiv, 2, 1, 7, 0.15, prune_cal) \
+    PARAM_CB(float, lmp_idiv, 1, 0.5, 7, 0.15, prune_cal) \
     PARAM(int, futility_cutoff_scale, 120, 40, 200, 8) \
     PARAM(int, futility_cutoff_scale_imp, 70, 20, 120, 5) \
     PARAM(int, futility_scale, 140, 70, 210, 7) \
     PARAM(int, razoring_scale, 120, 30, 210, 9) \
     PARAM(int, null_search_div, 200, 100, 300, 10) \
-    PARAM(int, null_search_depth_scale, 4, 1, 9, 0.5) \
-    PARAM(int, null_search_add, 3, 0, 9, 0.5) \
+    PARAM(int, null_search_depth_scale, 256, 128, 512, 19) \
     PARAM(int, probcut_margin, 230, 100, 340, 12) \
     PARAM(int, probcut_scale, 50, 10, 100, 4.5) \
     PARAM(int, history_prune_scale, 600, 100, 1200, 55) \
@@ -71,12 +71,17 @@ TUNABLE_PARAMETERS
 namespace Tuning {
     template <typename T>
     T parse_value(std::string_view str) {
-        T result{};
-        auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), result);
-        if (ec != std::errc()) {
+        double temp_val{};
+
+        if (auto [ptr, ec] = std::from_chars(str.data(), str.data() + str.size(), temp_val); ec != std::errc()) {
             std::println("info string Warning: Failed to parse tunable value '{}'", str);
         }
-        return result;
+
+        if constexpr (std::is_integral_v<T>) {
+            return static_cast<T>(std::round(temp_val));
+        } else {
+            return static_cast<T>(temp_val);
+        }
     }
 
     inline void print_options() {
@@ -91,11 +96,11 @@ namespace Tuning {
         #undef PARAM_CB
     }
 
-    inline void print_spsa_csv() {
+    inline void print_spsa_params() {
         #define PARAM(type, name, def, min, max, step) \
-            std::println("{}, {}, {}, {}, {}, {}, 0.002", #name, #type, def, min, max, step);
+            std::println("{}, {}, {}, {}, {}, {}", #name, #type, def, min, max, step);
         #define PARAM_CB(type, name, def, min, max, step, cb) \
-            std::println("{}, {}, {}, {}, {}, {}, 0.002", #name, #type, def, min, max, step);
+            std::println("{}, {}, {}, {}, {}, {}", #name, #type, def, min, max, step);
 
         TUNABLE_PARAMETERS
 

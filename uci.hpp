@@ -2,7 +2,6 @@
 
 #include <string>
 #include <thread>
-#include <sstream>
 #include <ranges>
 #include <algorithm>
 #include <charconv>
@@ -13,6 +12,9 @@
 #include "position/bench.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
+#ifdef SPSA_TUNE
+#include "search/params.hpp"
+#endif
 
 namespace UCI
 {
@@ -49,6 +51,21 @@ namespace UCI
             if (std::string_view((*it).begin(), (*it).end()) == "Hash")
                 TT::clear();
         }
+#ifdef SPSA_TUNE
+        else
+        {
+            ++it;
+            if (it != tokens.end() && std::string_view((*it).begin(), (*it).end()) == "value")
+            {
+                ++it;
+                if (it != tokens.end())
+                {
+                    const std::string_view value((*it).begin(), (*it).end());
+                    Tuning::set_parameter(name, value);
+                }
+            }
+        }
+#endif
     }
 
     inline void bench(std::string_view args)
@@ -58,8 +75,8 @@ namespace UCI
 
         if (it != tokens.end()) ++it;
 
-        int depth = 15;
-        uint32_t tt_size = 64;
+        int depth = 10;
+        uint32_t tt_size = 16;
         if (it != tokens.end())
         {
             std::from_chars((*it).begin(), (*it).end(), depth);
@@ -227,6 +244,10 @@ namespace UCI
                     std::println("id author masceron\n");
                     std::println("option name Hash type spin default 64 min 1 max 2048");
                     std::println("option name Clear Hash type button");
+                    std::println("option name Threads type spin default 1 min 1 max 1");
+#ifdef SPSA_TUNE
+                    Tuning::print_options();
+#endif
                     std::println("uciok");
                     std::fflush(stdout);
                 }
@@ -247,6 +268,12 @@ namespace UCI
                 {
                     bench(input_view);
                 }
+#ifdef SPSA_TUNE
+                else if (command == "spsa")
+                {
+                    Tuning::print_spsa_csv();
+                }
+#endif
                 else if (command == "quit")
                 {
                     quit = true;

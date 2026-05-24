@@ -270,13 +270,7 @@ inline int fen_parse(std::string_view fen)
         st.rule_50 = 0;
         std::from_chars(rule_50_str.data(), rule_50_str.data() + rule_50_str.size(), st.rule_50);
 
-        int full_moves = 1;
-        if (next != std::string_view::npos)
-        {
-            std::string_view full_move_str = fen.substr(next + 1);
-            std::from_chars(full_move_str.data(), full_move_str.data() + full_move_str.size(), full_moves);
-        }
-        st.ply = (full_moves - 1) * 2 + (temp.side_to_move == black ? 1 : 0);
+        st.ply = 0;
     }
 
     temp.occupations[white] = temp.boards[P] | temp.boards[K] | temp.boards[N] | temp.boards[Q] | temp.boards[B] | temp.

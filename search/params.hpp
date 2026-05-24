@@ -13,25 +13,25 @@ void reduction_cal();
 void prune_cal();
 
 #define TUNABLE_PARAMETERS \
-    PARAM_CB(float, lmr_base, 0.5, 0, 2, 0.1, reduction_cal) \
-    PARAM_CB(float, lmr_div, 3.5, 1, 8, 0.2, reduction_cal) \
-    PARAM_CB(int, lmp_base, 5, 0, 10, 1, prune_cal) \
-    PARAM_CB(float, lmp_nidiv, 2, 1, 7, 0.15, prune_cal) \
-    PARAM_CB(float, lmp_idiv, 1, 0.5, 7, 0.15, prune_cal) \
-    PARAM(int, futility_cutoff_scale, 120, 40, 200, 8) \
-    PARAM(int, futility_cutoff_scale_imp, 70, 20, 120, 5) \
-    PARAM(int, futility_scale, 140, 70, 210, 7) \
-    PARAM(int, razoring_scale, 120, 30, 210, 9) \
-    PARAM(int, null_search_div, 200, 100, 300, 10) \
-    PARAM(int, null_search_depth_scale, 256, 128, 512, 19) \
-    PARAM(int, probcut_margin, 230, 100, 340, 12) \
-    PARAM(int, probcut_scale, 50, 10, 100, 4.5) \
-    PARAM(int, history_prune_scale, 600, 100, 1200, 55) \
-    PARAM(int, history_prune_div, 4096, 2048, 8192, 300) \
-    PARAM(int, singular_margin, 682, 100, 2000, 95) \
-    PARAM(int, singular_triple, 120, 50, 210, 8) \
-    PARAM(int, singular_double, 30, 10, 120, 14) \
-    PARAM(int, delta_margin, 150, 50, 210, 8)
+    PARAM_CB(float, lmr_base, 0.4, 0, 2, 0.1, reduction_cal) \
+    PARAM_CB(float, lmr_div, 3.95, 1, 8, 0.2, reduction_cal) \
+    PARAM_CB(int, lmp_base, 7, 0, 10, 1, prune_cal) \
+    PARAM_CB(float, lmp_nidiv, 1.66, 1, 7, 0.15, prune_cal) \
+    PARAM_CB(float, lmp_idiv, 0.73, 0.5, 7, 0.15, prune_cal) \
+    PARAM(int, futility_cutoff_scale, 95, 40, 200, 8) \
+    PARAM(int, futility_cutoff_scale_imp, 62, 20, 120, 5) \
+    PARAM(int, futility_scale, 145, 70, 210, 7) \
+    PARAM(int, razoring_scale, 106, 30, 210, 9) \
+    PARAM(int, null_search_div, 227, 100, 300, 10) \
+    PARAM(int, null_search_depth_scale, 259, 128, 512, 19) \
+    PARAM(int, probcut_margin, 239, 100, 340, 12) \
+    PARAM(int, probcut_scale, 54, 10, 100, 4.5) \
+    PARAM(int, history_prune_scale, 678, 100, 1200, 55) \
+    PARAM(int, history_prune_div, 4448, 2048, 8192, 300) \
+    PARAM(int, singular_margin, 927, 100, 2000, 95) \
+    PARAM(int, singular_triple, 136, 50, 210, 8) \
+    PARAM(int, singular_double, 28, 10, 120, 14) \
+    PARAM(int, delta_margin, 174, 50, 210, 8)
 
 
 #ifndef SPSA_TUNE

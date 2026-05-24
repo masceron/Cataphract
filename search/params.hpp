@@ -32,7 +32,7 @@ void prune_cal();
     PARAM(int, singular_triple, 136, 50, 210, 8) \
     PARAM(int, singular_double, 28, 10, 120, 14) \
     PARAM(int, delta_margin, 174, 50, 210, 8) \
-    PARAM(float, max_time_scale, 5, 2, 10, 0.4) \
+    PARAM(float, max_time_scale, 0.25, 0.1, 0.8, 0.4) \
     PARAM(float, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
     PARAM(int, default_moves_to_go, 30, 10, 40, 1) \
     PARAM(float, stable_none_scale, 2.5, 1.2, 3, 0.09) \

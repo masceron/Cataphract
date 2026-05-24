@@ -18,6 +18,7 @@ struct TimeManager
     Position* position = nullptr;
     double opt_time = 0.0;
     double max_time = 0.0;
+    double scale = 1.0;
 
     int previous_score = negative_infinity;
     int stability = 0;
@@ -41,7 +42,7 @@ struct TimeManager
 
         const auto base_opt_time = safe_time_ms / moves_to_go + inc_ms * 0.75;
 
-        max_time = base_opt_time * max_time_scale();
+        max_time = safe_time_ms * max_time_scale();
         opt_time = std::min(base_opt_time * opt_time_scale(), max_time);
     }
 
@@ -69,11 +70,11 @@ struct TimeManager
             return;
         }
 
-        double scale = 1.0;
+        double tmp_scale = 1.0;
 
         if (single_reply)
         {
-            scale = 0.15;
+            tmp_scale = 0.15;
         }
         else
         {
@@ -87,25 +88,25 @@ struct TimeManager
                 previous_best_move = current_best_move;
             }
 
-            if (stability == 0) scale *= stable_none_scale();
-            else if (stability == 1) scale *= stable_one_scale();
-            else if (stability == 2) scale *= stable_two_scale();
-            else if (stability >= 3) scale *= stable_three_scale();
+            if (stability == 0) tmp_scale *= stable_none_scale();
+            else if (stability == 1) tmp_scale *= stable_one_scale();
+            else if (stability == 2) tmp_scale *= stable_two_scale();
+            else if (stability >= 3) tmp_scale *= stable_three_scale();
 
             if (previous_score != negative_infinity)
             {
-                scale *= std::pow(
+                tmp_scale *= std::pow(
                     2.0, static_cast<double>(std::clamp(previous_score - current_score, -score_diff_scale(),
                                                         score_diff_scale())) / score_diff_scale());
             }
         }
 
         previous_score = current_score;
-        opt_time = std::min(max_time, opt_time * scale);
+        scale = tmp_scale;
     }
 
     [[nodiscard]] bool should_stop(const double elapsed_ms) const
     {
-        return elapsed_ms >= opt_time;
+        return elapsed_ms >= std::min(max_time, opt_time * scale);
     }
 };

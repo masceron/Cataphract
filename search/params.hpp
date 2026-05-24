@@ -31,7 +31,15 @@ void prune_cal();
     PARAM(int, singular_margin, 927, 100, 2000, 95) \
     PARAM(int, singular_triple, 136, 50, 210, 8) \
     PARAM(int, singular_double, 28, 10, 120, 14) \
-    PARAM(int, delta_margin, 174, 50, 210, 8)
+    PARAM(int, delta_margin, 174, 50, 210, 8) \
+    PARAM(float, max_time_scale, 5, 2, 10, 0.4) \
+    PARAM(float, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
+    PARAM(int, default_moves_to_go, 30, 10, 40, 1) \
+    PARAM(float, stable_none_scale, 2.5, 1.2, 3, 0.09) \
+    PARAM(float, stable_one_scale, 1.2, 0.8, 2, 0.06) \
+    PARAM(float, stable_two_scale, 0.9, 0.4, 1, 0.03) \
+    PARAM(float, stable_three_scale, 0.7, 0.3, 1, 0.04) \
+    PARAM(int, score_diff_scale, 180, 100, 300, 10) \
 
 
 #ifndef SPSA_TUNE

@@ -24,7 +24,7 @@ struct TimeManager {
     bool single_reply{};
     TimeControlMode mode = TimeControlMode::None;
 
-    void init_time_control(Position* _position, const int time_left_ms, const int inc_ms, int moves_to_go = 40) {
+    void init_time_control(Position* _position, const int time_left_ms, const int inc_ms, int moves_to_go, const int ply) {
         mode = TimeControlMode::Tournament;
         position = _position;
         {
@@ -32,12 +32,27 @@ struct TimeManager {
             legals<all>(*position, list);
             single_reply = list.size() == 1;
         }
-
-        if (moves_to_go <= 0) moves_to_go = 40;
-
         const double safe_time = std::max(1.0, time_left_ms - 50.0);
 
+        if (safe_time < 1000.0) {
+            moves_to_go = std::max(2, static_cast<int>(safe_time * 0.05));
+        } else if (moves_to_go <= 0) {
+            moves_to_go = 40;
+        }
+
         base_opt_time = safe_time / moves_to_go + inc_ms;
+
+        double ply_modifier = 1.0;
+
+        if (ply > 0) {
+            if (ply >= 20 && ply <= 60) {
+                ply_modifier = 1.20;
+            } else if (ply > 80) {
+                ply_modifier = 0.85;
+            }
+        }
+
+        base_opt_time *= ply_modifier;
 
         max_time = safe_time / std::pow(moves_to_go, 0.4) + inc_ms;
 
@@ -77,24 +92,26 @@ struct TimeManager {
         if (single_reply) {
             scale = 0.15;
         }
+        else
+        {
+            if (current_best_move == previous_best_move) {
+                stability++;
+            } else {
+                stability = 0;
+                previous_best_move = current_best_move;
+            }
 
-        if (current_best_move == previous_best_move) {
-            stability++;
-        } else {
-            stability = 0;
-            previous_best_move = current_best_move;
+            if (stability == 0) scale *= 2.50;
+            else if (stability == 1) scale *= 1.20;
+            else if (stability == 2) scale *= 0.90;
+            else if (stability >= 3) scale *= 0.75;
+
+            if (previous_score != negative_infinity) {
+                scale *= std::pow(2.0, static_cast<double>(std::clamp(previous_score - current_score, -180, 180)) / 180);
+            }
         }
 
-        if (stability == 0) scale *= 2.50;
-        else if (stability == 1) scale *= 1.20;
-        else if (stability == 2) scale *= 0.90;
-        else if (stability >= 3) scale *= 0.75;
-
-        if (previous_score != negative_infinity) {
-            scale *= std::pow(2.0, static_cast<double>(std::clamp(previous_score - current_score, -180, 180)) / 180);
-        }
         previous_score = current_score;
-
         opt_time = std::min(max_time, base_opt_time * scale);
     }
 

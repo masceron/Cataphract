@@ -657,7 +657,7 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
         const int time_left = position.side_to_move == white ? wtime : btime;
         const int increment = position.side_to_move == white ? winc : binc;
 
-        tm.init_time_control(&position, time_left, increment, moves_to_go, position.state->ply);
+        tm.init_time_control(&position, time_left, increment, moves_to_go);
     }
     else if (nodes != UINT32_MAX)
     {

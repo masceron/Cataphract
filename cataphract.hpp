@@ -32,7 +32,7 @@ namespace Cataphract
         Cuckoo::init();
         TT::alloc();
 
-        std::println("Cataphract v1.4 by masceron");
+        std::println("Cataphract v1.5 by masceron");
         std::fflush(stdout);
     }
 

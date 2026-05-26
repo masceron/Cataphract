@@ -15,7 +15,6 @@ enum class TimeControlMode: uint8_t
 
 struct TimeManager
 {
-    Position* position = nullptr;
     double opt_time = 0.0;
     double max_time = 0.0;
     double scale = 1.0;
@@ -26,13 +25,12 @@ struct TimeManager
     bool single_reply{};
     TimeControlMode mode = TimeControlMode::None;
 
-    void init_time_control(Position* _position, const int time_left_ms, const int inc_ms, int moves_to_go)
+    void init_time_control(Position& _position, const int time_left_ms, const int inc_ms, int moves_to_go)
     {
         mode = TimeControlMode::Tournament;
-        position = _position;
         {
             MoveList list;
-            legals<all>(*position, list);
+            legals<all>(position, list);
             single_reply = list.size() == 1;
         }
 

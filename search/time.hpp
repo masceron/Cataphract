@@ -80,7 +80,7 @@ struct TimeManager
         {
             if (current_best_move == previous_best_move)
             {
-                stability++;
+                stability = std::min(stability + 1, 10);
             }
             else
             {
@@ -88,10 +88,7 @@ struct TimeManager
                 previous_best_move = current_best_move;
             }
 
-            if (stability == 0) tmp_scale *= stable_none_scale();
-            else if (stability == 1) tmp_scale *= stable_one_scale();
-            else if (stability == 2) tmp_scale *= stable_two_scale();
-            else if (stability >= 3) tmp_scale *= stable_three_scale();
+            tmp_scale *= stable_base_scale() - static_cast<float>(stability) * stable_scale();
 
             if (previous_score != negative_infinity)
             {

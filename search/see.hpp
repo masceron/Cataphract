@@ -3,7 +3,6 @@
 #include <cstdint>
 
 #include "../position/position.hpp"
-#include "../eval/eval.hpp"
 
 inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64_t occ)
 {
@@ -22,25 +21,25 @@ inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64
     return attackers;
 }
 
-inline int16_t value_of(const Pieces piece)
+inline int value_of(const Pieces piece)
 {
     switch (piece)
     {
     case P:
     case p:
-        return pawn_weight;
+        return pawn_weight();
     case N:
     case n:
-        return knight_weight;
+        return knight_weight();
     case B:
     case b:
-        return bishop_weight;
+        return bishop_weight();
     case R:
     case r:
-        return rook_weight;
+        return rook_weight();
     case Q:
     case q:
-        return queen_weight;
+        return queen_weight();
     default:
         return 0;
     }
@@ -71,11 +70,11 @@ inline uint64_t get_x_ray(const Position& pos, const uint64_t from_set, const ui
     return get_bishop_attack(to, occ) & diagonal_sliders;
 }
 
-inline int16_t static_exchange_evaluation(const Position& pos, const Move capture)
+inline int static_exchange_evaluation(const Position& pos, const Move capture)
 {
     bool side = pos.side_to_move;
     int8_t depth = 0;
-    int16_t gains[32];
+    int gains[32];
     const uint8_t to = capture.to();
     const uint8_t from = capture.from();
     uint64_t from_set = 1ull << from;
@@ -107,7 +106,7 @@ inline int16_t static_exchange_evaluation(const Position& pos, const Move captur
 
     while (--depth)
     {
-        gains[depth - 1] = -std::max(static_cast<int16_t>(-gains[depth - 1]), gains[depth]);
+        gains[depth - 1] = -std::max(-gains[depth - 1], gains[depth]);
     }
 
     return gains[0];

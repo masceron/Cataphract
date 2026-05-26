@@ -11,7 +11,7 @@ static constexpr int16_t mvv[12] = {
     105, 205, 305, 405, 505, 605, 105, 205, 305, 405, 505, 605
 };
 
-enum Stages: uint8_t
+enum class Stage: uint8_t
 {
     TT_moves,
     generating_capture_moves,
@@ -36,7 +36,7 @@ struct MovePicker
     int threshold;
     int scores[256];
     bool noisy_only;
-    Stages stage = generating_capture_moves;
+    Stage stage = Stage::generating_capture_moves;
 
     explicit MovePicker(Position* _pos, const bool _noisy_only, const Move _pv, SearchEntry* _ss,
                         const int _threshold = 0) : pos(_pos), ss(_ss), noisy_only(_noisy_only)
@@ -57,7 +57,7 @@ struct MovePicker
                 && pv_flag != ep_capture))
         {
             pv = _pv;
-            stage = TT_moves;
+            stage = Stage::TT_moves;
         }
     }
 
@@ -65,17 +65,17 @@ struct MovePicker
     {
         switch (stage)
         {
-        case TT_moves:
-            stage = generating_capture_moves;
+        case Stage::TT_moves:
+            stage = Stage::generating_capture_moves;
             return {pv, 0};
-        case generating_capture_moves:
-            stage = good_capture_moves;
+        case Stage::generating_capture_moves:
+            stage = Stage::good_capture_moves;
             pseudo_legals<noisy>(*pos, moves);
             score_mvv_caphist(moves.begin(), moves.last);
             non_captures_start = moves.last;
             current = moves.begin();
             [[fallthrough]];
-        case good_capture_moves:
+        case Stage::good_capture_moves:
             while (current < non_captures_start)
             {
                 select_highest(current, non_captures_start);
@@ -93,37 +93,37 @@ struct MovePicker
 
                 return {move, score};
             }
-            stage = killer_1;
+            stage = Stage::killer_1;
             [[fallthrough]];
-        case killer_1:
-            stage = killer_2;
+        case Stage::killer_1:
+            stage = Stage::killer_2;
             if (const Move killer = Killers::get(ss->plies, 0); killer != pv && pos->is_pseudo_legal(killer))
             {
                 return {killer, UINT16_MAX};
             }
             [[fallthrough]];
-        case killer_2:
-            stage = generating_quiet_moves;
+        case Stage::killer_2:
+            stage = Stage::generating_quiet_moves;
             if (const Move killer = Killers::get(ss->plies, 1); killer != pv && pos->is_pseudo_legal(killer))
             {
                 return {killer, UINT16_MAX};
             }
             [[fallthrough]];
-        case generating_quiet_moves:
+        case Stage::generating_quiet_moves:
             if (!noisy_only)
             {
                 pseudo_legals<quiet>(*pos, moves);
                 score_history(non_captures_start, moves.last);
-                stage = quiet_moves;
+                stage = Stage::quiet_moves;
                 current = non_captures_start;
             }
             else
             {
-                stage = none;
+                stage = Stage::none;
                 return {null_move, 0};
             }
             [[fallthrough]];
-        case quiet_moves:
+        case Stage::quiet_moves:
             while (current < moves.last)
             {
                 select_highest(current, moves.last);
@@ -141,19 +141,19 @@ struct MovePicker
                 return {move, score};
             }
 
-            stage = bad_capture_moves;
+            stage = Stage::bad_capture_moves;
             current = &moves.list[255];
             [[fallthrough]];
-        case bad_capture_moves:
+        case Stage::bad_capture_moves:
             while (current > bad_captures_end)
             {
                 Move move = *current;
                 current--;
                 return {move, -1};
             }
-            stage = none;
+            stage = Stage::none;
             [[fallthrough]];
-        case none: default:
+        case Stage::none: default:
             return {null_move, 0};
         }
     }

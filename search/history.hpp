@@ -13,7 +13,7 @@
 struct SearchEntry
 {
     uint16_t piece_to = UINT16_MAX;
-    int16_t static_eval = score_none;
+    int static_eval = score_none;
     Move excluded = null_move;
     uint8_t double_extensions = 0;
     uint8_t plies;
@@ -298,7 +298,7 @@ namespace Corrections
         entry += bonus - entry * std::abs(bonus) / correction_limit();
     }
 
-    inline void update(const int16_t delta, const Position& pos, const uint8_t depth)
+    inline void update(const int delta, const Position& pos, const uint8_t depth)
     {
         const auto minors = pos.boards[N] | pos.boards[n] | pos.boards[B] | pos.boards[b];
         const auto majors = pos.boards[Q] | pos.boards[q] | pos.boards[R] | pos.boards[r];
@@ -307,7 +307,7 @@ namespace Corrections
         const auto minor = &minor_piece_corrections[pos.side_to_move][index_of(minors)];
         const auto major = &major_piece_corrections[pos.side_to_move][index_of(majors)];
 
-        const int bonus = std::clamp<int>(delta * depth * correction_bonus_scale() / 1024,
+        const int bonus = std::clamp(delta * depth * correction_bonus_scale() / 1024,
                                           -correction_limit() / 4, correction_limit() / 4);
 
         apply(*pawns, bonus * pawn_correction_scale() / 1024);

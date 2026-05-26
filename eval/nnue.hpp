@@ -7,10 +7,10 @@
 static constexpr int QA = 255;
 static constexpr int QB = 64;
 static constexpr int16_t EVAL_SCALE = 400;
-#define HL_SIZE 1024
+#define HL_SIZE 1280
 #define INPUT_SIZE 768
 #define OUTPUT_BUCKETS 8
-#define INPUT_BUCKETS 10
+#define INPUT_BUCKETS 16
 
 struct Network
 {

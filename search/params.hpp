@@ -60,6 +60,13 @@ void prune_cal();
     PARAM(int, pawn_correction_scale, 1024, 256, 2048, 90) \
     PARAM(int, minor_correction_scale, 1024, 256, 2048, 90) \
     PARAM(int, major_correction_scale, 1024, 256, 2048, 90) \
+    PARAM(int, pawn_weight, 126, 50, 300, 13) \
+    PARAM(int, knight_weight, 781, 390, 1560, 59) \
+    PARAM(int, bishop_weight, 825, 412, 1650, 80) \
+    PARAM(int, rook_weight, 1276, 640, 2550, 96) \
+    PARAM(int, queen_weight, 2538, 1270, 5080, 191) \
+    PARAM(int, initial_aspiration_window, 42, 10, 160, 8) \
+    PARAM(int, aspiration_expansion_rate, 42, 10, 160, 8) \
 
 
 #ifndef SPSA_TUNE

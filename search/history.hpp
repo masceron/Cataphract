@@ -33,7 +33,7 @@ namespace Killers
 
     inline void clear()
     {
-        memset(table.data(), 0, table.size() * 2 * sizeof(Move));
+        std::memset(table.data(), 0, table.size() * 2 * sizeof(Move));
     }
 
     inline void insert(const Move move, const int ply)
@@ -69,7 +69,7 @@ namespace Capture
 
     inline void clear()
     {
-        memset(table.data(), 0, 7680);
+        std::memset(table.data(), 0, 7680);
     }
 
     inline void scale_down()
@@ -111,7 +111,7 @@ namespace ButterflyHistory
 
     inline void clear()
     {
-        memset(table.data(), 0, 16384);
+        std::memset(table.data(), 0, 16384);
     }
 
     inline void scale_down()
@@ -150,7 +150,7 @@ namespace PieceToHistory
 
     inline void clear()
     {
-        memset(table.data(), 0, 1536);
+        std::memset(table.data(), 0, 1536);
     }
 
     inline void scale_down()
@@ -191,11 +191,13 @@ namespace Continuation
 {
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
     inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
+    inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> four_plies;
 
     inline void clear()
     {
-        memset(counter_moves.data(), 0, 589824);
-        memset(follow_up.data(), 0, 589824);
+        std::memset(counter_moves.data(), 0, 589824);
+        std::memset(follow_up.data(), 0, 589824);
+        std::memset(four_plies.data(), 0, 589824);
     }
 
     inline void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
@@ -257,6 +259,24 @@ namespace Continuation
             if (follow_up[stm][prev2_piece][prev2_to][piece][move.to()] >= max_continuation_history())
                 scale_down(follow_up);
         }
+
+        if (const auto prev4 = ss - 4; (ss - 4)->piece_to != UINT16_MAX)
+        {
+            const uint8_t prev4_piece = prev4->piece_to >> 6;
+            const uint8_t prev4_to = prev4->piece_to & 0b111111;
+
+            apply(four_plies, stm, prev4_piece, prev4_to, piece, move.to(), bonus);
+
+            for (const auto& tmp_move : searched)
+            {
+                uint8_t tmp = pos.piece_on[tmp_move.from()];
+                if (tmp >= 6) tmp -= 6;
+                apply(four_plies, stm, prev4_piece, prev4_to, tmp, tmp_move.to(), -bonus);
+            }
+            if (four_plies[stm][prev4_piece][prev4_to][piece][move.to()] >= max_continuation_history())
+                scale_down(four_plies);
+
+        }
     }
 }
 
@@ -288,9 +308,9 @@ namespace Corrections
 
     inline void clear()
     {
-        memset(pawn_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
-        memset(minor_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
-        memset(major_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
+        std::memset(pawn_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
+        std::memset(minor_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
+        std::memset(major_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
     }
 
     inline void apply(int16_t& entry, const int bonus)

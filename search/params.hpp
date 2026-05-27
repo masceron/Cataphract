@@ -7,8 +7,8 @@
 #include <cmath>
 #include <cstdint>
 
-inline std::array<std::array<uint8_t, 63>, 127> reductions;
-inline std::array<std::array<uint8_t, 16>, 2> lmp;
+inline std::array<std::array<int, 63>, 127> reductions;
+inline std::array<std::array<int, 16>, 2> lmp;
 
 void reduction_cal();
 void prune_cal();
@@ -42,6 +42,7 @@ void prune_cal();
     PARAM(int, piece_history_weight, 512, 256, 2048, 96) \
     PARAM(int, counter_move_weight, 1024, 256, 2048, 96) \
     PARAM(int, follow_up_weight, 1024, 256, 2048, 96) \
+    PARAM(int, four_plies_weight, 1024, 256, 2048, 96) \
     PARAM(int, mvv_weight, 1024, 256, 2048, 96) \
     PARAM(int, capture_history_weight, 1024, 256, 2048, 96) \
     PARAM(int16_t, max_capture_history, 32000, 8192, INT16_MAX, 768) \

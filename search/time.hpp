@@ -25,12 +25,12 @@ struct TimeManager
     bool single_reply{};
     TimeControlMode mode = TimeControlMode::None;
 
-    void init_time_control(Position& _position, const int time_left_ms, const int inc_ms, int moves_to_go)
+    void init_time_control(const Position& _position, const int time_left_ms, const int inc_ms, int moves_to_go)
     {
         mode = TimeControlMode::Tournament;
         {
             MoveList list;
-            legals<all>(position, list);
+            legals<all>(_position, list);
             single_reply = list.size() == 1;
         }
 

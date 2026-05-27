@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 struct Options
 {
     uintptr_t hash = 64;

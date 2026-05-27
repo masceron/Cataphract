@@ -35,7 +35,6 @@ add_executable(Cataphract main.cpp
         search/history.hpp
         eval/nnue.hpp
         eval/accumulators.hpp
-        eval/nnue.cpp
         position/cuckoo.hpp
         search/time.hpp
         position/bench.hpp
@@ -43,6 +42,12 @@ add_executable(Cataphract main.cpp
         search/params.hpp
         search/params.cpp
         options.hpp
+        eval/simd/avx512.hpp
+        eval/simd/avx2.hpp
+        eval/simd/scalar.hpp
+        eval/utils.hpp
+        eval/arch.hpp
+        eval/simd/simd.hpp
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -72,7 +77,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     endif ()
 elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     if (CMAKE_BUILD_TYPE MATCHES "Debug")
-        target_compile_options(Cataphract PRIVATE -O0 -Wextra -g -march=native -fno-exceptions
+        target_compile_options(Cataphract PRIVATE -O0 -Wextra -g -march=native -fno-exceptions -fno-omit-frame-pointer
                 -fsanitize=undefined -fsanitize=implicit-integer-truncation
                 -fsanitize=implicit-integer-arithmetic-value-change -fsanitize=implicit-integer-conversion
                 -fsanitize=implicit-conversion -fsanitize=signed-integer-overflow
@@ -84,14 +89,6 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
 
         )
         target_link_options(Cataphract PRIVATE
-                -fsanitize=undefined -fsanitize=implicit-integer-truncation
-                -fsanitize=implicit-integer-arithmetic-value-change -fsanitize=implicit-integer-conversion
-                -fsanitize=implicit-conversion -fsanitize=signed-integer-overflow
-                -fsanitize=nullability -fsanitize=local-bounds
-                -fsanitize=float-divide-by-zero -fsanitize=integer-divide-by-zero
-                -fsanitize=implicit-unsigned-integer-truncation -fsanitize=implicit-signed-integer-truncation
-                -fsanitize=implicit-integer-sign-change
-                -fno-sanitize=shift
                 -fuse-ld=lld
         )
 

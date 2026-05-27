@@ -1,47 +1,57 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
+#include "accumulators.hpp"
 #include "../position/position.hpp"
 
-static constexpr int QA = 255;
-static constexpr int QB = 64;
-static constexpr int16_t EVAL_SCALE = 400;
-#define HL_SIZE 1280
-#define INPUT_SIZE 768
-#define OUTPUT_BUCKETS 8
-#define INPUT_BUCKETS 16
-
-struct Network
-{
-    int16_t accumulator_weights[INPUT_BUCKETS][INPUT_SIZE][HL_SIZE];
-    int16_t accumulator_biases[HL_SIZE];
-    int16_t output_weights[OUTPUT_BUCKETS][2 * HL_SIZE];
-    int16_t output_bias[OUTPUT_BUCKETS];
-};
-
-struct Accumulator_entry
-{
-#ifdef __AVX512F__
-    alignas(64) int16_t accumulators[2 * HL_SIZE];
-#elifdef __AVX2__
-    alignas(32) int16_t accumulators[2 * HL_SIZE];
-#else
-    int16_t accumulators[2 * HL_SIZE];
-#endif
-    uint64_t bitboards[12];
-    bool is_dirty;
-    bool require_rebuild;
-    std::pair<uint8_t, int8_t> adds[2];
-    std::pair<uint8_t, int8_t> subs[2];
-
-    void mark_changes(const Position& pos, Move move);
+SIMD_ALIGN inline static unsigned char net_data[] = {
+#embed "../net.bin"
 };
 
 namespace NNUE
 {
-    int32_t forward(int16_t* stm, int16_t* nstm, uint8_t bucket);
-    void update_accumulators();
-    void refresh_accumulators(const Position& pos);
-    int16_t evaluate(const Position& pos, int16_t* accumulator_pair);
+    inline auto network = reinterpret_cast<Network*>(net_data);
+
+    void update_accumulators()
+    {
+        accumulator_stack_update(network);
+    }
+
+    void refresh_accumulators(const Position& pos)
+    {
+        for (auto& pair : finny_table)
+        {
+            for (auto& [bitboards, accumulators] : pair)
+            {
+                std::memset(bitboards, 0, 12 * sizeof(uint64_t));
+                std::memcpy(accumulators, network->accumulator_biases, HL_SIZE * sizeof(int16_t));
+                std::memcpy(&accumulators[HL_SIZE], network->accumulator_biases, HL_SIZE * sizeof(int16_t));
+            }
+        }
+        accumulator_stack.clear();
+        accumulator_stack.push();
+        const auto [w, b] = get_buckets(pos.boards);
+
+        const auto stack_entry = accumulator_stack[0];
+        const auto finny_entry = &finny_table[w][b];
+
+        std::memcpy(stack_entry->bitboards, pos.boards, 12 * sizeof(uint64_t));
+        std::memcpy(finny_entry->bitboards, pos.boards, 12 * sizeof(uint64_t));
+
+        stack_entry->is_dirty = false;
+        accumulators_set(network, pos.boards, stack_entry->accumulators);
+        std::memcpy(finny_entry->accumulators, stack_entry->accumulators, 2 * HL_SIZE * sizeof(int16_t));
+    }
+
+    int16_t evaluate(const Position& pos, int16_t* accumulator_pair)
+    {
+        static constexpr uint8_t divisor = (32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS;
+        const uint8_t bucket = (std::popcount(pos.occupations[2]) - 2) / divisor;
+        const int32_t eval = SIMD::forward(network, &accumulator_pair[pos.side_to_move * HL_SIZE],
+                                           &accumulator_pair[!pos.side_to_move * HL_SIZE], bucket);
+
+        return static_cast<int16_t>((eval / QA + network->output_bias[bucket]) * EVAL_SCALE / (QA * QB));
+    }
 }

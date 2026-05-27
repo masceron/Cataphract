@@ -1,8 +1,81 @@
 #pragma once
 
-#include <immintrin.h>
+#include "utils.hpp"
+#include "../position/position.hpp"
 
-#include "nnue.hpp"
+#include "simd/simd.hpp"
+
+struct Accumulator_entry
+{
+    SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
+    uint64_t bitboards[12];
+    std::pair<uint8_t, int8_t> adds[2];
+    std::pair<uint8_t, int8_t> subs[2];
+    bool is_dirty;
+    bool require_rebuild;
+
+    void mark_changes(const Position& pos, const Move move)
+    {
+        is_dirty = true;
+        require_rebuild = false;
+
+        adds[0] = {0, -1};
+        adds[1] = {0, -1};
+        subs[0] = {0, -1};
+        subs[1] = {0, -1};
+
+        const uint8_t from = move.from();
+        const uint8_t to = move.to();
+        const uint8_t flag = move.flag();
+        const Pieces moved_piece = pos.piece_on[to];
+        std::memcpy(bitboards, &pos.boards, 12 * sizeof(uint64_t));
+        const bool just_moved = !pos.side_to_move;
+
+        if (moved_piece == K || moved_piece == k)
+        {
+            if (const int flip = !just_moved * 56;
+                input_buckets_map[from ^ flip] != input_buckets_map[to ^ flip] || ((from % 8 > 3) != (to % 8 > 3)))
+            {
+                require_rebuild = true;
+            }
+        }
+
+        if (flag < knight_promotion)
+        {
+            adds[0] = {moved_piece, to};
+            subs[0] = {moved_piece, from};
+            if (flag == capture)
+            {
+                subs[1] = {pos.state->captured_piece, to};
+            }
+            else if (flag == ep_capture)
+            {
+                subs[1] = {pos.state->captured_piece, to - Delta<Up>(just_moved)};
+            }
+            else if (flag == king_castle)
+            {
+                auto rook = just_moved == white ? R : r;
+                adds[1] = {rook, to - 1};
+                subs[1] = {rook, to + 1};
+            }
+            else if (flag == queen_castle)
+            {
+                auto rook = just_moved == white ? R : r;
+                adds[1] = {rook, to + 1};
+                subs[1] = {rook, to - 2};
+            }
+        }
+        else
+        {
+            subs[0] = {!just_moved ? P : p, from};
+            adds[0] = {move.promoted_to(just_moved), to};
+            if (flag >= knight_promo_capture)
+            {
+                subs[1] = {pos.state->captured_piece, to};
+            }
+        }
+    }
+};
 
 struct Accumulator_stack
 {
@@ -42,80 +115,18 @@ struct Accumulator_stack
 
 inline Accumulator_stack accumulator_stack;
 
-inline constexpr uint8_t input_buckets_map[] = {
-    0,  1,  2,  3,  3,  2,  1, 0,
-    4,  5,  6,  7,  7,  6,  5, 4,
-    8,  9,  10, 11, 11, 10, 9, 8,
-    8,  9,  10, 11, 11, 10, 9, 8,
-    12, 12, 13, 13, 13, 13, 12, 12,
-    12, 12, 13, 13, 13, 13, 12, 12,
-    14, 14, 15, 15, 15, 15, 14, 14,
-    14, 14, 15, 15, 15, 15, 14, 14
-};
-
-struct Finny_entry
+struct FinnyEntry
 {
     uint64_t bitboards[12];
-#ifdef __AVX512F__
-    alignas(64) int16_t accumulators[2 * HL_SIZE];
-#elifdef __AVX2__
-    alignas(32) int16_t accumulators[2 * HL_SIZE];
-#endif
+    SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
 };
 
-inline Finny_entry finny_table[INPUT_BUCKETS][INPUT_BUCKETS];
+inline FinnyEntry finny_table[INPUT_BUCKETS][INPUT_BUCKETS];
 
-inline uint8_t flip_color(const uint8_t piece)
+inline void accumulators_set(const Network* __restrict network, const uint64_t* __restrict boards, int16_t* __restrict accumulators)
 {
-    switch (piece)
-    {
-    case P:
-    case N:
-    case B:
-    case R:
-    case Q:
-    case K:
-        return piece + 6;
-    case p:
-    case n:
-    case b:
-    case r:
-    case q:
-    case k:
-        return piece - 6;
-    default:
-        return piece;
-    }
-}
-
-inline uint64_t horizontal_mirror(uint64_t board)
-{
-    static constexpr uint64_t k1 = 0x5555555555555555ull;
-    static constexpr uint64_t k2 = 0x3333333333333333ull;
-    static constexpr uint64_t k4 = 0x0f0f0f0f0f0f0f0full;
-    board = ((board >> 1) & k1) | ((board & k1) << 1);
-    board = ((board >> 2) & k2) | ((board & k2) << 2);
-    board = ((board >> 4) & k4) | ((board & k4) << 4);
-    return board;
-}
-
-inline std::pair<uint16_t, uint16_t> input_index_of(const uint8_t p, const uint8_t sq,
-                                                    const std::pair<bool, bool>& mirrors)
-{
-    return {p * 64 + (sq ^ 56 ^ (mirrors.first ? 7 : 0)), flip_color(p) * 64 + (sq ^ (mirrors.second ? 7 : 0))};
-}
-
-inline std::pair<uint8_t, uint8_t> get_buckets(const uint64_t* boards)
-{
-    return {
-        input_buckets_map[lsb(boards[K]) ^ 56], input_buckets_map[lsb(boards[k])]
-    };
-}
-
-inline void accumulators_set(const Network* network, const uint64_t* boards, int16_t* accumulators)
-{
-    memcpy(accumulators, network->accumulator_biases, HL_SIZE * sizeof(int16_t));
-    memcpy(&accumulators[HL_SIZE], network->accumulator_biases, HL_SIZE * sizeof(int16_t));
+    std::memcpy(accumulators, network->accumulator_biases, HL_SIZE * sizeof(int16_t));
+    std::memcpy(&accumulators[HL_SIZE], network->accumulator_biases, HL_SIZE * sizeof(int16_t));
 
     const std::pair mirror = {lsb(boards[K]) % 8 > 3, lsb(boards[k]) % 8 > 3};
     const auto [white_bucket, black_bucket] = get_buckets(boards);
@@ -139,301 +150,7 @@ inline void accumulators_set(const Network* network, const uint64_t* boards, int
 }
 
 template <const int exclude>
-void accumulators_addsub(Network* network, const int16_t* __restrict prev, int16_t* __restrict accs,
-                         const std::pair<uint8_t, int8_t>* add,
-                         const std::pair<uint8_t, int8_t>* sub, const std::pair<bool, bool>& mirrors,
-                         const std::pair<uint8_t, uint8_t>& buckets)
-{
-    auto [white_add, black_add] = input_index_of(add[0].first, add[0].second, mirrors);
-    auto [white_sub, black_sub] = input_index_of(sub[0].first, sub[0].second, mirrors);
-
-#ifdef __AVX512F__
-    constexpr int CHUNKS = HL_SIZE / 32;
-    if constexpr (exclude != white)
-    {
-        const int16_t* w_add = network->accumulator_weights[buckets.first][white_add];
-        const int16_t* w_sub = network->accumulator_weights[buckets.first][white_sub];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m512i v_prev = _mm512_load_si512(&prev[i * 32]);
-            const __m512i v_add = _mm512_load_si512(&w_add[i * 32]);
-            const __m512i v_sub = _mm512_load_si512(&w_sub[i * 32]);
-            _mm512_store_si512(&accs[i * 32], _mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub));
-        }
-    }
-    if constexpr (exclude != black)
-    {
-        const int16_t* b_add = network->accumulator_weights[buckets.second][black_add];
-        const int16_t* b_sub = network->accumulator_weights[buckets.second][black_sub];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m512i v_prev = _mm512_load_si512(&prev[i * 32 + HL_SIZE]);
-            const __m512i v_add = _mm512_load_si512(&b_add[i * 32]);
-            const __m512i v_sub = _mm512_load_si512(&b_sub[i * 32]);
-            _mm512_store_si512(&accs[i * 32 + HL_SIZE], _mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub));
-        }
-    }
-
-#elifdef __AVX2__
-    constexpr int CHUNKS = HL_SIZE / 16;
-    if constexpr (exclude != white)
-    {
-        const int16_t* w_add = network->accumulator_weights[buckets.first][white_add];
-        const int16_t* w_sub = network->accumulator_weights[buckets.first][white_sub];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16]));
-            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add[i * 16]));
-            const __m256i v_sub = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub[i * 16]));
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16]),
-                               _mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub));
-        }
-    }
-    if constexpr (exclude != black)
-    {
-        const int16_t* b_add = network->accumulator_weights[buckets.second][black_add];
-        const int16_t* b_sub = network->accumulator_weights[buckets.second][black_sub];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16 + HL_SIZE]));
-            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add[i * 16]));
-            const __m256i v_sub = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub[i * 16]));
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16 + HL_SIZE]),
-                               _mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub));
-        }
-    }
-#else
-    for (int iter = 0; iter < HL_SIZE; iter++)
-    {
-        if constexpr (exclude != white)
-        {
-            accs[iter] = prev[iter] + network->accumulator_weights[buckets.first][white_add][iter]
-                - network->accumulator_weights[buckets.first][white_sub][iter];
-        }
-
-        if constexpr (exclude != black)
-        {
-            accs[iter + HL_SIZE] = prev[iter + HL_SIZE]
-                + network->accumulator_weights[buckets.second][black_add][iter]
-                - network->accumulator_weights[buckets.second][black_sub][iter];
-        }
-    }
-#endif
-}
-
-template <const int exclude>
-void accumulators_addsub2(Network* network, const int16_t* __restrict prev, int16_t* __restrict accs,
-                          const std::pair<uint8_t, int8_t>* add,
-                          const std::pair<uint8_t, int8_t>* sub, const std::pair<bool, bool>& mirrors,
-                          const std::pair<uint8_t, uint8_t>& buckets)
-{
-    auto [white_add, black_add] = input_index_of(add[0].first, add[0].second, mirrors);
-    auto [white_sub1, black_sub1] = input_index_of(sub[0].first, sub[0].second, mirrors);
-    auto [white_sub2, black_sub2] = input_index_of(sub[1].first, sub[1].second, mirrors);
-
-#ifdef __AVX512F__
-    constexpr int CHUNKS = HL_SIZE / 32;
-    if constexpr (exclude != white)
-    {
-        const int16_t* w_add = network->accumulator_weights[buckets.first][white_add];
-        const int16_t* w_sub1 = network->accumulator_weights[buckets.first][white_sub1];
-        const int16_t* w_sub2 = network->accumulator_weights[buckets.first][white_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m512i v_prev = _mm512_load_si512(&prev[i * 32]);
-            const __m512i v_add = _mm512_load_si512(&w_add[i * 32]);
-            const __m512i v_sub1 = _mm512_load_si512(&w_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_load_si512(&w_sub2[i * 32]);
-            _mm512_store_si512(&accs[i * 32],
-                               _mm512_sub_epi16(_mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub1), v_sub2));
-        }
-    }
-    if constexpr (exclude != black)
-    {
-        const int16_t* b_add = network->accumulator_weights[buckets.second][black_add];
-        const int16_t* b_sub1 = network->accumulator_weights[buckets.second][black_sub1];
-        const int16_t* b_sub2 = network->accumulator_weights[buckets.second][black_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m512i v_prev = _mm512_load_si512(&prev[i * 32 + HL_SIZE]);
-            const __m512i v_add = _mm512_load_si512(&b_add[i * 32]);
-            const __m512i v_sub1 = _mm512_load_si512(&b_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_load_si512(&b_sub2[i * 32]);
-            _mm512_store_si512(&accs[i * 32 + HL_SIZE],
-                               _mm512_sub_epi16(_mm512_sub_epi16(_mm512_add_epi16(v_prev, v_add), v_sub1), v_sub2));
-        }
-    }
-
-#elifdef __AVX2__
-    constexpr int CHUNKS = HL_SIZE / 16;
-    if constexpr (exclude != white)
-    {
-        const int16_t* w_add = network->accumulator_weights[buckets.first][white_add];
-        const int16_t* w_sub1 = network->accumulator_weights[buckets.first][white_sub1];
-        const int16_t* w_sub2 = network->accumulator_weights[buckets.first][white_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16]));
-            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add[i * 16]));
-            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub2[i * 16]));
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16]),
-                               _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub1), v_sub2));
-        }
-    }
-    if constexpr (exclude != black)
-    {
-        const int16_t* b_add = network->accumulator_weights[buckets.second][black_add];
-        const int16_t* b_sub1 = network->accumulator_weights[buckets.second][black_sub1];
-        const int16_t* b_sub2 = network->accumulator_weights[buckets.second][black_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16 + HL_SIZE]));
-            const __m256i v_add = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add[i * 16]));
-            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub2[i * 16]));
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16 + HL_SIZE]),
-                               _mm256_sub_epi16(_mm256_sub_epi16(_mm256_add_epi16(v_prev, v_add), v_sub1), v_sub2));
-        }
-    }
-#else
-    for (int iter = 0; iter < HL_SIZE; iter++)
-    {
-        if constexpr (exclude != white)
-        {
-            accs[iter] = prev[iter]
-                + network->accumulator_weights[buckets.first][white_add][iter]
-                - network->accumulator_weights[buckets.first][white_sub1][iter]
-                - network->accumulator_weights[buckets.first][white_sub2][iter];
-        }
-
-        if constexpr (exclude != black)
-        {
-            accs[iter + HL_SIZE] = prev[iter + HL_SIZE]
-                + network->accumulator_weights[buckets.second][black_add][iter]
-                - network->accumulator_weights[buckets.second][black_sub1][iter]
-                - network->accumulator_weights[buckets.second][black_sub2][iter];
-        }
-    }
-#endif
-}
-
-template <const int exclude>
-void accumulators_add2sub2(Network* network, const int16_t* __restrict prev, int16_t* __restrict accs,
-                           const std::pair<uint8_t, int8_t>* add,
-                           const std::pair<uint8_t, int8_t>* sub, const std::pair<bool, bool>& mirrors,
-                           const std::pair<uint8_t, uint8_t>& buckets)
-{
-    auto [white_add1, black_add1] = input_index_of(add[0].first, add[0].second, mirrors);
-    auto [white_add2, black_add2] = input_index_of(add[1].first, add[1].second, mirrors);
-    auto [white_sub1, black_sub1] = input_index_of(sub[0].first, sub[0].second, mirrors);
-    auto [white_sub2, black_sub2] = input_index_of(sub[1].first, sub[1].second, mirrors);
-
-#ifdef __AVX512F__
-    constexpr int CHUNKS = HL_SIZE / 32;
-    if constexpr (exclude != white)
-    {
-        const int16_t* w_add1 = network->accumulator_weights[buckets.first][white_add1];
-        const int16_t* w_add2 = network->accumulator_weights[buckets.first][white_add2];
-        const int16_t* w_sub1 = network->accumulator_weights[buckets.first][white_sub1];
-        const int16_t* w_sub2 = network->accumulator_weights[buckets.first][white_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m512i v_prev = _mm512_load_si512(&prev[i * 32]);
-            const __m512i v_add1 = _mm512_load_si512(&w_add1[i * 32]);
-            const __m512i v_add2 = _mm512_load_si512(&w_add2[i * 32]);
-            const __m512i v_sub1 = _mm512_load_si512(&w_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_load_si512(&w_sub2[i * 32]);
-
-            const __m512i sum = _mm512_add_epi16(v_prev, _mm512_add_epi16(v_add1, v_add2));
-            _mm512_store_si512(&accs[i * 32], _mm512_sub_epi16(_mm512_sub_epi16(sum, v_sub1), v_sub2));
-        }
-    }
-    if constexpr (exclude != black)
-    {
-        const int16_t* b_add1 = network->accumulator_weights[buckets.second][black_add1];
-        const int16_t* b_add2 = network->accumulator_weights[buckets.second][black_add2];
-        const int16_t* b_sub1 = network->accumulator_weights[buckets.second][black_sub1];
-        const int16_t* b_sub2 = network->accumulator_weights[buckets.second][black_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m512i v_prev = _mm512_load_si512(&prev[i * 32 + HL_SIZE]);
-            const __m512i v_add1 = _mm512_load_si512(&b_add1[i * 32]);
-            const __m512i v_add2 = _mm512_load_si512(&b_add2[i * 32]);
-            const __m512i v_sub1 = _mm512_load_si512(&b_sub1[i * 32]);
-            const __m512i v_sub2 = _mm512_load_si512(&b_sub2[i * 32]);
-
-            const __m512i sum = _mm512_add_epi16(v_prev, _mm512_add_epi16(v_add1, v_add2));
-            _mm512_store_si512(&accs[i * 32 + HL_SIZE], _mm512_sub_epi16(_mm512_sub_epi16(sum, v_sub1), v_sub2));
-        }
-    }
-
-#elifdef __AVX2__
-    constexpr int CHUNKS = HL_SIZE / 16;
-    if constexpr (exclude != white)
-    {
-        const int16_t* w_add1 = network->accumulator_weights[buckets.first][white_add1];
-        const int16_t* w_add2 = network->accumulator_weights[buckets.first][white_add2];
-        const int16_t* w_sub1 = network->accumulator_weights[buckets.first][white_sub1];
-        const int16_t* w_sub2 = network->accumulator_weights[buckets.first][white_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16]));
-            const __m256i v_add1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add1[i * 16]));
-            const __m256i v_add2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_add2[i * 16]));
-            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&w_sub2[i * 16]));
-
-            const __m256i sum = _mm256_add_epi16(v_prev, _mm256_add_epi16(v_add1, v_add2));
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16]),
-                               _mm256_sub_epi16(_mm256_sub_epi16(sum, v_sub1), v_sub2));
-        }
-    }
-    if constexpr (exclude != black)
-    {
-        const int16_t* b_add1 = network->accumulator_weights[buckets.second][black_add1];
-        const int16_t* b_add2 = network->accumulator_weights[buckets.second][black_add2];
-        const int16_t* b_sub1 = network->accumulator_weights[buckets.second][black_sub1];
-        const int16_t* b_sub2 = network->accumulator_weights[buckets.second][black_sub2];
-        for (int i = 0; i < CHUNKS; i++)
-        {
-            const __m256i v_prev = _mm256_load_si256(reinterpret_cast<const __m256i*>(&prev[i * 16 + HL_SIZE]));
-            const __m256i v_add1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add1[i * 16]));
-            const __m256i v_add2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_add2[i * 16]));
-            const __m256i v_sub1 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub1[i * 16]));
-            const __m256i v_sub2 = _mm256_load_si256(reinterpret_cast<const __m256i*>(&b_sub2[i * 16]));
-
-            const __m256i sum = _mm256_add_epi16(v_prev, _mm256_add_epi16(v_add1, v_add2));
-            _mm256_store_si256(reinterpret_cast<__m256i*>(&accs[i * 16 + HL_SIZE]),
-                               _mm256_sub_epi16(_mm256_sub_epi16(sum, v_sub1), v_sub2));
-        }
-    }
-#else
-    for (int iter = 0; iter < HL_SIZE; iter++)
-    {
-        if constexpr (exclude != white)
-        {
-            accs[iter] = prev[iter]
-                + network->accumulator_weights[buckets.first][white_add1][iter]
-                + network->accumulator_weights[buckets.first][white_add2][iter]
-                - network->accumulator_weights[buckets.first][white_sub1][iter]
-                - network->accumulator_weights[buckets.first][white_sub2][iter];
-        }
-
-        if constexpr (exclude != black)
-        {
-            accs[iter + HL_SIZE] = prev[iter + HL_SIZE]
-                + network->accumulator_weights[buckets.second][black_add1][iter]
-                + network->accumulator_weights[buckets.second][black_add2][iter]
-                - network->accumulator_weights[buckets.second][black_sub1][iter]
-                - network->accumulator_weights[buckets.second][black_sub2][iter];
-        }
-    }
-#endif
-}
-
-template <const int exclude>
-void update_from_move(Network* network, int16_t* __restrict prev, int16_t* __restrict cur,
+void update_from_move(Network* __restrict network, int16_t* __restrict prev, int16_t* __restrict cur,
                       const std::pair<uint8_t, int8_t>* add,
                       const std::pair<uint8_t, int8_t>* sub,
                       const std::pair<bool, bool>& mirrors,
@@ -444,27 +161,27 @@ void update_from_move(Network* network, int16_t* __restrict prev, int16_t* __res
         //Castling
         if (add[1].second != -1)
         {
-            accumulators_add2sub2<exclude>(network, prev, cur,
+            SIMD::accumulators_add2sub2<exclude>(network, prev, cur,
                                            add, sub, mirrors,
                                            buckets);
         }
         //Capture or promo-capture
         else
         {
-            accumulators_addsub2<exclude>(network, prev, cur, add,
+            SIMD::accumulators_addsub2<exclude>(network, prev, cur, add,
                                           sub, mirrors,
                                           buckets);
         }
     }
     else
     {
-        accumulators_addsub<exclude>(network, prev, cur, add,
+        SIMD::accumulators_addsub<exclude>(network, prev, cur, add,
                                      sub, mirrors,
                                      buckets);
     }
 }
 
-inline void accumulator_stack_update(Network* network)
+inline void accumulator_stack_update(Network* __restrict network)
 {
     auto idx = accumulator_stack.size - 1;
     while (accumulator_stack[idx - 1]->is_dirty) idx--;
@@ -551,8 +268,8 @@ inline void accumulator_stack_update(Network* network)
 
                 update_from_move<white>(network, previous_accumulators, current_accumulators, stack_entry->adds,
                                         stack_entry->subs, new_mirrors, new_buckets);
-                memcpy(current_accumulators, saved_accumulators, HL_SIZE * sizeof(int16_t));
-                memcpy(&saved_accumulators[HL_SIZE], &current_accumulators[HL_SIZE], HL_SIZE * sizeof(int16_t));
+                std::memcpy(current_accumulators, saved_accumulators, HL_SIZE * sizeof(int16_t));
+                std::memcpy(&saved_accumulators[HL_SIZE], &current_accumulators[HL_SIZE], HL_SIZE * sizeof(int16_t));
             }
             else
             {
@@ -593,11 +310,11 @@ inline void accumulator_stack_update(Network* network)
                 }
                 update_from_move<black>(network, previous_accumulators, current_accumulators, stack_entry->adds,
                                         stack_entry->subs, new_mirrors, new_buckets);
-                memcpy(&current_accumulators[HL_SIZE], &saved_accumulators[HL_SIZE], HL_SIZE * sizeof(int16_t));
-                memcpy(saved_accumulators, current_accumulators, HL_SIZE * sizeof(int16_t));
+                std::memcpy(&current_accumulators[HL_SIZE], &saved_accumulators[HL_SIZE], HL_SIZE * sizeof(int16_t));
+                std::memcpy(saved_accumulators, current_accumulators, HL_SIZE * sizeof(int16_t));
             }
 
-            memcpy(saved_bitboards, new_bitboards, 12 * sizeof(uint64_t));
+            std::memcpy(saved_bitboards, new_bitboards, 12 * sizeof(uint64_t));
         }
 
         stack_entry->is_dirty = false;

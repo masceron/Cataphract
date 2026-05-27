@@ -53,7 +53,7 @@ namespace TT
     inline void clear()
     {
         current_generation = 4;
-        memset(&table[0], 0, table_size * sizeof(Entry));
+        std::memset(&table[0], 0, table_size * sizeof(Entry));
     }
 
     inline void alloc()

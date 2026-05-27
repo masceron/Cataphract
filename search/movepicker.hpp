@@ -61,7 +61,7 @@ struct MovePicker
         }
     }
 
-    std::pair<Move, int16_t> pick()
+    std::pair<Move, int> pick()
     {
         switch (stage)
         {
@@ -158,7 +158,7 @@ struct MovePicker
         }
     }
 
-    std::pair<Move, int16_t> next_move()
+    std::pair<Move, int> next_move()
     {
         auto move = pick();
         if (!move.first) return {null_move, 0};
@@ -204,6 +204,7 @@ struct MovePicker
         const auto offset = non_captures_start - moves.begin();
         const auto prev = (ss - 1)->piece_to != UINT16_MAX ? (ss - 1)->piece_to : 0;
         const auto prev2 = (ss - 2)->piece_to != UINT16_MAX ? (ss - 2)->piece_to : 0;
+        const auto prev4 = (ss - 4)->piece_to != UINT16_MAX ? (ss - 4)->piece_to : 0;
 
         for (const Move* move = begin; move < end; ++move)
         {
@@ -218,7 +219,9 @@ struct MovePicker
                 + Continuation::counter_moves[pos->side_to_move][prev >> 6][prev & 0b111111][moved][to] *
                 counter_move_weight() / 1024
                 + Continuation::follow_up[pos->side_to_move][prev2 >> 6][prev2 & 0b111111][moved][to] *
-                follow_up_weight() / 1024;
+                follow_up_weight() / 1024
+                + Continuation::four_plies[pos->side_to_move][prev4 >> 6][prev4 & 0b111111][moved][to] *
+                four_plies_weight() / 1024;
         }
     }
 

@@ -46,7 +46,7 @@ void Position::remove_piece(const int sq)
 
 void Position::make_move(const Move move, State& st)
 {
-    memcpy(&st, state, offsetof(State, key));
+    std::memcpy(&st, state, offsetof(State, key));
     st.previous = state;
     st.rule_50++;
     st.ply++;
@@ -275,7 +275,7 @@ void Position::unmake_move(const Move& move)
 
 void Position::make_null_move(State& st)
 {
-    memcpy(&st, state, sizeof(State));
+    std::memcpy(&st, state, sizeof(State));
 
     st.previous = state;
     st.repetition = 1;

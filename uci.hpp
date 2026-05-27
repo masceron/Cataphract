@@ -69,7 +69,9 @@ namespace UCI
                 ++it;
                 ++it;
                 const std::string_view value((*it).begin(), (*it).end());
-                std::from_chars(value.data(), value.data() + value.size(), options.move_overhead);
+                int overhead = -1;
+                std::from_chars(value.data(), value.data() + value.size(), overhead);
+                if (overhead >= 0 && overhead <= 5000) options.move_overhead = overhead;
             }
         }
 #ifdef SPSA_TUNE

@@ -379,7 +379,7 @@ int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, c
             !(tt_hit && tt_depth >= prob_depth && tt_score < prob_beta))
         {
             MovePicker prob_picker(&pos, true, tt_move, ss, prob_beta - ss->static_eval);
-            std::pair<Move, int16_t> picked;
+            std::pair<Move, int> picked;
             std::list<Move> temp;
 
             while ((picked = prob_picker.next_move()).first)
@@ -424,7 +424,7 @@ int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, c
     int move_searched = 0;
     int best_score = negative_infinity;
     NodeType type = upper_bound;
-    std::pair<Move, int16_t> picked;
+    std::pair<Move, int> picked;
     MovePicker move_picker(&pos, false, tt_move, ss);
 
     if (not_in_check && (is_pv || cut_node) && !move_picker.pv && depth >= 3 && !ss->excluded) depth--;
@@ -735,9 +735,11 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
             else if (score > mate_in_max_ply) std::print("mate {} ", std::ceil((mate_value - score) / 2.0));
             else std::print("cp {} ", score);
 
-            std::print("nodes {} nps {} hashfull {} time {} pv ",
-                       node_searched, static_cast<uint64_t>(node_searched / elapsed * 1000000), TT::full(),
-                       static_cast<uint64_t>(elapsed / 1000));
+            std::print("nodes {} nps {:.0f} hashfull {} time {:.0f} pv ",
+                       node_searched,
+                       node_searched / elapsed * 1000000,
+                       TT::full(),
+                       elapsed / 1000);
 
             for (auto x : principal_variation)
             {

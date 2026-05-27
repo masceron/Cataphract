@@ -42,6 +42,7 @@ add_executable(Cataphract main.cpp
         cataphract.hpp
         search/params.hpp
         search/params.cpp
+        options.hpp
 )
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")

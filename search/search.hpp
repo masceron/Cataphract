@@ -206,9 +206,9 @@ inline int quiesce(Position& pos, int alpha, int beta, SearchEntry* ss)
     return best_score;
 }
 
-template<const bool root_node, const bool is_pv>
+template <const bool root_node, const bool is_pv>
 int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, const bool cut_node,
-                  SearchEntry* ss)
+           SearchEntry* ss)
 {
     node_searched++;
     if (node_searched >= max_nodes)
@@ -364,7 +364,8 @@ int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, c
                 ss->piece_to = UINT16_MAX;
 
                 pos.make_null_move(st);
-                const int null_score = -search<false, false>(pos, -beta, -beta + 1, depth - r, local_pv, !cut_node, ss + 1);
+                const int null_score = -search<false, false>(pos, -beta, -beta + 1, depth - r, local_pv, !cut_node,
+                                                             ss + 1);
                 pos.unmake_null_move();
 
                 if (Timer::is_search_cancelled) return alpha;
@@ -400,7 +401,8 @@ int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, c
 
                 if (prob_score >= prob_beta)
                 {
-                    prob_score = -search<false, false>(pos, -prob_beta, -prob_beta + 1, prob_depth - 1, temp, !cut_node, ss + 1);
+                    prob_score = -search<false, false>(pos, -prob_beta, -prob_beta + 1, prob_depth - 1, temp, !cut_node,
+                                                       ss + 1);
                 }
 
                 accumulator_stack.pop();
@@ -437,70 +439,77 @@ int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, c
         ++move_searched;
 
         int extension = 0;
-        if constexpr (!root_node)
+        if (move_picker.stage == Stage::quiet_moves && !root_node)
         {
-            if (move_picker.stage == Stage::quiet_moves)
+            if (not_in_check && move_searched >= late_move_margin && std::abs(best_score) < mate_in_max_ply)
             {
-                if (not_in_check && move_searched >= late_move_margin && std::abs(best_score) < mate_in_max_ply)
+                move_picker.current = move_picker.moves.last;
+                continue;
+            }
+            if (picked_score < INT16_MAX && best_score > -mate_in_max_ply)
+            {
+                if (futility_pruning_allowed)
                 {
                     move_picker.current = move_picker.moves.last;
                     continue;
                 }
-                if (picked_score < INT16_MAX && best_score > -mate_in_max_ply)
-                {
-                    if (futility_pruning_allowed)
-                    {
-                        move_picker.current = move_picker.moves.last;
-                        continue;
-                    }
-                    if (depth <= 7 && picked_score < -history_prune_scale() * depth) continue;
-                }
+                if (depth <= 7 && picked_score < -history_prune_scale() * depth) continue;
             }
+        }
 
-            if (tt_hit && !ss->excluded && ss->plies < 2 * root_depth && ss->double_extensions < 2 *
-                root_depth)
+        if constexpr (root_node)
+        {
+            if (options.show_currmove && Timer::elapsed() / 1000 > 2500)
             {
-                if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != upper_bound &&
-                    std::abs(tt_score) < mate_in_max_ply)
+                std::println("info depth {} currmove {} currmovenumber {}", root_depth,
+                             picked_move.get_move_string(), move_searched);
+            }
+        }
+
+        if (tt_hit && !root_node && !ss->excluded && ss->plies < 2 * root_depth && ss->double_extensions < 2 *
+            root_depth)
+        {
+            if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != upper_bound &&
+                std::abs(tt_score) < mate_in_max_ply)
+            {
+                const auto singular_beta = std::max(tt_score - singular_margin() * depth / 1024, -mate_in_max_ply);
+                const auto singular_depth = (depth - 1) / 2;
+                std::list<Move> tmp_pv;
+
+                ss->excluded = tt_move;
+                const auto singular_score = search<false, false>(pos, singular_beta - 1, singular_beta,
+                                                                 singular_depth, tmp_pv,
+                                                                 cut_node, ss);
+                ss->excluded = null_move;
+
+                if (singular_score < singular_beta)
                 {
-                    const auto singular_beta = std::max(tt_score - singular_margin() * depth / 1024, -mate_in_max_ply);
-                    const auto singular_depth = (depth - 1) / 2;
-                    std::list<Move> tmp_pv;
-
-                    ss->excluded = tt_move;
-                    const auto singular_score = search<false, false>(pos, singular_beta - 1, singular_beta, singular_depth, tmp_pv,
-                                                       cut_node, ss);
-                    ss->excluded = null_move;
-
-                    if (singular_score < singular_beta)
+                    if (!is_pv && picked_move.is_quiet())
                     {
-                        if (!is_pv && picked_move.is_quiet())
+                        if (singular_beta - singular_score > singular_triple() && ss->double_extensions <= 5)
                         {
-                            if (singular_beta - singular_score > singular_triple() && ss->double_extensions <= 5)
-                            {
-                                extension = 3;
-                                ss->double_extensions = (ss - 1)->double_extensions + 1;
-                            }
-                            else if (singular_beta - singular_score > singular_double() && ss->double_extensions <= 4)
-                            {
-                                extension = 2;
-                                ss->double_extensions = (ss - 1)->double_extensions + 1;
-                            }
-                            else extension = 1;
+                            extension = 3;
+                            ss->double_extensions = (ss - 1)->double_extensions + 1;
                         }
-                        else
+                        else if (singular_beta - singular_score > singular_double() && ss->double_extensions <= 4)
                         {
-                            extension = 1;
+                            extension = 2;
+                            ss->double_extensions = (ss - 1)->double_extensions + 1;
                         }
+                        else extension = 1;
                     }
-                    else if (singular_beta >= beta)
+                    else
                     {
-                        return singular_beta;
+                        extension = 1;
                     }
-                    else if (tt_score >= beta) extension = -2 + is_pv;
-                    else if (cut_node) extension = -2;
-                    else if (tt_score <= alpha) extension = -1;
                 }
+                else if (singular_beta >= beta)
+                {
+                    return singular_beta;
+                }
+                else if (tt_score >= beta) extension = -2 + is_pv;
+                else if (cut_node) extension = -2;
+                else if (tt_score <= alpha) extension = -1;
             }
         }
 
@@ -529,7 +538,8 @@ int search(Position& pos, int alpha, int beta, int depth, std::list<Move>& pv, c
             reduction -= tt_hit && tt_depth >= depth;
             if (picked_score == INT16_MAX)
                 reduction -= 2;
-            else if (move_picker.stage == Stage::quiet_moves) reduction -= std::clamp(picked_score / history_prune_div(), -3, 3);
+            else if (move_picker.stage == Stage::quiet_moves)
+                reduction -= std::clamp(picked_score / history_prune_div(), -3, 3);
 
             reduction = std::clamp(reduction, 1, new_depth - 1);
 

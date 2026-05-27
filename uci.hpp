@@ -9,6 +9,7 @@
 #include <print>
 
 #include "cataphract.hpp"
+#include "options.hpp"
 #include "position/bench.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
@@ -50,6 +51,26 @@ namespace UCI
             ++it;
             if (std::string_view((*it).begin(), (*it).end()) == "Hash")
                 TT::clear();
+        }
+        else if (name == "ShowCurrMove")
+        {
+            ++it;
+            ++it;
+            if (const std::string_view value((*it).begin(), (*it).end()); value == "true")
+                options.show_currmove = true;
+            else if (value == "false")
+                options.show_currmove = false;
+        }
+        else if (name == "Move")
+        {
+            ++it;
+            if (std::string_view((*it).begin(), (*it).end()) == "Overhead")
+            {
+                ++it;
+                ++it;
+                const std::string_view value((*it).begin(), (*it).end());
+                std::from_chars(value.data(), value.data() + value.size(), options.move_overhead);
+            }
         }
 #ifdef SPSA_TUNE
         else
@@ -209,7 +230,11 @@ namespace UCI
                 {
                     Timer::stop();
                 }
-                if (input == "quit")
+                else if (input == "isready")
+                {
+                    std::println("readyok");
+                }
+                else if (input == "quit")
                 {
                     Timer::stop();
                     quit = true;
@@ -245,6 +270,8 @@ namespace UCI
                     std::println("option name Hash type spin default 64 min 1 max 2048");
                     std::println("option name Clear Hash type button");
                     std::println("option name Threads type spin default 1 min 1 max 1");
+                    std::println("option name ShowCurrMove type check default false");
+                    std::println("option name Move Overhead type spin default 50 min 0 max 5000");
 #ifdef SPSA_TUNE
                     Tuning::print_options();
 #endif

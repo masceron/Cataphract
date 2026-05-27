@@ -14,11 +14,11 @@ void reduction_cal();
 void prune_cal();
 
 #define TUNABLE_PARAMETERS \
-    PARAM_CB(float, lmr_base, 0.4, 0, 2, 0.1, reduction_cal) \
-    PARAM_CB(float, lmr_div, 3.95, 1, 8, 0.35, reduction_cal) \
+    PARAM_CB(double, lmr_base, 0.4, 0, 2, 0.1, reduction_cal) \
+    PARAM_CB(double, lmr_div, 3.95, 1, 8, 0.35, reduction_cal) \
     PARAM_CB(int, lmp_base, 7, 0, 10, 1, prune_cal) \
-    PARAM_CB(float, lmp_nidiv, 1.66, 1, 7, 0.3, prune_cal) \
-    PARAM_CB(float, lmp_idiv, 0.73, 0.5, 7, 0.325, prune_cal) \
+    PARAM_CB(double, lmp_nidiv, 1.66, 1, 7, 0.3, prune_cal) \
+    PARAM_CB(double, lmp_idiv, 0.73, 0.5, 7, 0.325, prune_cal) \
     PARAM(int, futility_cutoff_scale, 95, 40, 200, 8) \
     PARAM(int, futility_cutoff_scale_imp, 62, 20, 120, 5) \
     PARAM(int, futility_scale, 145, 70, 210, 7) \
@@ -33,11 +33,11 @@ void prune_cal();
     PARAM(int, singular_triple, 136, 50, 210, 8) \
     PARAM(int, singular_double, 28, 10, 120, 6) \
     PARAM(int, delta_margin, 174, 50, 210, 8) \
-    PARAM(float, max_time_scale, 0.25, 0.1, 0.8, 0.04) \
-    PARAM(float, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
+    PARAM(double, max_time_scale, 0.25, 0.1, 0.8, 0.04) \
+    PARAM(double, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
     PARAM(int, default_moves_to_go, 30, 10, 40, 1) \
-    PARAM(float, stable_base_scale, 1.5, 1, 3, 0.1) \
-    PARAM(float, stable_scale, 0.08, 0.01, 0.2, 0.0095) \
+    PARAM(double, stable_base_scale, 2.5, 1.5, 3.5, 0.1) \
+    PARAM(double, stable_scale, 0.08, 0.01, 0.25, 0.0012) \
     PARAM(int, score_diff_scale, 180, 100, 300, 10) \
     PARAM(int, piece_history_weight, 512, 256, 2048, 96) \
     PARAM(int, counter_move_weight, 1024, 256, 2048, 96) \

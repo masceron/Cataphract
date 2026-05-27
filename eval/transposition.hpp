@@ -4,6 +4,8 @@
 #include <cstring>
 #include <bit>
 #include <tuple>
+
+#include "../options.hpp"
 #include "../position/move.hpp"
 
 enum Values: int
@@ -43,8 +45,7 @@ namespace TT
         return std::bit_floor(total_bytes / sizeof(Entry));
     }
 
-    inline static uint32_t table_size_in_mb = 64;
-    inline static uint64_t table_size = closest_2_pow(table_size_in_mb);
+    inline static uint64_t table_size = closest_2_pow(options.hash);
     inline static uint64_t hash_mask = table_size - 1;
     inline static uint8_t current_generation = 4;
     inline static Entry* table;
@@ -76,10 +77,10 @@ namespace TT
 
     inline void resize(const uint32_t new_size_in_mb)
     {
-        if (new_size_in_mb != table_size_in_mb)
+        if (new_size_in_mb != options.hash)
         {
             free_tt();
-            table_size_in_mb = new_size_in_mb;
+            options.hash = new_size_in_mb;
             table_size = closest_2_pow(new_size_in_mb);
             hash_mask = table_size - 1;
             alloc();

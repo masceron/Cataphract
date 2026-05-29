@@ -128,22 +128,22 @@ namespace TT
             score += ply;
         }
 
+        if (!(type == exact
+            || (entry->age_type & 252) != current_generation
+            || key != entry->key
+            || depth + 4 >= entry->depth - 1))
+            return;
+
         if (best_move || entry->key != key)
         {
             entry->best_move = best_move;
         }
 
-        if (type == exact
-            || (entry->age_type & 252) != current_generation
-            || key != entry->key
-            || depth + 4 >= entry->depth)
-        {
-            entry->key = key;
-            entry->depth = depth;
-            entry->score = static_cast<int16_t>(score);
-            entry->static_eval = static_cast<int16_t>(static_eval);
-            entry->age_type = current_generation + type;
-        }
+        entry->key = key;
+        entry->depth = depth + 1;
+        entry->score = static_cast<int16_t>(score);
+        entry->static_eval = static_cast<int16_t>(static_eval);
+        entry->age_type = current_generation + type;
     }
 
     inline uint16_t full()

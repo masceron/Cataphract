@@ -2,7 +2,6 @@
 
 #include <array>
 #include <cmath>
-#include <cstdint>
 
 void reduction_cal()
 {

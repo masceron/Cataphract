@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <bit>
 #include <tuple>
 
 #include "../options.hpp"
@@ -38,32 +37,14 @@ struct Entry
 
 namespace TT
 {
-    static uint64_t closest_2_pow(const uint32_t mb)
-    {
-        [[assume(mb != 0)]];
-        const uint64_t total_bytes = static_cast<uint64_t>(mb) << 20;
-        return std::bit_floor(total_bytes / sizeof(Entry));
-    }
-
-    inline static uint64_t table_size = closest_2_pow(options.hash);
-    inline static uint64_t hash_mask = table_size - 1;
+    inline static uintptr_t table_size = (64ull << 20) / sizeof(Entry);
     inline static uint8_t current_generation = 4;
-    inline static Entry* table;
+    inline static Entry* table = nullptr;
 
     inline void clear()
     {
         current_generation = 4;
         std::memset(&table[0], 0, table_size * sizeof(Entry));
-    }
-
-    inline void alloc()
-    {
-#ifdef _WIN32
-        table = static_cast<Entry*>(_aligned_malloc(table_size * sizeof(Entry), sizeof(Entry)));
-#else
-        table = static_cast<Entry*>(std::aligned_alloc(sizeof(Entry), table_size * sizeof(Entry)));
-#endif
-        clear();
     }
 
     inline void free_tt()
@@ -75,14 +56,34 @@ namespace TT
 #endif
     }
 
+    inline void alloc()
+    {
+        Entry* new_table;
+#ifdef _WIN32
+        new_table = static_cast<Entry*>(_aligned_malloc(table_size * sizeof(Entry), sizeof(Entry)));
+#else
+        new_table = static_cast<Entry*>(std::aligned_alloc(sizeof(Entry), table_size * sizeof(Entry)));
+#endif
+        if (!new_table)
+        {
+            std::println("Cannot allocate new table.");
+
+            if (table == nullptr) {
+                std::exit(1);
+            }
+            return;
+        }
+        free_tt();
+        table = new_table;
+        clear();
+    }
+
     inline void resize(const uint32_t new_size_in_mb)
     {
-        if (new_size_in_mb != options.hash)
+        if (new_size_in_mb != Options::hash)
         {
-            free_tt();
-            options.hash = new_size_in_mb;
-            table_size = closest_2_pow(new_size_in_mb);
-            hash_mask = table_size - 1;
+            Options::hash = new_size_in_mb;
+            table_size = (static_cast<uint64_t>(new_size_in_mb) << 20) / sizeof(Entry);
             alloc();
         }
     }
@@ -94,9 +95,10 @@ namespace TT
 
     inline uint64_t index_of(const uint64_t& key)
     {
-        return key & hash_mask;
+        return static_cast<uint64_t>((static_cast<__uint128_t>(key) * static_cast<__uint128_t>(table_size)) >> 64);
     }
 
+    __attribute__((no_sanitize_thread))
     inline std::tuple<Entry*, int, uint8_t, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply,
                                                              int& score)
     {
@@ -113,6 +115,7 @@ namespace TT
         return {entry, entry->depth, entry->age_type, entry->best_move, entry->static_eval};
     }
 
+    __attribute__((no_sanitize_thread))
     inline void write(Entry* entry, const uint64_t key, const Move best_move, const int depth, const uint8_t ply,
                       const int static_eval, int score, const NodeType type)
     {

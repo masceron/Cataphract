@@ -14,13 +14,14 @@ namespace NNUE
 {
     inline auto network = reinterpret_cast<Network*>(net_data);
 
-    void update_accumulators()
+    inline void update_accumulators(AccumulatorStack& accumulator_stack)
     {
-        accumulator_stack_update(network);
+        accumulator_stack_update(network, accumulator_stack);
     }
 
-    void refresh_accumulators(const Position& pos)
+    inline void refresh_accumulators(const Position& pos, AccumulatorStack& accumulator_stack)
     {
+        auto& finny_table = accumulator_stack.finny_table;
         for (auto& pair : finny_table)
         {
             for (auto& [bitboards, accumulators] : pair)
@@ -45,7 +46,7 @@ namespace NNUE
         std::memcpy(finny_entry->accumulators, stack_entry->accumulators, 2 * HL_SIZE * sizeof(int16_t));
     }
 
-    int16_t evaluate(const Position& pos, int16_t* accumulator_pair)
+    inline int16_t evaluate(const Position& pos, int16_t* accumulator_pair)
     {
         static constexpr uint8_t divisor = (32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS;
         const uint8_t bucket = (std::popcount(pos.occupations[2]) - 2) / divisor;

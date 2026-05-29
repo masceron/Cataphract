@@ -13,7 +13,7 @@
 #include "../board/bitboard.hpp"
 #include "../board/pieces/king.hpp"
 
-struct Accumulator_entry;
+struct AccumulatorEntry;
 
 inline bool color_of(const Pieces piece)
 {
@@ -41,8 +41,6 @@ struct State
     Pieces captured_piece;
     int8_t repetition;
 };
-
-inline std::deque<State> states;
 
 struct Position
 {
@@ -175,5 +173,3 @@ struct Position
 
     [[nodiscard]] std::string to_fen() const;
 };
-
-inline Position position;

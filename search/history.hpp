@@ -4,7 +4,6 @@
 #include <forward_list>
 #include <algorithm>
 #include <array>
-#include <cstring>
 #include <span>
 
 #include "params.hpp"
@@ -19,24 +18,11 @@ struct SearchEntry
     uint8_t plies;
 };
 
-inline void search_stack_init(std::vector<SearchEntry>& stack)
+struct Killers
 {
-    for (unsigned long long i = 0; i < stack.size(); i++)
-    {
-        stack[i].plies = static_cast<uint8_t>(i - 4);
-    }
-}
+    std::array<std::array<Move, 2>, 128> table;
 
-namespace Killers
-{
-    inline std::array<std::array<Move, 2>, 128> table;
-
-    inline void clear()
-    {
-        std::memset(table.data(), 0, table.size() * 2 * sizeof(Move));
-    }
-
-    inline void insert(const Move move, const int ply)
+    void insert(const Move move, const int ply) const
     {
         auto killers_of_ply = table[ply];
         if (move == killers_of_ply[0] || move == killers_of_ply[1]) return;
@@ -44,11 +30,11 @@ namespace Killers
         killers_of_ply[0] = move;
     }
 
-    inline Move get(const int ply, const int order)
+    [[nodiscard]] Move get(const int ply, const int order) const
     {
         return table[ply][order];
     }
-}
+};
 
 struct CaptureEntry
 {
@@ -63,16 +49,11 @@ struct CaptureEntry
     }
 };
 
-namespace Capture
+struct Capture
 {
-    inline std::array<std::array<std::array<std::array<int16_t, 64>, 5>, 6>, 2> table;
+    std::array<std::array<std::array<std::array<int16_t, 64>, 5>, 6>, 2> table;
 
-    inline void clear()
-    {
-        std::memset(table.data(), 0, 7680);
-    }
-
-    inline void scale_down()
+    void scale_down()
     {
         for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 5 * 64);
              int16_t& score : flat_view)
@@ -81,7 +62,7 @@ namespace Capture
         }
     }
 
-    inline void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq,
+    void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq,
                       const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_capture_history()),
@@ -90,7 +71,7 @@ namespace Capture
             abs(clamped_bonus) / max_capture_history();
     }
 
-    inline void update(const std::forward_list<CaptureEntry>& searched, const bool stm, const uint8_t moved_piece,
+     void update(const std::forward_list<CaptureEntry>& searched, const bool stm, const uint8_t moved_piece,
                        uint8_t captured_piece, const uint8_t sq, const uint8_t depth)
     {
         if (captured_piece >= 6) captured_piece -= 6;
@@ -103,18 +84,13 @@ namespace Capture
         }
         if (table[stm][moved_piece][captured_piece][sq] >= max_capture_history()) scale_down();
     }
-}
+};
 
-namespace ButterflyHistory
+struct ButterflyHistory
 {
-    inline std::array<std::array<std::array<int16_t, 64>, 64>, 2> table;
+    std::array<std::array<std::array<int16_t, 64>, 64>, 2> table;
 
-    inline void clear()
-    {
-        std::memset(table.data(), 0, 16384);
-    }
-
-    inline void scale_down()
+    void scale_down()
     {
         for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 64 * 64);
              int16_t& score : flat_view)
@@ -123,14 +99,14 @@ namespace ButterflyHistory
         }
     }
 
-    inline void apply(const bool side, const int from, const int to, const int16_t bonus)
+    void apply(const bool side, const int from, const int to, const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_butterfly_history()),
                                                  max_butterfly_history());
         table[side][from][to] += clamped_bonus - table[side][from][to] * abs(clamped_bonus) / max_butterfly_history();
     }
 
-    inline void update(const std::forward_list<Move>& searched, const bool side, const int from, const int to,
+    void update(const std::forward_list<Move>& searched, const bool side, const int from, const int to,
                        const uint8_t depth)
     {
         const auto bonus = static_cast<int16_t>(butterfly_history_scale() * depth - butterfly_history_minus());
@@ -142,18 +118,13 @@ namespace ButterflyHistory
         }
         if (table[side][from][to] >= max_butterfly_history()) scale_down();
     }
-}
+};
 
-namespace PieceToHistory
+struct PieceToHistory
 {
-    inline std::array<std::array<std::array<int16_t, 64>, 6>, 2> table;
+    std::array<std::array<std::array<int16_t, 64>, 6>, 2> table;
 
-    inline void clear()
-    {
-        std::memset(table.data(), 0, 1536);
-    }
-
-    inline void scale_down()
+    void scale_down()
     {
         for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 64);
              int16_t& score : flat_view)
@@ -162,14 +133,14 @@ namespace PieceToHistory
         }
     }
 
-    inline void apply(const bool side, const Pieces piece, const int to, const int16_t bonus)
+    void apply(const bool side, const Pieces piece, const int to, const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_piece_to_history()),
                                                  max_piece_to_history());
         table[side][piece][to] += clamped_bonus - table[side][piece][to] * abs(clamped_bonus) / max_piece_to_history();
     }
 
-    inline void update(const Position& pos, const std::forward_list<Move>& searched, const bool side, Pieces piece,
+    void update(const Position& pos, const std::forward_list<Move>& searched, const bool side, Pieces piece,
                        const int to, const uint8_t depth)
     {
         if (piece >= 6) piece = static_cast<Pieces>(static_cast<uint8_t>(piece) - 6);
@@ -185,22 +156,15 @@ namespace PieceToHistory
         }
         if (table[side][piece][to] >= max_piece_to_history()) scale_down();
     }
-}
+};
 
-namespace Continuation
+struct Continuation
 {
-    inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
-    inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
-    inline std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> four_plies;
+    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
+    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
+    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> four_plies;
 
-    inline void clear()
-    {
-        std::memset(counter_moves.data(), 0, 589824);
-        std::memset(follow_up.data(), 0, 589824);
-        std::memset(four_plies.data(), 0, 589824);
-    }
-
-    inline void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
+    static void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
     {
         for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 64 * 6 * 64 * 6 * 2);
              int16_t& score : flat_view)
@@ -209,8 +173,8 @@ namespace Continuation
         }
     }
 
-    void apply(auto& table, const bool stm, const uint8_t prev_piece, const uint8_t prev_to, const uint8_t piece,
-               const uint8_t to, const int16_t bonus)
+    static void apply(auto& table, const bool stm, const uint8_t prev_piece, const uint8_t prev_to, const uint8_t piece,
+                      const uint8_t to, const int16_t bonus)
     {
         const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_continuation_history()),
                                                  max_continuation_history());
@@ -218,7 +182,7 @@ namespace Continuation
             abs(clamped_bonus) / max_continuation_history();
     }
 
-    inline void update(const Position& pos, const std::forward_list<Move>& searched, const Move move,
+    void update(const Position& pos, const std::forward_list<Move>& searched, const Move move,
                        const uint8_t depth, const SearchEntry* ss)
     {
         const auto bonus = static_cast<int16_t>(continuation_history_scale() * depth - continuation_history_minus());
@@ -278,47 +242,29 @@ namespace Continuation
 
         }
     }
-}
+};
 
-inline void update_quiet_histories(const Position& pos, const int depth, const Move picked_move, const SearchEntry* ss,
-                                   const std::forward_list<Move>& quiets_searched)
-{
-    Killers::insert(picked_move, ss->plies);
-    ButterflyHistory::update(quiets_searched, pos.side_to_move, picked_move.from(), picked_move.to(),
-                             depth);
-    PieceToHistory::update(pos, quiets_searched, pos.side_to_move, pos.piece_on[picked_move.from()], picked_move.to(),
-                           depth);
-    Continuation::update(pos, quiets_searched, picked_move, depth, ss);
-}
-
-namespace Corrections
+struct Corrections
 {
     static constexpr int16_t correction_grain = 256;
     static constexpr int16_t correction_scale = 256;
     static constexpr uint16_t correction_size = 16384;
 
-    inline std::array<std::array<int16_t, correction_size>, 2> pawn_corrections;
-    inline std::array<std::array<int16_t, correction_size>, 2> minor_piece_corrections;
-    inline std::array<std::array<int16_t, correction_size>, 2> major_piece_corrections;
+    std::array<std::array<int16_t, correction_size>, 2> pawn_corrections;
+    std::array<std::array<int16_t, correction_size>, 2> minor_piece_corrections;
+    std::array<std::array<int16_t, correction_size>, 2> major_piece_corrections;
 
-    inline uint16_t index_of(const uint64_t key)
+    static uint16_t index_of(const uint64_t key)
     {
         return key & (correction_size - 1);
     }
 
-    inline void clear()
-    {
-        std::memset(pawn_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
-        std::memset(minor_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
-        std::memset(major_piece_corrections.data(), 0, 2 * sizeof(int16_t) * correction_size);
-    }
-
-    inline void apply(int16_t& entry, const int bonus)
+    static void apply(int16_t& entry, const int bonus)
     {
         entry += bonus - entry * std::abs(bonus) / correction_limit();
     }
 
-    inline void update(const int delta, const Position& pos, const uint8_t depth)
+    void update(const int delta, const Position& pos, const uint8_t depth)
     {
         const auto minors = pos.boards[N] | pos.boards[n] | pos.boards[B] | pos.boards[b];
         const auto majors = pos.boards[Q] | pos.boards[q] | pos.boards[R] | pos.boards[r];
@@ -335,7 +281,7 @@ namespace Corrections
         apply(*major, bonus * major_correction_scale() / 1024);
     }
 
-    inline int correct(int static_eval, const Position& pos)
+    [[nodiscard]] int correct(int static_eval, const Position& pos) const
     {
         const auto minors = pos.boards[N] | pos.boards[n] | pos.boards[B] | pos.boards[b];
         const auto majors = pos.boards[Q] | pos.boards[q] | pos.boards[R] | pos.boards[r];
@@ -350,4 +296,30 @@ namespace Corrections
 
         return static_eval;
     }
-}
+};
+
+struct History
+{
+    Killers killers;
+    ButterflyHistory butterfly_history;
+    PieceToHistory piece_to_history;
+    Continuation continuation;
+    Capture capture;
+    Corrections corrections;
+
+    void update_quiet_histories(const Position& pos, const int depth, const Move picked_move, const SearchEntry* ss,
+                                   const std::forward_list<Move>& quiets_searched)
+    {
+        killers.insert(picked_move, ss->plies);
+        butterfly_history.update(quiets_searched, pos.side_to_move, picked_move.from(), picked_move.to(),
+                                 depth);
+        piece_to_history.update(pos, quiets_searched, pos.side_to_move, pos.piece_on[picked_move.from()], picked_move.to(),
+                               depth);
+        continuation.update(pos, quiets_searched, picked_move, depth, ss);
+    }
+
+    void clear()
+    {
+        memset(this, 0, sizeof(History));
+    }
+};

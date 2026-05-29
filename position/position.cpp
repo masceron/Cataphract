@@ -6,6 +6,7 @@
 #include "cuckoo.hpp"
 #include "movegen.hpp"
 #include "../search/history.hpp"
+#include "../search/thread.hpp"
 
 void Position::new_game()
 {
@@ -233,8 +234,8 @@ void Position::do_move(const Move move)
 {
     State st;
     make_move(move, st);
-    states.push_back(st);
-    state = &states.back();
+    ThreadPool::states.push_back(st);
+    state = &ThreadPool::states.back();
 }
 
 void Position::unmake_move(const Move& move)

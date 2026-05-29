@@ -4,9 +4,8 @@
 
 struct Options
 {
-    uintptr_t hash = 64;
-    int move_overhead = 50;
-    bool show_currmove = false;
+    static inline uintptr_t hash{64};
+    static inline int threads{1};
+    static inline int move_overhead{50};
+    static inline bool show_currmove{false};
 };
-
-inline Options options;

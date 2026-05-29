@@ -36,7 +36,7 @@ struct TimeManager
 
         if (moves_to_go <= 0) moves_to_go = default_moves_to_go();
 
-        const double safe_time_ms = std::max(1.0, static_cast<double>(time_left_ms - options.move_overhead));
+        const double safe_time_ms = std::max(1.0, static_cast<double>(time_left_ms - Options::move_overhead));
 
         const auto base_opt_time = safe_time_ms / moves_to_go + inc_ms * 0.75;
 
@@ -105,3 +105,5 @@ struct TimeManager
         return elapsed_ms >= std::min(max_time, opt_time * scale);
     }
 };
+
+inline TimeManager time_manager;

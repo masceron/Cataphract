@@ -13,13 +13,14 @@
 #include "position/bench.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
+#include "search/thread.hpp"
 #ifdef SPSA_TUNE
 #include "search/params.hpp"
 #endif
 
 namespace UCI
 {
-    static std::jthread search_thread;
+    static std::thread search_thread;
 
     inline void perft(const std::string_view depth)
     {
@@ -52,14 +53,24 @@ namespace UCI
             if (std::string_view((*it).begin(), (*it).end()) == "Hash")
                 TT::clear();
         }
+        else if (name == "Threads")
+        {
+            ++it;
+            ++it;
+            const std::string_view value((*it).begin(), (*it).end());
+            int thread = -1;
+            std::from_chars(value.data(), value.data() + value.size(), thread);
+            if (thread >= 1 && thread <= 1024) Options::threads = thread;
+            ThreadPool::resize();
+        }
         else if (name == "ShowCurrMove")
         {
             ++it;
             ++it;
             if (const std::string_view value((*it).begin(), (*it).end()); value == "true")
-                options.show_currmove = true;
+                Options::show_currmove = true;
             else if (value == "false")
-                options.show_currmove = false;
+                Options::show_currmove = false;
         }
         else if (name == "Move")
         {
@@ -71,7 +82,7 @@ namespace UCI
                 const std::string_view value((*it).begin(), (*it).end());
                 int overhead = -1;
                 std::from_chars(value.data(), value.data() + value.size(), overhead);
-                if (overhead >= 0 && overhead <= 5000) options.move_overhead = overhead;
+                if (overhead >= 0 && overhead <= 5000) Options::move_overhead = overhead;
             }
         }
 #ifdef SPSA_TUNE
@@ -124,7 +135,6 @@ namespace UCI
         int winc = 0;
         int binc = 0;
         int movestogo = 0;
-        uint32_t nodes = UINT32_MAX;
         bool infinite = false;
         bool perft_cmd = false;
         int perft_depth = 0;
@@ -142,11 +152,6 @@ namespace UCI
             {
                 ++it;
                 std::from_chars((*it).begin(), (*it).end(), movetime);
-            }
-            else if (token == "nodes")
-            {
-                ++it;
-                std::from_chars((*it).begin(), (*it).end(), nodes);
             }
             else if (token == "wtime")
             {
@@ -194,15 +199,15 @@ namespace UCI
         {
             if (infinite) depth = 127;
 
-            search_thread = std::jthread(start_search<false>,
+            search_thread = std::thread(start_search<false>,
                                          depth,
                                          movetime,
                                          wtime,
                                          btime,
                                          winc,
                                          binc,
-                                         movestogo,
-                                         nodes);
+                                         movestogo);
+
         }
     }
 
@@ -248,6 +253,7 @@ namespace UCI
                 std::string_view command = input_view.substr(0, input_view.find(' '));
 
                 if (command.empty() && !input.empty()) command = input_view;
+                if (search_thread.joinable()) search_thread.join();
 
                 if (command == "position")
                 {
@@ -271,7 +277,7 @@ namespace UCI
                     std::println("id author masceron\n");
                     std::println("option name Hash type spin default 64 min 1 max 2048");
                     std::println("option name Clear Hash type button");
-                    std::println("option name Threads type spin default 1 min 1 max 1");
+                    std::println("option name Threads type spin default 1 min 1 max 1024");
                     std::println("option name ShowCurrMove type check default false");
                     std::println("option name Move Overhead type spin default 50 min 0 max 5000");
 #ifdef SPSA_TUNE
@@ -282,12 +288,13 @@ namespace UCI
                 }
                 else if (command == "eval")
                 {
+                    auto& position = ThreadPool::threads[0].position;
                     std::println("NNUE evaluation: {} (white side)",
-                                 eval(position) * (!position.side_to_move ? 1 : -1));
+                                 eval(position, ThreadPool::get(0).accumulator_stack) * (!position.side_to_move ? 1 : -1));
                 }
                 else if (command == "d")
                 {
-                    position.print_board();
+                    ThreadPool::get(0).position.print_board();
                 }
                 else if (command == "setoption")
                 {
@@ -311,5 +318,7 @@ namespace UCI
         }
 
         TT::free_tt();
+        if (search_thread.joinable()) search_thread.join();
+        ThreadPool::shutdown();
     }
 }

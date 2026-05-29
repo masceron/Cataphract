@@ -6,6 +6,7 @@
 #include "zobrist.hpp"
 #include "position.hpp"
 #include "move.hpp"
+#include "../search/thread.hpp"
 
 inline void setup_state(State& st)
 {
@@ -22,7 +23,7 @@ inline void setup_state(State& st)
     st.check_blocker = 0;
 }
 
-inline int fen_parse(std::string_view fen)
+inline int fen_parse(Position& position, std::string_view fen)
 {
     State st;
     setup_state(st);
@@ -286,9 +287,9 @@ inline int fen_parse(std::string_view fen)
     st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
 
     position.new_game();
-    states.clear();
-    states.push_back(st);
-    temp.state = &states.back();
+    ThreadPool::states.clear();
+    ThreadPool::states.push_back(st);
+    temp.state = &ThreadPool::states.back();
 
     position = temp;
 

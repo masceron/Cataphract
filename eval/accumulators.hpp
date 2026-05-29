@@ -5,7 +5,7 @@
 
 #include "simd/simd.hpp"
 
-struct Accumulator_entry
+struct AccumulatorEntry
 {
     SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
     uint64_t bitboards[12];
@@ -77,12 +77,19 @@ struct Accumulator_entry
     }
 };
 
-struct Accumulator_stack
+struct FinnyEntry
 {
-    Accumulator_entry stack[130];
-    int size;
+    uint64_t bitboards[12];
+    SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
+};
 
-    Accumulator_stack() : stack{}, size(0)
+struct AccumulatorStack
+{
+    AccumulatorEntry stack[130];
+    int size;
+    FinnyEntry finny_table[INPUT_BUCKETS][INPUT_BUCKETS];
+
+    AccumulatorStack() : stack{}, size(0)
     {
     }
 
@@ -107,21 +114,11 @@ struct Accumulator_stack
         --size;
     }
 
-    Accumulator_entry* operator[](const int idx)
+    AccumulatorEntry* operator[](const int idx)
     {
         return &stack[idx];
     }
 };
-
-inline Accumulator_stack accumulator_stack;
-
-struct FinnyEntry
-{
-    uint64_t bitboards[12];
-    SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
-};
-
-inline FinnyEntry finny_table[INPUT_BUCKETS][INPUT_BUCKETS];
 
 inline void accumulators_set(const Network* __restrict network, const uint64_t* __restrict boards, int16_t* __restrict accumulators)
 {
@@ -181,10 +178,11 @@ void update_from_move(Network* __restrict network, int16_t* __restrict prev, int
     }
 }
 
-inline void accumulator_stack_update(Network* __restrict network)
+inline void accumulator_stack_update(Network* __restrict network, AccumulatorStack& accumulator_stack)
 {
     auto idx = accumulator_stack.size - 1;
     while (accumulator_stack[idx - 1]->is_dirty) idx--;
+    auto& finny_table = accumulator_stack.finny_table;
 
     for (; idx < accumulator_stack.size; idx++)
     {

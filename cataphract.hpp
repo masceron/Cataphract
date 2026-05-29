@@ -7,20 +7,15 @@
 #include "position/movegen.hpp"
 #include "position/position.hpp"
 #include "position/zobrist.hpp"
-#include "search/history.hpp"
 #include "search/params.hpp"
+#include "search/thread.hpp"
 
 namespace Cataphract
 {
     inline void new_game()
     {
         TT::clear();
-        ButterflyHistory::clear();
-        PieceToHistory::clear();
-        Killers::clear();
-        Capture::clear();
-        Corrections::clear();
-        Continuation::clear();
+        ThreadPool::new_game();
     }
 
     inline void start()
@@ -36,7 +31,7 @@ namespace Cataphract
         std::fflush(stdout);
     }
 
-    inline void process_move(const std::string_view move, MoveList& list)
+    inline void process_move(Position& position, const std::string_view move, MoveList& list)
     {
         if (move.length() == 4)
         {
@@ -96,14 +91,16 @@ namespace Cataphract
     inline void set_board(const std::string_view fen)
     {
         const auto moves_pos = fen.find("moves ");
+        auto& position = ThreadPool::get(0).position;
+        auto& accumulators = ThreadPool::get(0).accumulator_stack;
 
         if (fen.starts_with("startpos"))
         {
-            fen_parse("startpos");
+            fen_parse(position, "startpos");
         }
         else if (fen.starts_with("fen "))
         {
-            if (fen_parse(fen.substr(4, moves_pos == std::string::npos ? std::string::npos : moves_pos - 5)) == -1)
+            if (fen_parse(position, fen.substr(4, moves_pos == std::string::npos ? std::string::npos : moves_pos - 5)) == -1)
             {
                 return;
             }
@@ -114,13 +111,19 @@ namespace Cataphract
         {
             MoveList list;
             for (auto moves = fen.substr(moves_pos + 6, std::string::npos) | std::views::split(' ');
-                 auto move : moves)
+                auto move : moves)
             {
                 list.reset();
-                process_move(std::string_view{move}, list);
+                process_move(position, std::string_view{move}, list);
             }
         }
         TT::advance();
-        NNUE::refresh_accumulators(position);
+
+        ThreadPool::setup();
+
+        ThreadPool::start_workers(WorkerTask::Refresh);
+        NNUE::refresh_accumulators(position, accumulators);
+
+        ThreadPool::wait_for_workers();
     }
 }

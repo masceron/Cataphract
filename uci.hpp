@@ -229,7 +229,7 @@ namespace UCI
             input.erase(I, input.end());
 
             if (!input.empty() && input.front() == ' ') input.erase(0, 1);
-            if (!input.empty() && input.back() == ' ') input.pop_back();
+            if (!input.empty() && (input.back() == ' ' || input.back() == '\r')) input.pop_back();
 
             if (Timer::running)
             {

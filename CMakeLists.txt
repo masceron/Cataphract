@@ -65,10 +65,10 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
 
     elseif (CMAKE_BUILD_TYPE MATCHES "Release")
         target_compile_options(Cataphract PRIVATE
-                -Wall -Wextra -DNDEBUG -fno-exceptions
+                -Wall -Wextra -Wno-class-memaccess -DNDEBUG -fno-exceptions
                 -ffunction-sections -fdata-sections -fno-rtti
                 -O3 -flto=auto -fipa-pta -flto-partition=one
-                -Wall -Wextra -Wno-class-memaccess -march=native -mtune=native
+                -march=native -mtune=native
         )
         target_compile_definitions(Cataphract PRIVATE NDEBUG)
         target_link_options(Cataphract PRIVATE

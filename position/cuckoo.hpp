@@ -59,7 +59,7 @@ namespace Cuckoo
                 {
                     if (np_piece_attacks(sq0, sq1, piece))
                     {
-                        Move move(sq0, sq1, quiet_move);
+                        Move move(sq0, sq1, MoveFlag::quiet_move);
                         uint64_t key = Zobrist::piece_keys[piece][sq0] ^ Zobrist::piece_keys[piece][sq1] ^
                             Zobrist::side_key;
 

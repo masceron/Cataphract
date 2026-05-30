@@ -56,22 +56,21 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
     Entry* entry;
     int16_t tt_static_eval;
     uint8_t entry_depth;
-    uint8_t entry_age_type;
+    NodeType entry_type;
     Move tt_move = null_move;
     const bool is_pv = beta - alpha > 1;
 
-    std::tie(entry, entry_depth, entry_age_type, tt_move, tt_static_eval) = TT::probe(
+    std::tie(entry, entry_depth, entry_type, tt_move, tt_static_eval) = TT::probe(
         position.state->key, tt_hit, ss->plies, tt_score);
 
     int raw_static_eval;
-    const uint8_t entry_type = entry_age_type & 0b11;
     Move best_move = null_move;
 
     if (tt_hit)
     {
-        if (!is_pv && (entry_type == exact
-            || (entry_type == lower_bound && tt_score >= beta)
-            || (entry_type == upper_bound && tt_score <= alpha)))
+        if (!is_pv && (entry_type == NodeType::exact
+            || (entry_type == NodeType::lower_bound && tt_score >= beta)
+            || (entry_type == NodeType::upper_bound && tt_score <= alpha)))
             return tt_score;
 
         best_move = tt_move;
@@ -98,8 +97,8 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
             }
             stand_pat = thread.history.corrections.correct(raw_static_eval, position);
 
-            if (!((stand_pat > tt_score && entry_type == lower_bound) || (
-                stand_pat < tt_score && entry_type == upper_bound)))
+            if (!((stand_pat > tt_score && entry_type == NodeType::lower_bound) || (
+                stand_pat < tt_score && entry_type == NodeType::upper_bound)))
             {
                 stand_pat = tt_score;
             }
@@ -121,15 +120,15 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
     MovePicker move_picker(thread, not_in_check, best_move, ss);
     Move picked_move;
     State st;
-    NodeType type = upper_bound;
+    auto type = NodeType::upper_bound;
     std::forward_list<CaptureEntry> capture_searched;
     int move_searched = 0;
 
     while ((picked_move = move_picker.next_move().first))
     {
-        if (not_in_check && picked_move.flag() < knight_promotion)
+        if (not_in_check && picked_move.flag() < MoveFlag::knight_promotion)
         {
-            const int captured_val = picked_move.flag() == ep_capture
+            const int captured_val = picked_move.flag() == MoveFlag::ep_capture
                                          ? value_of(P)
                                          : value_of(position.piece_on[picked_move.to()]);
             if (stand_pat + captured_val + delta_margin() < alpha)
@@ -166,17 +165,17 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
                                                       captured,
                                                       picked_move.to(), 1);
                     }
-                    else if (picked_move.flag() == ep_capture)
+                    else if (picked_move.flag() == MoveFlag::ep_capture)
                     {
                         thread.history.capture.update(capture_searched, position.side_to_move, moving_piece, P,
                                                       picked_move.to(), 1);
                     }
 
-                    type = lower_bound;
+                    type = NodeType::lower_bound;
                     break;
                 }
                 alpha = score;
-                type = exact;
+                type = NodeType::exact;
             }
         }
 
@@ -184,7 +183,7 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
         {
             capture_searched.emplace_front(moving_piece, captured, picked_move.to());
         }
-        else if (picked_move.flag() == ep_capture)
+        else if (picked_move.flag() == MoveFlag::ep_capture)
         {
             capture_searched.emplace_front(moving_piece, P, picked_move.to());
         }
@@ -195,7 +194,7 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
         return -mate_value + ss->plies;
     }
 
-    TT::write(entry, position.state->key, best_move, 0, ss->plies, raw_static_eval, best_score, type);
+    TT::write(entry, position.state->key, best_move, 0, ss->plies, raw_static_eval, best_score, type, is_pv);
 
     return best_score;
 }
@@ -259,18 +258,16 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
     int16_t tt_static_eval;
 
-    uint8_t entry_age_type;
-    std::tie(entry, tt_depth, entry_age_type, tt_move, tt_static_eval) = TT::probe(
+    std::tie(entry, tt_depth, entry_type, tt_move, tt_static_eval) = TT::probe(
         tt_key, tt_hit, ss->plies, tt_score);
-    entry_type = static_cast<NodeType>(entry_age_type & 0b11);
 
     if (tt_hit)
     {
         if (tt_depth >= depth && !is_pv)
         {
-            if (entry_type == exact
-                || (entry_type == lower_bound && tt_score >= beta)
-                || (entry_type == upper_bound && tt_score <= alpha))
+            if (entry_type == NodeType::exact
+                || (entry_type == NodeType::lower_bound && tt_score >= beta)
+                || (entry_type == NodeType::upper_bound && tt_score <= alpha))
             {
                 if (tt_score >= beta && tt_move && position.is_quiet(tt_move))
                 {
@@ -302,8 +299,8 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
             ss->static_eval = thread.history.corrections.correct(raw_static_eval, position);
 
-            if (!((ss->static_eval > tt_score && entry_type == lower_bound) || (
-                ss->static_eval < tt_score && entry_type == upper_bound)))
+            if (!((ss->static_eval > tt_score && entry_type == NodeType::lower_bound) || (
+                ss->static_eval < tt_score && entry_type == NodeType::upper_bound)))
                 ss->static_eval = tt_score;
         }
         else
@@ -405,8 +402,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
                 if (prob_score >= prob_beta)
                 {
-                    TT::write(entry, tt_key, picked_move, prob_depth, ss->plies, raw_static_eval,
-                              prob_score, lower_bound);
+                    TT::write(entry, tt_key, picked_move, prob_depth, ss->plies, raw_static_eval, prob_score, NodeType::lower_bound, is_pv);
                     return prob_score;
                 }
             }
@@ -418,7 +414,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
     int move_searched = 0;
     int best_score = negative_infinity;
-    NodeType type = upper_bound;
+    NodeType type = NodeType::upper_bound;
     std::pair<Move, int> picked;
     MovePicker move_picker(thread, false, tt_move, ss);
 
@@ -464,7 +460,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
         if (tt_hit && !root_node && !ss->excluded && ss->plies < 2 * thread.root_depth && ss->double_extensions < 2 *
             thread.root_depth)
         {
-            if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != upper_bound &&
+            if (depth >= 8 && picked_move == tt_move && tt_depth >= depth - 3 && entry_type != NodeType::upper_bound &&
                 std::abs(tt_score) < mate_in_max_ply)
             {
                 const auto singular_beta = std::max(tt_score - singular_margin() * depth / 1024, -mate_in_max_ply);
@@ -585,17 +581,17 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
                                                           picked_move.to(),
                                                           depth);
                         }
-                        else if (picked_move.flag() == ep_capture)
+                        else if (picked_move.flag() == MoveFlag::ep_capture)
                         {
                             thread.history.capture.update(capture_searched, position.side_to_move, moving_piece, P,
                                                           picked_move.to(),
                                                           depth);
                         }
                     }
-                    type = lower_bound;
+                    type = NodeType::lower_bound;
                     break;
                 }
-                type = exact;
+                type = NodeType::exact;
                 alpha = score;
             }
         }
@@ -610,7 +606,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
             {
                 capture_searched.emplace_front(moving_piece, captured, picked_move.to());
             }
-            else if (picked_move.flag() == ep_capture)
+            else if (picked_move.flag() == MoveFlag::ep_capture)
             {
                 capture_searched.emplace_front(moving_piece, P, picked_move.to());
             }
@@ -627,16 +623,15 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
         return -mate_value + ss->plies;
     }
 
-    TT::write(entry, tt_key, depth_best_move, depth, ss->plies, raw_static_eval, best_score,
-              type);
+    TT::write(entry, tt_key, depth_best_move, depth, ss->plies, raw_static_eval, best_score, type, is_pv);
 
     if (!ss->excluded)
     {
-        if (not_in_check && ((depth_best_move.flag() != capture && depth_best_move.flag() < knight_promo_capture &&
-            depth_best_move.flag() != ep_capture) || !depth_best_move))
+        if (not_in_check && ((depth_best_move.flag() != MoveFlag::capture && depth_best_move.flag() < MoveFlag::knight_promo_capture &&
+            depth_best_move.flag() != MoveFlag::ep_capture) || !depth_best_move))
         {
             if (const auto delta = best_score - ss->static_eval;
-                !(type == lower_bound && delta < 0) && !(type == upper_bound && delta > 0))
+                !(type == NodeType::lower_bound && delta < 0) && !(type == NodeType::upper_bound && delta > 0))
             {
                 thread.history.corrections.update(delta, position, depth);
             }
@@ -753,7 +748,7 @@ void thread_search(const int thread_idx, const int search_depth)
             if (!best_move)
             {
                 MoveList list;
-                legals<all>(thread.position, list);
+                legals<MoveType::all>(thread.position, list);
                 best_move = list[0];
             }
             std::println("bestmove {}", best_move.get_move_string());

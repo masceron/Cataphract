@@ -55,13 +55,13 @@ void Position::make_move(const Move move, State& st)
 
     const uint8_t from = move.from();
     const uint8_t to = move.to();
-    const uint8_t flag = move.flag();
+    const auto flag = move.flag();
     const Pieces moving_piece = piece_on[from];
-    const Pieces captured_piece = flag == ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
+    const Pieces captured_piece = flag == MoveFlag::ep_capture ? (side_to_move == white ? p : P) : piece_on[to];
 
     if (captured_piece != nil)
     {
-        if ((captured_piece == P || captured_piece == p) && flag == ep_capture)
+        if ((captured_piece == P || captured_piece == p) && flag == MoveFlag::ep_capture)
         {
             const uint8_t captured_square = to + (side_to_move == white ? 8 : -8);
             remove_piece(captured_square);
@@ -115,13 +115,13 @@ void Position::make_move(const Move move, State& st)
         Pieces rook;
         switch (flag)
         {
-        case king_castle:
+        case MoveFlag::king_castle:
             move_piece(to + 1, to - 1);
             rook = side_to_move == white ? R : r;
 
             st.piece_key ^= Zobrist::piece_keys[rook][to + 1] ^ Zobrist::piece_keys[rook][to - 1];
             break;
-        case queen_castle:
+        case MoveFlag::queen_castle:
             move_piece(to - 2, to + 1);
             rook = side_to_move == white ? R : r;
 
@@ -141,7 +141,7 @@ void Position::make_move(const Move move, State& st)
 
     if (moving_piece == P || moving_piece == p)
     {
-        if (flag >= knight_promotion)
+        if (flag >= MoveFlag::knight_promotion)
         {
             const Pieces promoted_to = move.promoted_to(side_to_move);
             remove_piece(to);
@@ -149,7 +149,7 @@ void Position::make_move(const Move move, State& st)
 
             st.piece_key ^= Zobrist::piece_keys[promoted_to][to] ^ Zobrist::piece_keys[moving_piece][to];
         }
-        else if (flag == double_push &&
+        else if (flag == MoveFlag::double_push &&
             pawn_attack_tables[side_to_move][to + (side_to_move == white ? 8 : -8)] & boards[
                 side_to_move == white ? p : P])
         {
@@ -243,18 +243,18 @@ void Position::unmake_move(const Move& move)
     side_to_move = !side_to_move;
     const uint8_t from = move.from();
     const uint8_t to = move.to();
-    const uint8_t flag = move.flag();
+    const auto flag = move.flag();
 
-    if (flag >= knight_promotion)
+    if (flag >= MoveFlag::knight_promotion)
     {
         remove_piece(to);
         put_piece(side_to_move == white ? P : p, to);
     }
-    else if (flag == king_castle)
+    else if (flag == MoveFlag::king_castle)
     {
         move_piece(to - 1, to + 1);
     }
-    else if (flag == queen_castle)
+    else if (flag == MoveFlag::queen_castle)
     {
         move_piece(to + 1, to - 2);
     }
@@ -263,9 +263,9 @@ void Position::unmake_move(const Move& move)
     if (state->captured_piece != nil)
     {
         uint8_t captured_square = to;
-        if (flag == ep_capture)
+        if (flag == MoveFlag::ep_capture)
         {
-            captured_square -= Delta<Up>(side_to_move);
+            captured_square -= Delta<Direction::Up>(side_to_move);
         }
 
         put_piece(state->captured_piece, captured_square);
@@ -305,22 +305,22 @@ void Position::unmake_null_move()
 
 bool Position::is_pseudo_legal(const Move move) const
 {
-    const uint16_t flag = move.flag();
+    const auto flag = move.flag();
     const auto from = static_cast<int8_t>(move.from());
     const auto to = static_cast<int8_t>(move.to());
     const Pieces moved_piece = piece_on[from];
 
     if (moved_piece == nil || color_of(moved_piece) != side_to_move) return false;
-    if ((flag == capture && piece_on[to] == nil) || (flag != capture && piece_on[to] != nil)) return false;
+    if ((flag == MoveFlag::capture && piece_on[to] == nil) || (flag != MoveFlag::capture && piece_on[to] != nil)) return false;
     if (moved_piece != P && moved_piece != p)
     {
         if (moved_piece != K && moved_piece != k)
         {
-            if (!(flag == quiet_move || flag == capture)) return false;
+            if (!(flag == MoveFlag::quiet_move || flag == MoveFlag::capture)) return false;
         }
-        else if (!(flag == quiet_move || flag == capture || flag == king_castle || flag == queen_castle)) return false;
+        else if (!(flag == MoveFlag::quiet_move || flag == MoveFlag::capture || flag == MoveFlag::king_castle || flag == MoveFlag::queen_castle)) return false;
     }
-    if (flag == 6 || flag == 7) return false;
+    if (std::to_underlying(flag) == 6 || std::to_underlying(flag) == 7) return false;
 
     const uint64_t to_board = 1ull << to;
     if (occupations[side_to_move] & to_board) return false;
@@ -337,31 +337,31 @@ bool Position::is_pseudo_legal(const Move move) const
     static constexpr uint64_t rank18 = 0xFF000000000000FFull;
     if (moved_piece == P || moved_piece == p)
     {
-        if (const bool is_single_push = (from + Delta<Up>(side_to_move) == to) && piece_on[to] == nil; is_single_push)
+        if (const bool is_single_push = (from + Delta<Direction::Up>(side_to_move) == to) && piece_on[to] == nil; is_single_push)
         {
             const bool is_promo = rank18 & to_board;
-            if (is_promo && (flag < knight_promotion || flag > queen_promotion)) return false;
-            if (!is_promo && flag != quiet_move) return false;
+            if (is_promo && (flag < MoveFlag::knight_promotion || flag > MoveFlag::queen_promotion)) return false;
+            if (!is_promo && flag != MoveFlag::quiet_move) return false;
         }
-        else if (const bool is_double_push = (from + 2 * Delta<Up>(side_to_move) == to)
+        else if (const bool is_double_push = (from + 2 * Delta<Direction::Up>(side_to_move) == to)
             && piece_on[to] == nil
-            && piece_on[to - Delta<Up>(side_to_move)] == nil
+            && piece_on[to - Delta<Direction::Up>(side_to_move)] == nil
             && (side_to_move == white ? from / 8 == 6 : from / 8 == 1); is_double_push)
         {
-            if (flag != double_push) return false;
+            if (flag != MoveFlag::double_push) return false;
         }
         else if (const bool is_normal_capture = pawn_attack_tables[side_to_move][from] & occupations[!side_to_move] &
             to_board; is_normal_capture)
         {
             const bool is_promo = rank18 & to_board;
-            if (is_promo && (flag < knight_promo_capture || flag > queen_promo_capture)) return false;
-            if (!is_promo && flag != capture) return false;
+            if (is_promo && (flag < MoveFlag::knight_promo_capture || flag > MoveFlag::queen_promo_capture)) return false;
+            if (!is_promo && flag != MoveFlag::capture) return false;
         }
-        else if (const bool is_ep = flag == ep_capture
+        else if (const bool is_ep = flag == MoveFlag::ep_capture
             && to == state->en_passant_square
             && (pawn_attack_tables[side_to_move][from] & to_board); is_ep)
         {
-            if (flag != ep_capture) return false;
+            if (flag != MoveFlag::ep_capture) return false;
         }
         else
         {
@@ -388,7 +388,7 @@ bool Position::is_pseudo_legal(const Move move) const
     }
     else if (moved_piece == K || moved_piece == k)
     {
-        if (flag == king_castle || flag == queen_castle)
+        if (flag == MoveFlag::king_castle || flag == MoveFlag::queen_castle)
         {
             if (state->checker) return false;
 
@@ -396,7 +396,7 @@ bool Position::is_pseudo_legal(const Move move) const
             const uint64_t queen_path = side_to_move == white ? 0xE00000000000000ull : 0xEull;
             const uint64_t queen_check_path = side_to_move == white ? 0xC00000000000000ull : 0xCull;
 
-            if (flag == king_castle) {
+            if (flag == MoveFlag::king_castle) {
                 if (to != from + 2) return false;
                 if (!(state->castling_rights & (side_to_move == white ? white_king : black_king))) return false;
                 if (occupations[2] & king_path) return false;
@@ -422,9 +422,9 @@ bool Position::is_pseudo_legal(const Move move) const
             {
                 return false;
             }
-            if (flag == ep_capture)
+            if (flag == MoveFlag::ep_capture)
             {
-                const int ep_capture_sq = to + Delta<Up>(side_to_move);
+                const int ep_capture_sq = to + Delta<Direction::Up>(side_to_move);
                 return state->check_blocker & (1ull << ep_capture_sq) || (state->check_blocker & to_board);
             }
 
@@ -438,12 +438,12 @@ bool Position::is_pseudo_legal(const Move move) const
 bool Position::is_quiet(const Move move) const
 {
     const auto flag = move.flag();
-    return piece_on[move.to()] == nil && flag < knight_promotion && flag != ep_capture;
+    return piece_on[move.to()] == nil && flag < MoveFlag::knight_promotion && flag != MoveFlag::ep_capture;
 }
 
 bool Position::is_legal(const Move move) const
 {
-    if (move.flag() == ep_capture)
+    if (move.flag() == MoveFlag::ep_capture)
     {
         const bool us = side_to_move;
         const auto to = move.to();

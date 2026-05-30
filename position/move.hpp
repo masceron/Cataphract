@@ -4,7 +4,7 @@
 
 #include "../board/bitboard.hpp"
 
-enum flag: uint16_t
+enum class MoveFlag: uint16_t
 {
     quiet_move,
     double_push,
@@ -80,8 +80,8 @@ struct Move
 {
     uint16_t move;
 
-    explicit Move(const uint16_t _from, const uint16_t _to, const uint16_t _flag) : move(
-        _from | (_to << 6) | (_flag << 12))
+    explicit Move(const uint16_t _from, const uint16_t _to, const MoveFlag _flag) : move(
+        _from | (_to << 6) | (std::to_underlying(_flag) << 12))
     {
     }
 
@@ -91,9 +91,9 @@ struct Move
 
     Move() = default;
 
-    [[nodiscard]] uint16_t flag() const
+    [[nodiscard]] MoveFlag flag() const
     {
-        return move >> 12;
+        return static_cast<MoveFlag>(move >> 12);
     }
 
     [[nodiscard]] uint16_t from() const
@@ -109,7 +109,7 @@ struct Move
     [[nodiscard]] bool is_quiet() const
     {
         const auto _flag = flag();
-        return !(_flag == capture || _flag == ep_capture || _flag == queen_promotion || _flag == queen_promo_capture);
+        return !(_flag == MoveFlag::capture || _flag == MoveFlag::ep_capture || _flag == MoveFlag::queen_promotion || _flag == MoveFlag::queen_promo_capture);
     }
 
     [[nodiscard]] explicit operator bool() const
@@ -119,8 +119,8 @@ struct Move
 
     [[nodiscard]] Pieces promoted_to(const bool side = white) const
     {
-        if (side == white) return static_cast<Pieces>((flag() & 0b11) + 1);
-        return static_cast<Pieces>(6 + ((flag() & 0b11) + 1));
+        if (side == white) return static_cast<Pieces>((std::to_underlying(flag()) & 0b11) + 1);
+        return static_cast<Pieces>(6 + ((std::to_underlying(flag()) & 0b11) + 1));
     }
 
     bool operator==(const Move _move) const { return _move.move == this->move; }
@@ -137,9 +137,9 @@ struct Move
 
         static auto promoted = "nbrqnbrq";
 
-        if (flag() >= knight_promotion)
+        if (flag() >= MoveFlag::knight_promotion)
         {
-            buffer[4] = promoted[flag() - 8];
+            buffer[4] = promoted[std::to_underlying(flag()) - 8];
 
             return {buffer, 5};
         }

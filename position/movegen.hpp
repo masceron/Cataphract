@@ -26,7 +26,7 @@ struct MoveList
     }
 };
 
-enum MoveType: uint8_t
+enum class MoveType
 {
     noisy, quiet, all
 };
@@ -50,10 +50,10 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
     static constexpr int8_t upleft_shift = us == white ? -9 : 9;
     static constexpr int8_t upright_shift = us == white ? -7 : 7;
 
-    if constexpr (type != quiet)
+    if constexpr (type != MoveType::quiet)
     {
-        uint64_t left_capture = Shift<Upleft, us>(board & ~last_line) & cr_pos.occupations[enemy];
-        uint64_t right_capture = Shift<Upright, us>(board & ~last_line) & cr_pos.occupations[enemy];
+        uint64_t left_capture = Shift<Direction::Upleft, us>(board & ~last_line) & cr_pos.occupations[enemy];
+        uint64_t right_capture = Shift<Direction::Upright, us>(board & ~last_line) & cr_pos.occupations[enemy];
 
         if constexpr (evasive)
         {
@@ -66,7 +66,7 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
             const int to = pop_lsb(left_capture);
             const int from = to - upleft_shift;
             if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
-            *pos++ = Move(from, to, capture);
+            *pos++ = Move(from, to, MoveFlag::capture);
         }
 
         while (right_capture)
@@ -74,11 +74,11 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
             const int to = pop_lsb(right_capture);
             const int from = to - upright_shift;
             if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
-            *pos++ = Move(from, to, capture);
+            *pos++ = Move(from, to, MoveFlag::capture);
         }
     }
 
-    if constexpr (type != quiet)
+    if constexpr (type != MoveType::quiet)
     {
         if (cr_pos.state->en_passant_square != -1)
         {
@@ -87,15 +87,15 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
                 uint64_t eligible_pawns = pawn_attack_tables[enemy][ep_square] & board;
                 while (eligible_pawns)
                 {
-                    *pos++ = Move(pop_lsb(eligible_pawns), ep_square, ep_capture);
+                    *pos++ = Move(pop_lsb(eligible_pawns), ep_square, MoveFlag::ep_capture);
                 }
             }
-            else if (!(check_blocker & Shift<Up, us>(1ull << ep_square)))
+            else if (!(check_blocker & Shift<Direction::Up, us>(1ull << ep_square)))
             {
                 uint64_t eligible_pawns = pawn_attack_tables[enemy][ep_square] & board;
                 while (eligible_pawns)
                 {
-                    *pos++ = Move(pop_lsb(eligible_pawns), ep_square, ep_capture);
+                    *pos++ = Move(pop_lsb(eligible_pawns), ep_square, MoveFlag::ep_capture);
                 }
             }
         }
@@ -104,10 +104,10 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
     static constexpr int upshift = us == white ? -8 : 8;
     if (const uint64_t promoting_pawns = board & last_line)
     {
-        if constexpr (type != quiet)
+        if constexpr (type != MoveType::quiet)
         {
-            uint64_t left_promotions = Shift<Upleft, us>(promoting_pawns) & cr_pos.occupations[enemy];
-            uint64_t right_promotions = Shift<Upright, us>(promoting_pawns) & cr_pos.occupations[enemy];
+            uint64_t left_promotions = Shift<Direction::Upleft, us>(promoting_pawns) & cr_pos.occupations[enemy];
+            uint64_t right_promotions = Shift<Direction::Upright, us>(promoting_pawns) & cr_pos.occupations[enemy];
 
             if constexpr (evasive)
             {
@@ -121,10 +121,10 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
                 const int from = to - upleft_shift;
                 if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
 
-                *pos++ = Move(from, to, queen_promo_capture);
-                *pos++ = Move(from, to, rook_promo_capture);
-                *pos++ = Move(from, to, bishop_promo_capture);
-                *pos++ = Move(from, to, knight_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::queen_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::rook_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::bishop_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::knight_promo_capture);
             }
 
             while (right_promotions)
@@ -133,14 +133,14 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
                 const int from = to - upright_shift;
                 if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
 
-                *pos++ = Move(from, to, queen_promo_capture);
-                *pos++ = Move(from, to, rook_promo_capture);
-                *pos++ = Move(from, to, bishop_promo_capture);
-                *pos++ = Move(from, to, knight_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::queen_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::rook_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::bishop_promo_capture);
+                *pos++ = Move(from, to, MoveFlag::knight_promo_capture);
             }
         }
 
-        uint64_t push_promotions = Shift<Up, us>(promoting_pawns) & ~cr_pos.occupations[2];
+        uint64_t push_promotions = Shift<Direction::Up, us>(promoting_pawns) & ~cr_pos.occupations[2];
         if constexpr (evasive) push_promotions &= check_blocker;
 
         while (push_promotions)
@@ -150,21 +150,21 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
             //A pinned pawn can never quietly promote.
             if (pinned & (1ull << from)) continue;
 
-            *pos++ = Move(from, to, queen_promotion);
-            if constexpr (type != noisy)
+            *pos++ = Move(from, to, MoveFlag::queen_promotion);
+            if constexpr (type != MoveType::noisy)
             {
-                *pos++ = Move(from, to, rook_promotion);
-                *pos++ = Move(from, to, bishop_promotion);
-                *pos++ = Move(from, to, knight_promotion);
+                *pos++ = Move(from, to, MoveFlag::rook_promotion);
+                *pos++ = Move(from, to, MoveFlag::bishop_promotion);
+                *pos++ = Move(from, to, MoveFlag::knight_promotion);
             }
         }
     }
 
-    if constexpr (type != noisy)
+    if constexpr (type != MoveType::noisy)
     {
         const uint64_t normal_pawns = board & ~last_line;
-        uint64_t single_pawn_push = Shift<Up, us>(normal_pawns) & ~cr_pos.occupations[2];
-        uint64_t double_pawn_push = Shift<Up, us>(single_pawn_push) & line_3 & ~cr_pos.occupations[2];
+        uint64_t single_pawn_push = Shift<Direction::Up, us>(normal_pawns) & ~cr_pos.occupations[2];
+        uint64_t double_pawn_push = Shift<Direction::Up, us>(single_pawn_push) & line_3 & ~cr_pos.occupations[2];
 
         if constexpr (evasive)
         {
@@ -176,14 +176,14 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
             const int to = pop_lsb(double_pawn_push);
             const int from = to - upshift - upshift;
             if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
-            *pos++ = Move(from, to, double_push);
+            *pos++ = Move(from, to, MoveFlag::double_push);
         }
         while (single_pawn_push)
         {
             const int to = pop_lsb(single_pawn_push);
             const int from = to - upshift;
             if ((pinned & (1ull << from)) && !(lines_intersect[king_sq][from] & (1ull << to))) continue;
-            *pos++ = Move(from, to, quiet_move);
+            *pos++ = Move(from, to, MoveFlag::quiet_move);
         }
     }
 }
@@ -241,19 +241,19 @@ void general_move_generator(const Position& cr_pos, Move*& pos)
 
         uint64_t attacks = movable & eocc;
 
-        if constexpr (type != noisy)
+        if constexpr (type != MoveType::noisy)
         {
             movable = movable & ~attacks;
             while (movable)
             {
-                *pos++ = Move(from, pop_lsb(movable), quiet_move);
+                *pos++ = Move(from, pop_lsb(movable), MoveFlag::quiet_move);
             }
         }
 
-        if constexpr (type != quiet)
+        if constexpr (type != MoveType::quiet)
             while (attacks)
             {
-                *pos++ = Move(from, pop_lsb(attacks), capture);
+                *pos++ = Move(from, pop_lsb(attacks), MoveFlag::capture);
             }
     }
 }
@@ -270,12 +270,12 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
 
     uint64_t attacks = movable & eocc;
 
-    if constexpr (type != noisy)
+    if constexpr (type != MoveType::noisy)
     {
         movable = movable & ~attacks;
         while (movable)
         {
-            *pos++ = Move(king, pop_lsb(movable), quiet_move);
+            *pos++ = Move(king, pop_lsb(movable), MoveFlag::quiet_move);
         }
 
         const uint8_t castling_rights = cr_pos.state->castling_rights;
@@ -294,14 +294,14 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
                     {
                         if (!(king_path & aocc) && !(king_path & enemy_threats))
                         {
-                            *pos++ = Move(king, king + 2, king_castle);
+                            *pos++ = Move(king, king + 2, MoveFlag::king_castle);
                         }
                     }
                     if (castling_rights & 0b0010)
                     {
                         if (!(queen_path & aocc) && !(queen_check_path & enemy_threats))
                         {
-                            *pos++ = Move(king, king - 2, queen_castle);
+                            *pos++ = Move(king, king - 2, MoveFlag::queen_castle);
                         }
                     }
                 }
@@ -311,14 +311,14 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
                     {
                         if (!(king_path & aocc) && !(king_path & enemy_threats))
                         {
-                            *pos++ = Move(king, king + 2, king_castle);
+                            *pos++ = Move(king, king + 2, MoveFlag::king_castle);
                         }
                     }
                     if (castling_rights & 0b1000)
                     {
                         if (!(queen_path & aocc) && !(queen_check_path & enemy_threats))
                         {
-                            *pos++ = Move(king, king - 2, queen_castle);
+                            *pos++ = Move(king, king - 2, MoveFlag::queen_castle);
                         }
                     }
                 }
@@ -326,11 +326,11 @@ void king_move_generator(const Position& cr_pos, Move*& pos, const int king)
         }
     }
 
-    if constexpr (type != quiet)
+    if constexpr (type != MoveType::quiet)
     {
         while (attacks)
         {
-            *pos++ = Move(king, pop_lsb(attacks), capture);
+            *pos++ = Move(king, pop_lsb(attacks), MoveFlag::capture);
         }
     }
 }

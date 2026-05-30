@@ -3,6 +3,7 @@
 #include <vector>
 #include <condition_variable>
 #include <thread>
+#include <list>
 
 #include "../position/position.hpp"
 #include "history.hpp"
@@ -22,9 +23,13 @@ struct SearchThread
     State root_state{};
     AccumulatorStack accumulator_stack;
     std::atomic<uint64_t> node_searched{0};
+    std::list<Move> principal_variation{};
+    int score{negative_infinity};
 
     int seldepth{};
     int root_depth{};
+    int max_depth{};
+    int id{};
 
     void search_stack_init()
     {
@@ -68,6 +73,7 @@ struct ThreadPool
         }
 
         threads.resize(Options::threads);
+        for (int i = 0; i < Options::threads; i++) threads[i].id = i;
 
         setup();
 
@@ -173,6 +179,9 @@ struct ThreadPool
         {
             thread.node_searched = 0;
             thread.seldepth = 0;
+            thread.principal_variation.clear();
+            thread.score = negative_infinity;
+            thread.max_depth = 0;
         }
     }
 

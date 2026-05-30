@@ -4,12 +4,14 @@
 #include <chrono>
 #include <print>
 
-inline size_t perft(Position& position, const int depth)
+inline size_t perft(const int depth)
 {
     if (depth == 0)
     {
         return 1;
     }
+
+    static Position& position = ThreadPool::get(0).position;
 
     MoveList moves;
     legals<MoveType::all>(position, moves);
@@ -25,7 +27,7 @@ inline size_t perft(Position& position, const int depth)
     for (int i = 0; i < n; i++)
     {
         position.make_move(moves[i], st);
-        nodes += perft(position, depth - 1);
+        nodes += perft(depth - 1);
         position.unmake_move(moves[i]);
     }
 
@@ -47,7 +49,7 @@ inline void divide(const int depth)
     for (int i = 0; i < n; i++)
     {
         position.make_move(moves[i], st);
-        const size_t num = perft(position, depth - 1);
+        const size_t num = perft(depth - 1);
         std::println("{}: {}", moves[i].get_move_string(), num);
         std::fflush(stdout);
         total += num;

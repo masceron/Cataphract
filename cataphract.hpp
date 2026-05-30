@@ -14,8 +14,10 @@ namespace Cataphract
 {
     inline void new_game()
     {
-        TT::clear();
-        ThreadPool::new_game();
+        TT::current_generation = 8;
+        ThreadPool::start_workers(WorkerTask::NewGame);
+        ThreadPool::get(0).new_game();
+        ThreadPool::wait_for_workers();
     }
 
     inline void start()

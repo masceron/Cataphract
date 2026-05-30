@@ -20,8 +20,6 @@
 #include "../eval/eval.hpp"
 #include "../eval/transposition.hpp"
 
-inline static constexpr int max_ply = 127;
-
 inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
 {
     ++thread.node_searched;
@@ -36,7 +34,7 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
     auto& accumulator_stack = thread.accumulator_stack;
 
     const bool not_in_check = !position.state->checker;
-    if (ss->plies > max_ply)
+    if (ss->plies > MAX_PLY)
     {
         return not_in_check ? eval(position, thread.accumulator_stack) : 0;
     }
@@ -217,7 +215,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
     const bool not_in_check = !position.state->checker;
 
-    if (ss->plies > max_ply)
+    if (ss->plies > MAX_PLY)
     {
         return not_in_check ? eval(position, accumulator_stack) : 0;
     }
@@ -643,7 +641,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
     return best_score;
 }
 
-void print_info(const SearchThread& thread)
+inline void print_info(const SearchThread& thread)
 {
     const auto elapsed = Timer::elapsed();
     std::print("info depth {} seldepth {} score ", thread.root_depth, thread.seldepth);
@@ -736,8 +734,6 @@ void thread_search(const int thread_idx, const int search_depth)
             best_move = principal_variation.front();
         }
 
-        thread.max_depth = std::max(thread.max_depth, thread.root_depth);
-
         if (thread_idx == 0)
         {
             time_manager.update(best_move, thread.score);
@@ -752,7 +748,7 @@ void thread_search(const int thread_idx, const int search_depth)
     }
 }
 
-SearchThread& thread_vote()
+inline SearchThread& thread_vote()
 {
     if (Options::threads == 0) return ThreadPool::get(0);
 
@@ -836,14 +832,14 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
     time_manager = {};
     ThreadPool::prepare();
 
-    int search_depth = 127;
+    int search_depth = MAX_PLY;
 
     const auto& position = ThreadPool::get(0).position;
     if (move_time > 0)
     {
         time_manager.init_move_time(move_time);
     }
-    else if (depth_param > 0 && depth_param <= 127)
+    else if (depth_param > 0 && depth_param <= MAX_PLY)
     {
         time_manager.init_none();
         search_depth = depth_param;

@@ -7,7 +7,9 @@
 #include <cmath>
 #include <cstdint>
 
-inline std::array<std::array<int, 63>, 127> reductions;
+#include "../options.hpp"
+
+inline std::array<std::array<int, 63>, MAX_PLY> reductions;
 inline std::array<std::array<int, 16>, 2> lmp;
 
 void reduction_cal();

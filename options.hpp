@@ -2,6 +2,8 @@
 
 #include <cstdint>
 
+#define MAX_PLY 127
+
 struct Options
 {
     static inline uintptr_t hash{64};

@@ -51,7 +51,9 @@ namespace UCI
         {
             ++it;
             if (std::string_view((*it).begin(), (*it).end()) == "Hash")
-                TT::clear();
+            {
+                TT::clear(TT::table, TT::table_size);
+            }
         }
         else if (name == "Threads")
         {
@@ -197,7 +199,7 @@ namespace UCI
         }
         else
         {
-            if (infinite) depth = 127;
+            if (infinite) depth = MAX_PLY;
 
             search_thread = std::thread(start_search<false>,
                                          depth,

@@ -13,7 +13,7 @@ enum Values: int
     infinity = 32000,
     negative_infinity = -32000,
     mate_value = 31999,
-    mate_in_max_ply = mate_value - 128,
+    mate_in_max_ply = mate_value - MAX_PLY,
     mated_in_max_ply = -mate_in_max_ply,
     score_none = -32500
 };
@@ -46,10 +46,9 @@ namespace TT
     inline static uint8_t current_generation = 4;
     inline static Entry* table = nullptr;
 
-    inline void clear()
+    inline void clear(Entry* start, const size_t length)
     {
-        current_generation = 8;
-        std::memset(&table[0], 0, table_size * sizeof(Entry));
+        std::memset(start, 0, length * sizeof(Entry));
     }
 
     inline void free_tt()
@@ -80,7 +79,7 @@ namespace TT
         }
         free_tt();
         table = new_table;
-        clear();
+        clear(table, table_size);
     }
 
     inline void resize(const uint32_t new_size_in_mb)

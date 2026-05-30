@@ -13,7 +13,7 @@
 template <bool silent>
 void thread_search(int thread_idx, int search_depth);
 
-enum class WorkerTask { None, Search, Refresh };
+enum class WorkerTask { None, Search, Refresh, NewGame };
 
 struct SearchThread
 {
@@ -43,6 +43,21 @@ struct SearchThread
     {
         history.clear();
     }
+
+    void new_game()
+    {
+        history.clear();
+        clear_tt();
+    }
+
+    void clear_tt() const
+    {
+        const auto length = TT::table_size / Options::threads;
+        const auto start = length * id;
+        const auto clear_len = id == Options::threads - 1 ? TT::table_size - start : length;
+
+        TT::clear(&TT::table[start], clear_len);
+    }
 };
 
 struct ThreadPool
@@ -58,9 +73,9 @@ struct ThreadPool
     static inline std::atomic<bool> exit_flag{false};
     static inline std::atomic<int> active_workers{0};
 
-    static inline WorkerTask current_task{WorkerTask::None};
+    static inline auto current_task{WorkerTask::None};
     static inline uint32_t work_generation{0};
-    static inline int current_search_depth{127};
+    static inline int current_search_depth{MAX_PLY};
 
     static void resize()
     {
@@ -134,6 +149,10 @@ struct ThreadPool
             {
                 thread_search<true>(thread_idx, current_search_depth);
             }
+            else if (task == WorkerTask::NewGame)
+            {
+                thread.new_game();
+            }
 
             {
                 std::unique_lock tmp_lock(mtx);
@@ -147,14 +166,6 @@ struct ThreadPool
     static SearchThread& get(const size_t index)
     {
         return threads[index];
-    }
-
-    static void new_game()
-    {
-        for (auto& thread : threads)
-        {
-            thread.history.clear();
-        }
     }
 
     static void setup()
@@ -181,7 +192,6 @@ struct ThreadPool
             thread.seldepth = 0;
             thread.principal_variation.clear();
             thread.score = negative_infinity;
-            thread.max_depth = 0;
         }
     }
 

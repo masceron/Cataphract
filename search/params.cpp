@@ -5,7 +5,7 @@
 
 void reduction_cal()
 {
-    for (int depth = 0; depth < 127; depth++)
+    for (int depth = 0; depth < MAX_PLY; depth++)
     {
         for (int numMoves = 0; numMoves < 63; numMoves++)
         {

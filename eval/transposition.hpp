@@ -18,9 +18,9 @@ enum Values: int
     score_none = -32500
 };
 
-enum NodeType: uint8_t
+enum class NodeType: uint8_t
 {
-    exact, lower_bound, upper_bound
+    none, exact, lower_bound, upper_bound
 };
 
 #pragma pack(push, 1)
@@ -31,7 +31,12 @@ struct Entry
     int16_t static_eval;
     Move best_move;
     uint8_t depth;
-    uint8_t age_type;
+    uint8_t age_pv_type;
+
+    [[nodiscard]] bool is_pv() const
+    {
+        return ((age_pv_type >> 2) & 1) != 0;
+    }
 };
 #pragma pack(pop)
 
@@ -43,7 +48,7 @@ namespace TT
 
     inline void clear()
     {
-        current_generation = 4;
+        current_generation = 8;
         std::memset(&table[0], 0, table_size * sizeof(Entry));
     }
 
@@ -90,7 +95,7 @@ namespace TT
 
     inline void advance()
     {
-        current_generation += 4;
+        current_generation += 8;
     }
 
     inline uint64_t index_of(const uint64_t& key)
@@ -99,7 +104,7 @@ namespace TT
     }
 
     __attribute__((no_sanitize_thread))
-    inline std::tuple<Entry*, int, uint8_t, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply,
+    inline std::tuple<Entry*, int, NodeType, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply,
                                                              int& score)
     {
         Entry* entry = &table[index_of(key)];
@@ -112,12 +117,12 @@ namespace TT
             else if (score > mate_in_max_ply)
                 score -= ply;
         }
-        return {entry, entry->depth, entry->age_type, entry->best_move, entry->static_eval};
+        return {entry, entry->depth, static_cast<NodeType>(entry->age_pv_type & 0b11), entry->best_move, entry->static_eval};
     }
 
     __attribute__((no_sanitize_thread))
     inline void write(Entry* entry, const uint64_t key, const Move best_move, const int depth, const uint8_t ply,
-                      const int static_eval, int score, const NodeType type)
+                      const int static_eval, int score, const NodeType type, const bool pv)
     {
         if (score < mated_in_max_ply)
         {
@@ -128,10 +133,10 @@ namespace TT
             score += ply;
         }
 
-        if (!(type == exact
-            || (entry->age_type & 252) != current_generation
+        if (!(type == NodeType::exact
+            || (entry->age_pv_type & 252) != current_generation
             || key != entry->key
-            || depth + 4 >= entry->depth - 1))
+            || depth + 4 * entry->is_pv() * 2 >= entry->depth - 1))
             return;
 
         if (best_move || entry->key != key)
@@ -143,7 +148,7 @@ namespace TT
         entry->depth = depth + 1;
         entry->score = static_cast<int16_t>(score);
         entry->static_eval = static_cast<int16_t>(static_eval);
-        entry->age_type = current_generation + type;
+        entry->age_pv_type = current_generation + std::to_underlying(type) + (pv << 2);
     }
 
     inline uint16_t full()
@@ -151,7 +156,7 @@ namespace TT
         uint16_t hash_full = 0;
         for (int i = 0; i < 1000; i++)
         {
-            if ((table[i].age_type & 0b11111100) == current_generation) hash_full++;
+            if ((table[i].age_pv_type & 0b11111100) == current_generation) hash_full++;
         }
         return hash_full;
     }

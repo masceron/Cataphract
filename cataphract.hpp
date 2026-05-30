@@ -38,8 +38,8 @@ namespace Cataphract
             const int from = algebraic_to_num(move.substr(0, 2));
             const int to = algebraic_to_num(move.substr(2, 2));
             if (from == -1 || to == -1) return;
-            const auto _move = Move(from, to, 0);
-            legals<all>(position, list);
+            const auto _move = Move(from, to, MoveFlag::quiet_move);
+            legals<MoveType::all>(position, list);
             for (const auto& move_test : list)
             {
                 if ((move_test.move & 0xFFF) == _move.move)
@@ -73,9 +73,9 @@ namespace Cataphract
                 return;
             }
             flag += abs(from - to) % 8 == 0 ? 0 : 4;
-            const auto _move = Move(from, to, flag);
+            const auto _move = Move(from, to, static_cast<MoveFlag>(flag));
 
-            legals<all>(position, list);
+            legals<MoveType::all>(position, list);
 
             for (const auto& move_test : list)
             {

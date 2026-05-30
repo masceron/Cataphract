@@ -30,7 +30,7 @@ struct TimeManager
         mode = TimeControlMode::Tournament;
         {
             MoveList list;
-            legals<all>(_position, list);
+            legals<MoveType::all>(_position, list);
             single_reply = list.size() == 1;
         }
 

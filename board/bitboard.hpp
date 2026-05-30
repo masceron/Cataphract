@@ -25,7 +25,7 @@ enum Pieces: uint8_t { P, N, B, R, Q, K, p, n, b, r, q, k, nil };
 
 constexpr char piece_icons[]{'P', 'N', 'B', 'R', 'Q', 'K', 'p', 'n', 'b', 'r', 'q', 'k', '.'};
 
-enum Direction
+enum class Direction
 {
     Upright = 7,
     Up = 8,
@@ -35,27 +35,27 @@ enum Direction
 template <const Direction direction, const bool side>
 uint64_t Shift(const uint64_t& board)
 {
-    if constexpr (direction == Up && side == white)
+    if constexpr (direction == Direction::Up && side == white)
     {
         return board >> 8;
     }
-    else if constexpr (direction == Up && side == black)
+    else if constexpr (direction == Direction::Up && side == black)
     {
         return board << 8;
     }
-    else if constexpr (direction == Upleft && side == white)
+    else if constexpr (direction == Direction::Upleft && side == white)
     {
         return (board >> 9) & not_h_file;
     }
-    else if constexpr (direction == Upleft && side == black)
+    else if constexpr (direction == Direction::Upleft && side == black)
     {
         return (board << 9) & not_a_file;
     }
-    else if constexpr (direction == Upright && side == white)
+    else if constexpr (direction == Direction::Upright && side == white)
     {
         return (board >> 7) & not_a_file;
     }
-    else if constexpr (direction == Upright && side == black)
+    else if constexpr (direction == Direction::Upright && side == black)
     {
         return (board << 7) & not_h_file;
     }
@@ -64,19 +64,19 @@ uint64_t Shift(const uint64_t& board)
 template <const Direction direction>
 int8_t Delta(const bool side)
 {
-    if constexpr (direction == Up)
+    if constexpr (direction == Direction::Up)
     {
         if (side == white)
             return -8;
         return 8;
     }
-    if constexpr (direction == Upleft)
+    if constexpr (direction == Direction::Upleft)
     {
         if (side == white)
             return -9;
         return 9;
     }
-    if constexpr (direction == Upright)
+    if constexpr (direction == Direction::Upright)
     {
         if (side == white)
             return -7;

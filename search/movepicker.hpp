@@ -52,10 +52,10 @@ struct MovePicker
 
         if (const auto pv_flag = pv.flag(); _pv && thread.position.is_pseudo_legal(_pv)
             && !(noisy_only
-                && pv_flag != queen_promotion
-                && pv_flag != capture
-                && pv_flag < knight_promo_capture
-                && pv_flag != ep_capture))
+                && pv_flag != MoveFlag::queen_promotion
+                && pv_flag != MoveFlag::capture
+                && pv_flag < MoveFlag::knight_promo_capture
+                && pv_flag != MoveFlag::ep_capture))
         {
             pv = _pv;
             stage = Stage::TT_moves;
@@ -74,7 +74,7 @@ struct MovePicker
             return {pv, 0};
         case Stage::generating_capture_moves:
             stage = Stage::good_capture_moves;
-            pseudo_legals<noisy>(pos, moves);
+            pseudo_legals<MoveType::noisy>(pos, moves);
             score_mvv_caphist(moves.begin(), moves.last);
             non_captures_start = moves.last;
             current = moves.begin();
@@ -116,7 +116,7 @@ struct MovePicker
         case Stage::generating_quiet_moves:
             if (!noisy_only)
             {
-                pseudo_legals<quiet>(thread.position, moves);
+                pseudo_legals<MoveType::quiet>(thread.position, moves);
                 score_history(non_captures_start, moves.last);
                 stage = Stage::quiet_moves;
                 current = non_captures_start;
@@ -199,7 +199,7 @@ struct MovePicker
 
             scores[index] = mvv[captured] * mvv_weight() / 1024 + history.capture.table[stm][moved][captured][to] *
                 capture_history_weight() / 1024;
-            if (move->flag() >= knight_promo_capture)
+            if (move->flag() >= MoveFlag::knight_promo_capture)
                 scores[index] = scores[index]
                     + value_of(move->promoted_to());
         }

@@ -26,7 +26,7 @@ struct AccumulatorEntry
 
         const uint8_t from = move.from();
         const uint8_t to = move.to();
-        const uint8_t flag = move.flag();
+        const auto flag = move.flag();
         const Pieces moved_piece = pos.piece_on[to];
         std::memcpy(bitboards, &pos.boards, 12 * sizeof(uint64_t));
         const bool just_moved = !pos.side_to_move;
@@ -40,25 +40,25 @@ struct AccumulatorEntry
             }
         }
 
-        if (flag < knight_promotion)
+        if (flag < MoveFlag::knight_promotion)
         {
             adds[0] = {moved_piece, to};
             subs[0] = {moved_piece, from};
-            if (flag == capture)
+            if (flag == MoveFlag::capture)
             {
                 subs[1] = {pos.state->captured_piece, to};
             }
-            else if (flag == ep_capture)
+            else if (flag == MoveFlag::ep_capture)
             {
-                subs[1] = {pos.state->captured_piece, to - Delta<Up>(just_moved)};
+                subs[1] = {pos.state->captured_piece, to - Delta<Direction::Up>(just_moved)};
             }
-            else if (flag == king_castle)
+            else if (flag == MoveFlag::king_castle)
             {
                 auto rook = just_moved == white ? R : r;
                 adds[1] = {rook, to - 1};
                 subs[1] = {rook, to + 1};
             }
-            else if (flag == queen_castle)
+            else if (flag == MoveFlag::queen_castle)
             {
                 auto rook = just_moved == white ? R : r;
                 adds[1] = {rook, to + 1};
@@ -69,7 +69,7 @@ struct AccumulatorEntry
         {
             subs[0] = {!just_moved ? P : p, from};
             adds[0] = {move.promoted_to(just_moved), to};
-            if (flag >= knight_promo_capture)
+            if (flag >= MoveFlag::knight_promo_capture)
             {
                 subs[1] = {pos.state->captured_piece, to};
             }

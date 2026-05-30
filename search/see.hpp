@@ -11,8 +11,8 @@ inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64
     const uint64_t orthogonal_sliders = pos.boards[r] | pos.boards[R] | pos.boards[Q] | pos.boards[q];
     uint64_t attackers = 0;
 
-    attackers |= (Shift<Upleft, black>(target) | Shift<Upright, black>(target)) & pos.boards[P];
-    attackers |= (Shift<Upleft, white>(target) | Shift<Upright, white>(target)) & pos.boards[p];
+    attackers |= (Shift<Direction::Upleft, black>(target) | Shift<Direction::Upright, black>(target)) & pos.boards[P];
+    attackers |= (Shift<Direction::Upleft, white>(target) | Shift<Direction::Upright, white>(target)) & pos.boards[p];
     attackers |= knight_attack_tables[sq] & (pos.boards[N] | pos.boards[n]);
     attackers |= get_bishop_attack(sq, occ) & diagonal_sliders;
     attackers |= get_rook_attack(sq, occ) & orthogonal_sliders;

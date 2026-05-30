@@ -37,7 +37,7 @@ void prune_cal();
     PARAM(double, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
     PARAM(int, default_moves_to_go, 30, 10, 40, 1) \
     PARAM(double, stable_base_scale, 2, 1.2, 3.5, 0.115) \
-    PARAM(double, stable_scale, 0.08, 0.01, 0.25, 0.0012) \
+    PARAM(double, stable_scale, 0.08, 0.01, 0.25, 0.012) \
     PARAM(int, score_diff_scale, 180, 100, 300, 10) \
     PARAM(int, piece_history_weight, 528, 256, 2048, 96) \
     PARAM(int, counter_move_weight, 1116, 256, 2048, 96) \

@@ -148,4 +148,13 @@ struct Move
     }
 };
 
+template<>
+struct std::hash<Move>
+{
+    std::size_t operator()(const Move& m) const noexcept
+    {
+        return std::hash<uint16_t>{}(m.move);
+    }
+};
+
 inline const Move null_move(0);

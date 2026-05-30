@@ -7,6 +7,7 @@
 #include <print>
 #include <string>
 #include <forward_list>
+#include <unordered_map>
 
 #include "history.hpp"
 #include "../position/movegen.hpp"
@@ -60,8 +61,8 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
     Move tt_move = null_move;
     const bool is_pv = beta - alpha > 1;
 
-    std::tie(entry, entry_depth, entry_type, tt_move, tt_static_eval) = TT::probe(
-        position.state->key, tt_hit, ss->plies, tt_score);
+    std::tie(entry, entry_depth, entry_type, tt_move, tt_static_eval, tt_score) = TT::probe(
+        position.state->key, tt_hit, ss->plies);
 
     int raw_static_eval;
     Move best_move = null_move;
@@ -258,8 +259,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
     int16_t tt_static_eval;
 
-    std::tie(entry, tt_depth, entry_type, tt_move, tt_static_eval) = TT::probe(
-        tt_key, tt_hit, ss->plies, tt_score);
+    std::tie(entry, tt_depth, entry_type, tt_move, tt_static_eval, tt_score) = TT::probe(tt_key, tt_hit, ss->plies);
 
     if (tt_hit)
     {
@@ -402,7 +402,8 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
                 if (prob_score >= prob_beta)
                 {
-                    TT::write(entry, tt_key, picked_move, prob_depth, ss->plies, raw_static_eval, prob_score, NodeType::lower_bound, is_pv);
+                    TT::write(entry, tt_key, picked_move, prob_depth, ss->plies, raw_static_eval, prob_score,
+                              NodeType::lower_bound, is_pv);
                     return prob_score;
                 }
             }
@@ -627,7 +628,8 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
     if (!ss->excluded)
     {
-        if (not_in_check && ((depth_best_move.flag() != MoveFlag::capture && depth_best_move.flag() < MoveFlag::knight_promo_capture &&
+        if (not_in_check && ((depth_best_move.flag() != MoveFlag::capture && depth_best_move.flag() <
+            MoveFlag::knight_promo_capture &&
             depth_best_move.flag() != MoveFlag::ep_capture) || !depth_best_move))
         {
             if (const auto delta = best_score - ss->static_eval;
@@ -641,6 +643,33 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
     return best_score;
 }
 
+void print_info(const SearchThread& thread)
+{
+    const auto elapsed = Timer::elapsed();
+    std::print("info depth {} seldepth {} score ", thread.root_depth, thread.seldepth);
+
+    if (thread.score < -mate_in_max_ply) std::print("mate {} ", -std::ceil((mate_value + thread.score) / 2.0));
+    else if (thread.score > mate_in_max_ply)
+        std::print(
+            "mate {} ", std::ceil((mate_value - thread.score) / 2.0));
+    else std::print("cp {} ", thread.score);
+
+    auto node_searched = ThreadPool::node_searched();
+
+    std::print("nodes {} nps {} hashfull {} time {} pv ",
+               node_searched,
+               static_cast<uint64_t>(static_cast<double>(node_searched) / elapsed * 1000000),
+               TT::full(),
+               elapsed / 1000);
+
+    for (auto x : thread.principal_variation)
+    {
+        std::print("{} ", x.get_move_string());
+    }
+    std::println();
+    std::fflush(stdout);
+}
+
 template <bool silent>
 void thread_search(const int thread_idx, const int search_depth)
 {
@@ -648,7 +677,7 @@ void thread_search(const int thread_idx, const int search_depth)
     int previous_score = negative_infinity;
 
     Move best_move = null_move;
-    std::list<Move> principal_variation;
+    auto& principal_variation = thread.principal_variation;
 
     thread.search_stack_init();
 
@@ -657,7 +686,6 @@ void thread_search(const int thread_idx, const int search_depth)
         if (Timer::is_search_cancelled) break;
 
         thread.seldepth = 0;
-        int score;
         int fail_high_reductions = 0;
 
         int alpha = negative_infinity;
@@ -673,25 +701,25 @@ void thread_search(const int thread_idx, const int search_depth)
         while (true)
         {
             const int new_depth = std::max(thread.root_depth - fail_high_reductions, 1);
-            score = search<true, true>(thread, alpha, beta, new_depth, principal_variation, false,
-                                       &thread.search_stack[4]);
+            thread.score = search<true, true>(thread, alpha, beta, new_depth, principal_variation, false,
+                                              &thread.search_stack[4]);
 
             if (Timer::is_search_cancelled) break;
 
-            if (score <= alpha)
+            if (thread.score <= alpha)
             {
                 fail_high_reductions = 0;
                 beta = (alpha + beta) / 2;
-                alpha = std::max(score - window, static_cast<int>(negative_infinity));
+                alpha = std::max(thread.score - window, static_cast<int>(negative_infinity));
             }
-            else if (score >= beta)
+            else if (thread.score >= beta)
             {
-                beta = std::min(score + window, static_cast<int>(infinity));
+                beta = std::min(thread.score + window, static_cast<int>(infinity));
                 fail_high_reductions = std::min(fail_high_reductions + 1, 3);
             }
             else
             {
-                previous_score = score;
+                previous_score = thread.score;
                 break;
             }
             window += window * aspiration_expansion_rate() / 128;
@@ -700,27 +728,7 @@ void thread_search(const int thread_idx, const int search_depth)
 
         if (!silent && thread_idx == 0)
         {
-            const auto elapsed = Timer::elapsed();
-            std::print("info depth {} seldepth {} score ", thread.root_depth, thread.seldepth);
-
-            if (score < -mate_in_max_ply) std::print("mate {} ", -std::ceil((mate_value + score) / 2.0));
-            else if (score > mate_in_max_ply) std::print("mate {} ", std::ceil((mate_value - score) / 2.0));
-            else std::print("cp {} ", score);
-
-            auto node_searched = ThreadPool::node_searched();
-
-            std::print("nodes {} nps {} hashfull {} time {} pv ",
-                       node_searched,
-                       static_cast<uint64_t>(static_cast<double>(node_searched) / elapsed * 1000000),
-                       TT::full(),
-                       elapsed / 1000);
-
-            for (auto x : principal_variation)
-            {
-                std::print("{} ", x.get_move_string());
-            }
-            std::println();
-            std::fflush(stdout);
+            print_info(thread);
         }
 
         if (!principal_variation.empty())
@@ -728,9 +736,11 @@ void thread_search(const int thread_idx, const int search_depth)
             best_move = principal_variation.front();
         }
 
+        thread.max_depth = std::max(thread.max_depth, thread.root_depth);
+
         if (thread_idx == 0)
         {
-            time_manager.update(best_move, score);
+            time_manager.update(best_move, thread.score);
 
             if (const double elapsed_ms = static_cast<double>(Timer::elapsed()) / 1000.0; time_manager.should_stop(
                 elapsed_ms))
@@ -740,21 +750,80 @@ void thread_search(const int thread_idx, const int search_depth)
         }
         else if (thread.root_depth == search_depth) --thread.root_depth;
     }
+}
 
-    if (thread_idx == 0)
+SearchThread& thread_vote()
+{
+    if (Options::threads == 0) return ThreadPool::get(0);
+
+    int lowest_score = infinity;
+
+    std::unordered_map<Move, int> votes;
+
+    for (const auto& thread : ThreadPool::threads)
     {
-        if constexpr (!silent)
-        {
-            if (!best_move)
-            {
-                MoveList list;
-                legals<MoveType::all>(thread.position, list);
-                best_move = list[0];
-            }
-            std::println("bestmove {}", best_move.get_move_string());
-            std::fflush(stdout);
+        if (const auto score = thread.score; score != negative_infinity && score < lowest_score) lowest_score = score;
+
+        if (!thread.principal_variation.empty()) {
+            votes[thread.principal_variation.front()] = 0;
         }
     }
+
+    const auto weight = [&](const SearchThread& thread)
+    {
+        return (thread.score - lowest_score + 10) * thread.max_depth;
+    };
+
+    for (auto& thread : ThreadPool::threads)
+    {
+        auto principal = thread.principal_variation.front();
+        if (thread.score != negative_infinity)
+        {
+            votes[principal] += weight(thread);
+        }
+    }
+
+    SearchThread* best_thread = &ThreadPool::get(0);
+    int best_score = best_thread->score;
+    int best_votes = votes[best_thread->principal_variation.front()];
+
+    for (auto i = 1; i < Options::threads; i++)
+    {
+        auto& thread = ThreadPool::get(i);
+        const int score = thread.score;
+        const int vote = votes[thread.principal_variation.front()];
+
+        if (std::abs(best_score) > mate_in_max_ply)
+        {
+            if (score > best_score)
+            {
+                best_thread = &thread;
+                best_score = score;
+                best_votes = vote;
+            }
+            continue;
+        }
+
+        if (std::abs(score) > mate_in_max_ply)
+        {
+            best_thread = &thread;
+            best_score = score;
+            best_votes = vote;
+            continue;
+        }
+
+        if (vote > best_votes ||
+            (vote == best_votes &&
+                weight(thread) * (thread.principal_variation.size() > 2) >
+                weight(*best_thread) * (best_thread->principal_variation.size() > 2)))
+        {
+            best_thread = &thread;
+            best_score = score;
+            best_votes = vote;
+        }
+    }
+
+    return *best_thread;
 }
 
 template <bool silent>
@@ -798,4 +867,29 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
     ThreadPool::wait_for_workers();
 
     Timer::timer_thread.join();
+
+    if constexpr (!silent)
+    {
+        const auto& best_thread = thread_vote();
+        const auto& principal_variation = best_thread.principal_variation;
+        Move best_move;
+
+        if (principal_variation.empty())
+        {
+            MoveList list;
+            legals<MoveType::all>(best_thread.position, list);
+            best_move = list[0];
+        }
+        else best_move = principal_variation.front();
+
+        print_info(best_thread);
+
+        if (Options::show_currmove)
+        {
+            std::println("info string Selected thread {}", best_thread.id);
+        }
+
+        std::println("bestmove {}", best_move.get_move_string());
+        std::fflush(stdout);
+    }
 }

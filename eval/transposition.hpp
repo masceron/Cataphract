@@ -104,10 +104,10 @@ namespace TT
     }
 
     __attribute__((no_sanitize_thread))
-    inline std::tuple<Entry*, int, NodeType, Move, int> probe(const uint64_t key, bool& match, const uint8_t ply,
-                                                             int& score)
+    inline std::tuple<Entry*, int, NodeType, Move, int, int> probe(const uint64_t key, bool& match, const uint8_t ply)
     {
         Entry* entry = &table[index_of(key)];
+        int score;
         if (entry->key == key)
         {
             match = true;
@@ -117,7 +117,7 @@ namespace TT
             else if (score > mate_in_max_ply)
                 score -= ply;
         }
-        return {entry, entry->depth, static_cast<NodeType>(entry->age_pv_type & 0b11), entry->best_move, entry->static_eval};
+        return {entry, entry->depth, static_cast<NodeType>(entry->age_pv_type & 0b11), entry->best_move, entry->static_eval, score};
     }
 
     __attribute__((no_sanitize_thread))

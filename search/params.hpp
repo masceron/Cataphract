@@ -35,12 +35,12 @@ void prune_cal();
     PARAM(int, singular_triple, 140, 50, 210, 8) \
     PARAM(int, singular_double, 28, 10, 120, 6) \
     PARAM(int, delta_margin, 173, 50, 210, 8) \
-    PARAM(double, max_time_scale, 0.25, 0.1, 0.8, 0.04) \
-    PARAM(double, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
-    PARAM(int, default_moves_to_go, 30, 10, 40, 1) \
-    PARAM(double, stable_base_scale, 2, 1.2, 3.5, 0.115) \
+    PARAM(double, max_time_scale, 0.24, 0.1, 0.8, 0.04) \
+    PARAM(double, opt_time_scale, 0.84, 0.4, 1.2, 0.04) \
+    PARAM(int, default_moves_to_go, 29, 10, 40, 1) \
+    PARAM(double, stable_base_scale, 1.77, 1.2, 3.5, 0.115) \
     PARAM(double, stable_scale, 0.08, 0.01, 0.25, 0.012) \
-    PARAM(int, score_diff_scale, 180, 100, 300, 10) \
+    PARAM(int, score_diff_scale, 189, 100, 300, 10) \
     PARAM(int, piece_history_weight, 528, 256, 2048, 96) \
     PARAM(int, counter_move_weight, 1116, 256, 2048, 96) \
     PARAM(int, follow_up_weight, 1177, 256, 2048, 96) \

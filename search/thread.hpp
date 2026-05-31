@@ -28,7 +28,6 @@ struct SearchThread
 
     int seldepth{};
     int root_depth{};
-    int max_depth{};
     int id{};
 
     void search_stack_init()

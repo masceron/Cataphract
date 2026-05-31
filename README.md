@@ -25,6 +25,7 @@ A UCI chess engine written in C++.
 * Singular extension
 * Multicut
 * Negative extensions
+* Lazy SMP
 #### History:
 * Main history (Piece-to and butterfly)
 * Countermove history (1-ply), follow-up history (2-ply), and 4-ply history.
@@ -35,5 +36,5 @@ A UCI chess engine written in C++.
 * Major piece correction history
 ### Evaluation
 #### NNUE 
-* Architecture: (768x10 → 1024)x2 → 1x8, horizontally mirrored.
+* Architecture: (768x16 → 1280)x2 → 1x8, horizontally mirrored.
 * Trained using the [Bullet](https://github.com/jw1912/bullet) trainer developed by Jamie Whiting.

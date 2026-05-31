@@ -754,7 +754,7 @@ void thread_search(const int thread_idx, const int search_depth)
 
 inline SearchThread& thread_vote()
 {
-    if (Options::threads == 0) return ThreadPool::get(0);
+    if (Options::threads == 1) return ThreadPool::get(0);
 
     int lowest_score = infinity;
 
@@ -882,7 +882,10 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
         }
         else best_move = principal_variation.front();
 
-        print_info(best_thread);
+        if (best_thread.id)
+        {
+            print_info(best_thread);
+        }
 
         if (Options::show_currmove)
         {

@@ -343,7 +343,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
             }
         }
 
-        if ((ss - 1)->piece_to != UINT16_MAX && depth >= 3 &&
+        if ((ss - 1)->piece_to != UINT16_MAX && depth >= 3 && ss->plies >= thread.nmp_min_ply &&
             std::popcount(position.occupations[2]) - std::popcount(position.boards[P]) - std::popcount(
                 position.boards[p]) > 2 &&
             !ss->excluded)
@@ -362,7 +362,24 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
                 position.unmake_null_move();
 
                 if (Timer::is_search_cancelled) return alpha;
-                if (null_score >= beta) return beta;
+                if (null_score >= beta && std::abs(null_score) < mate_in_max_ply)
+                {
+                    if (thread.nmp_min_ply > 0 || depth < 16)
+                    {
+                        return null_score;
+                    }
+
+                    thread.nmp_min_ply = ss->plies + 3 * (depth - r) / 4;
+
+                    const auto verification_score = search<false, false>(
+                        thread, beta - 1, beta, depth - r, local_pv, !cut_node, ss + 1);
+
+                    thread.nmp_min_ply = 0;
+
+                    if (Timer::is_search_cancelled) return alpha;
+
+                    if (verification_score >= beta) return null_score;
+                }
             }
         }
 
@@ -764,7 +781,8 @@ inline SearchThread& thread_vote()
     {
         if (const auto score = thread.score; score != negative_infinity && score < lowest_score) lowest_score = score;
 
-        if (!thread.principal_variation.empty()) {
+        if (!thread.principal_variation.empty())
+        {
             votes[thread.principal_variation.front()] = 0;
         }
     }

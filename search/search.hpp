@@ -454,14 +454,14 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
         {
             if (not_in_check && move_searched >= late_move_margin && std::abs(best_score) < mate_in_max_ply)
             {
-                move_picker.current = move_picker.moves.last;
+                move_picker.skip_quiets();
                 continue;
             }
             if (picked_score < INT16_MAX && best_score > -mate_in_max_ply)
             {
                 if (futility_pruning_allowed)
                 {
-                    move_picker.current = move_picker.moves.last;
+                    move_picker.skip_quiets();
                     continue;
                 }
                 if (depth <= 7 && picked_score < -history_prune_scale() * depth) continue;

@@ -25,6 +25,7 @@ struct SearchThread
     std::atomic<uint64_t> node_searched{0};
     std::list<Move> principal_variation{};
     int score{negative_infinity};
+    int nmp_min_ply{0};
 
     int seldepth{};
     int root_depth{};
@@ -191,6 +192,7 @@ struct ThreadPool
             thread.seldepth = 0;
             thread.principal_variation.clear();
             thread.score = negative_infinity;
+            thread.nmp_min_ply = 0;
         }
     }
 

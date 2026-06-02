@@ -268,12 +268,13 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
                 || (entry_type == NodeType::upper_bound && tt_score <= alpha))
             {
                 if (tt_score >= beta &&
-                    tt_move &&
-                    position.is_quiet(tt_move) &&
-                    position.is_pseudo_legal(tt_move) &&
-                    position.is_legal(tt_move))
+                    tt_move)
                 {
-                    thread.history.update_quiet_histories(position, depth, tt_move, ss, {});
+                    position.fill_info();
+                    if (position.is_quiet(tt_move) && position.is_pseudo_legal(tt_move) && position.is_legal(tt_move))
+                    {
+                        thread.history.update_quiet_histories(position, depth, tt_move, ss, {});
+                    }
                 }
 
                 return tt_score;

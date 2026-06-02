@@ -65,6 +65,7 @@ struct Position
 
     void make_null_move(State& st);
     void unmake_null_move();
+    void fill_info() const;
     void get_pinned() const;
     void get_attacks() const;
     void get_checks() const;

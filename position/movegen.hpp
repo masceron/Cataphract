@@ -370,8 +370,7 @@ void pseudo_legals(const Position& cr_pos, MoveList& list)
 template <const MoveType type>
 void legals(const Position& cr_pos, MoveList& list)
 {
-    cr_pos.get_attacks();
-    cr_pos.get_pinned();
+    cr_pos.fill_info();
 
     pseudo_legals<type>(cr_pos, list);
     Move* current = list.begin();

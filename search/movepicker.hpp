@@ -48,11 +48,7 @@ struct MovePicker
         bad_captures_end = 255;
         threshold = _threshold;
 
-        if (thread.position.state->attacks == UINT64_MAX)
-        {
-            thread.position.get_attacks();
-            thread.position.get_pinned();
-        }
+        thread.position.fill_info();
 
         if (const auto pv_flag = pv.flag(); _pv && thread.position.is_pseudo_legal(_pv)
             && !(noisy_only

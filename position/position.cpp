@@ -487,6 +487,15 @@ void Position::get_attacks() const
     state->attacks = side_to_move == white ? get_attacked_map_of<white>() : get_attacked_map_of<black>();
 }
 
+void Position::fill_info() const
+{
+    if (state->attacks == UINT64_MAX)
+    {
+        get_attacks();
+        get_pinned();
+    }
+}
+
 void Position::get_checks() const
 {
     if (!side_to_move)

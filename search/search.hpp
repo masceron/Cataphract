@@ -539,20 +539,22 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
         if (depth >= 2 && move_searched >= 2 + root_node)
         {
-            int reduction = 1;
+            int reduction = 1024;
 
-            reduction += reductions[depth - 1][std::min(move_searched - 1, 62)];
-            reduction += cut_node;
-            reduction += !is_pv;
-            reduction += !improving;
+            reduction += reductions[depth - 1][std::min(move_searched - 1, 62)] * reduction_table_weight();
+            reduction += cut_node * reduction_cut_node_weight();
+            reduction += !is_pv * reduction_non_pv_weight();
+            reduction += !improving * reduction_improving_weight();
 
-            reduction -= tt_hit && tt_depth >= depth;
+            reduction -= (tt_hit && tt_depth >= depth) * reduction_tt_depth_weight();
+            reduction -= (position.state->checker != 0) * reduction_check_weight();
+
             if (picked_score == INT16_MAX)
-                reduction -= 2;
+                reduction -= reduction_killer_weight();
             else if (move_picker.stage == Stage::quiet_moves)
-                reduction -= std::clamp(picked_score / history_prune_div(), -3, 3);
+                reduction -= picked_score / history_prune_div() * reduction_history_weight();
 
-            reduction = std::clamp(reduction, 1, new_depth - 1);
+            reduction = std::clamp(reduction / 1024, 1, new_depth - 1);
 
             score = -search<false, false>(thread, -alpha - 1, -alpha, new_depth - reduction, local_pv, true, ss + 1);
 

@@ -16,60 +16,68 @@ void reduction_cal();
 void prune_cal();
 
 #define TUNABLE_PARAMETERS \
-    PARAM_CB(double, lmr_base, 0.5, 0, 2, 0.1, reduction_cal) \
-    PARAM_CB(double, lmr_div, 3.91, 1, 8, 0.35, reduction_cal) \
-    PARAM_CB(int, lmp_base, 5, 0, 10, 1, prune_cal) \
-    PARAM_CB(double, lmp_nidiv, 1.59, 1, 7, 0.3, prune_cal) \
-    PARAM_CB(double, lmp_idiv, 0.61, 0.5, 7, 0.325, prune_cal) \
-    PARAM(int, futility_cutoff_scale, 89, 40, 200, 8) \
-    PARAM(int, futility_cutoff_scale_imp, 61, 20, 120, 5) \
-    PARAM(int, futility_scale, 152, 70, 210, 7) \
-    PARAM(int, razoring_scale, 111, 30, 210, 9) \
-    PARAM(int, null_search_div, 206, 100, 300, 10) \
-    PARAM(int, null_search_depth_scale, 307, 128, 512, 19) \
-    PARAM(int, probcut_margin, 224, 100, 340, 12) \
-    PARAM(int, probcut_scale, 54, 10, 100, 5) \
-    PARAM(int, history_prune_scale, 683, 100, 1200, 55) \
-    PARAM(int, history_prune_div, 3878, 2048, 8192, 300) \
-    PARAM(int, singular_margin, 842, 100, 2000, 95) \
-    PARAM(int, singular_triple, 138, 50, 210, 8) \
-    PARAM(int, singular_double, 25, 10, 120, 6) \
-    PARAM(int, delta_margin, 174, 50, 210, 8) \
-    PARAM(double, max_time_scale, 0.27, 0.1, 0.8, 0.04) \
-    PARAM(double, opt_time_scale, 0.8, 0.4, 1.2, 0.04) \
+    PARAM_CB(double, lmr_base, 0.53, 0, 2, 0.1, reduction_cal) \
+    PARAM_CB(double, lmr_div, 4.0, 1, 8, 0.35, reduction_cal) \
+    PARAM_CB(int, lmp_base, 7, 0, 10, 1, prune_cal) \
+    PARAM_CB(double, lmp_nidiv, 1.71, 1, 7, 0.3, prune_cal) \
+    PARAM_CB(double, lmp_idiv, 0.62, 0.5, 7, 0.325, prune_cal) \
+    PARAM(int, futility_cutoff_scale, 85, 40, 200, 8) \
+    PARAM(int, futility_cutoff_scale_imp, 62, 20, 120, 5) \
+    PARAM(int, futility_scale, 150, 70, 210, 7) \
+    PARAM(int, razoring_scale, 123, 30, 210, 9) \
+    PARAM(int, null_search_div, 224, 100, 300, 10) \
+    PARAM(int, null_search_depth_scale, 315, 128, 512, 19) \
+    PARAM(int, probcut_margin, 238, 100, 340, 12) \
+    PARAM(int, probcut_scale, 51, 10, 100, 5) \
+    PARAM(int, history_prune_scale, 711, 100, 1200, 55) \
+    PARAM(int, history_prune_div, 3926, 2048, 8192, 300) \
+    PARAM(int, singular_margin, 773, 100, 2000, 95) \
+    PARAM(int, singular_triple, 132, 50, 210, 8) \
+    PARAM(int, singular_double, 13, 10, 120, 6) \
+    PARAM(int, delta_margin, 179, 50, 210, 8) \
+    PARAM(double, max_time_scale, 0.3, 0.1, 0.8, 0.04) \
+    PARAM(double, opt_time_scale, 0.84, 0.4, 1.2, 0.04) \
     PARAM(int, default_moves_to_go, 28, 10, 40, 1) \
-    PARAM(double, stable_base_scale, 1.86, 1.2, 3.5, 0.115) \
-    PARAM(double, stable_scale, 0.08, 0.01, 0.25, 0.012) \
-    PARAM(int, score_diff_scale, 170, 100, 300, 10) \
-    PARAM(int, piece_history_weight, 373, 256, 2048, 96) \
-    PARAM(int, counter_move_weight, 1102, 256, 2048, 96) \
-    PARAM(int, follow_up_weight, 1252, 256, 2048, 96) \
-    PARAM(int, four_plies_weight, 824, 256, 2048, 96) \
-    PARAM(int, mvv_weight, 1112, 256, 2048, 96) \
-    PARAM(int, capture_history_weight, 753, 256, 2048, 96) \
-    PARAM(int16_t, max_capture_history, 30408, 8192, INT16_MAX, 768) \
-    PARAM(int, capture_history_bonus, 187, 10, 500, 25) \
-    PARAM(int16_t, max_butterfly_history, 8256, 4096, INT16_MAX, 768) \
-    PARAM(int, butterfly_history_scale, 38, 1, 100, 5) \
-    PARAM(int, butterfly_history_minus, 6, 1, 100, 5) \
-    PARAM(int16_t, max_piece_to_history, 6917, 4096, INT16_MAX, 768) \
-    PARAM(int, piece_to_history_scale, 15, 1, 100, 5) \
-    PARAM(int, piece_to_history_minus, 3, 1, 100, 5) \
-    PARAM(int16_t, max_continuation_history, 10656, 4096, INT16_MAX, 768) \
-    PARAM(int, continuation_history_scale, 40, 1, 100, 5) \
-    PARAM(int, continuation_history_minus, 8, 1, 100, 5) \
-    PARAM(int, correction_limit, 8190, 1024, 16384, 768) \
-    PARAM(int, correction_bonus_scale, 134, 64, 1024, 48) \
-    PARAM(int, pawn_correction_scale, 1002, 256, 2048, 90) \
-    PARAM(int, minor_correction_scale, 1156, 256, 2048, 90) \
-    PARAM(int, major_correction_scale, 1067, 256, 2048, 90) \
-    PARAM(int, pawn_weight, 127, 50, 300, 13) \
-    PARAM(int, knight_weight, 875, 390, 1560, 59) \
-    PARAM(int, bishop_weight, 963, 412, 1650, 80) \
-    PARAM(int, rook_weight, 1505, 640, 2550, 96) \
-    PARAM(int, queen_weight, 2230, 1270, 5080, 191) \
-    PARAM(int, initial_aspiration_window, 23, 10, 160, 8) \
-    PARAM(int, aspiration_expansion_rate, 59, 10, 160, 8) \
+    PARAM(double, stable_base_scale, 1.8, 1.2, 3.5, 0.115) \
+    PARAM(double, stable_scale, 0.1, 0.01, 0.25, 0.012) \
+    PARAM(int, score_diff_scale, 153, 100, 300, 10) \
+    PARAM(int, piece_history_weight, 452, 256, 2048, 96) \
+    PARAM(int, counter_move_weight, 1257, 256, 2048, 96) \
+    PARAM(int, follow_up_weight, 1420, 256, 2048, 96) \
+    PARAM(int, four_plies_weight, 791, 256, 2048, 96) \
+    PARAM(int, mvv_weight, 1175, 256, 2048, 96) \
+    PARAM(int, capture_history_weight, 684, 256, 2048, 96) \
+    PARAM(int16_t, max_capture_history, 29591, 8192, INT16_MAX, 768) \
+    PARAM(int, capture_history_bonus, 161, 10, 500, 25) \
+    PARAM(int16_t, max_butterfly_history, 8254, 4096, INT16_MAX, 768) \
+    PARAM(int, butterfly_history_scale, 32, 1, 100, 5) \
+    PARAM(int, butterfly_history_minus, 8, 1, 100, 5) \
+    PARAM(int16_t, max_piece_to_history, 6161, 4096, INT16_MAX, 768) \
+    PARAM(int, piece_to_history_scale, 17, 1, 100, 5) \
+    PARAM(int, piece_to_history_minus, 7, 1, 100, 5) \
+    PARAM(int16_t, max_continuation_history, 10277, 4096, INT16_MAX, 768) \
+    PARAM(int, continuation_history_scale, 44, 1, 100, 5) \
+    PARAM(int, continuation_history_minus, 9, 1, 100, 5) \
+    PARAM(int, correction_limit, 8707, 1024, 16384, 768) \
+    PARAM(int, correction_bonus_scale, 135, 64, 1024, 48) \
+    PARAM(int, pawn_correction_scale, 1129, 256, 2048, 90) \
+    PARAM(int, minor_correction_scale, 1231, 256, 2048, 90) \
+    PARAM(int, major_correction_scale, 953, 256, 2048, 90) \
+    PARAM(int, pawn_weight, 150, 50, 300, 13) \
+    PARAM(int, knight_weight, 992, 390, 1560, 59) \
+    PARAM(int, bishop_weight, 1060, 412, 1650, 80) \
+    PARAM(int, rook_weight, 1617, 640, 2550, 96) \
+    PARAM(int, queen_weight, 2283, 1270, 5080, 191) \
+    PARAM(int, initial_aspiration_window, 25, 10, 160, 8) \
+    PARAM(int, aspiration_expansion_rate, 65, 10, 160, 8) \
+    PARAM(int, reduction_table_weight, 1358, 128, 2048, 96) \
+    PARAM(int, reduction_cut_node_weight, 903, 128, 2048, 96) \
+    PARAM(int, reduction_history_weight, 977, 128, 2048, 96) \
+    PARAM(int, reduction_non_pv_weight, 1017, 128, 4096, 96) \
+    PARAM(int, reduction_improving_weight, 906, 128, 4096, 96) \
+    PARAM(int, reduction_tt_depth_weight, 1006, 128, 4096, 96) \
+    PARAM(int, reduction_killer_weight, 2018, 128, 4096, 96) \
+    PARAM(int, reduction_check_weight, 1012, 128, 4096, 96) \
 
 
 #ifndef SPSA_TUNE

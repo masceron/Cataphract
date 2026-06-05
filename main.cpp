@@ -1,4 +1,5 @@
 #include "uci.hpp"
+#include "cataphract.hpp"
 
 int main(const int argc, char* argv[])
 {

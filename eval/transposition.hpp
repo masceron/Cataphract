@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <cstring>
 #include <tuple>
 
 #include "../options.hpp"
@@ -23,7 +22,6 @@ enum class NodeType: uint8_t
     none, exact, lower_bound, upper_bound
 };
 
-#pragma pack(push, 1)
 struct Entry
 {
     uint64_t key;
@@ -38,125 +36,23 @@ struct Entry
         return ((age_pv_type >> 2) & 1) != 0;
     }
 };
-#pragma pack(pop)
 
 namespace TT
 {
-    inline static uintptr_t table_size = (64ull << 20) / sizeof(Entry);
-    inline static uint8_t current_generation = 4;
-    inline static Entry* table = nullptr;
+    inline uintptr_t table_size = (64ull << 20) / sizeof(Entry);
+    inline uint8_t current_generation = 4;
+    inline Entry* table = nullptr;
 
-    inline void clear(Entry* start, const size_t length)
-    {
-        std::memset(start, 0, length * sizeof(Entry));
-    }
-
-    inline void free_tt()
-    {
-#ifdef _WIN32
-        _aligned_free(table);
-#else
-        std::free(table);
-#endif
-    }
-
-    inline void alloc()
-    {
-        Entry* new_table;
-#ifdef _WIN32
-        new_table = static_cast<Entry*>(_aligned_malloc(table_size * sizeof(Entry), sizeof(Entry)));
-#else
-        new_table = static_cast<Entry*>(std::aligned_alloc(sizeof(Entry), table_size * sizeof(Entry)));
-#endif
-        if (!new_table)
-        {
-            std::println("Cannot allocate new table.");
-
-            if (table == nullptr) {
-                std::exit(1);
-            }
-            return;
-        }
-        free_tt();
-        table = new_table;
-        clear(table, table_size);
-    }
-
-    inline void resize(const uint32_t new_size_in_mb)
-    {
-        if (new_size_in_mb != Options::hash)
-        {
-            Options::hash = new_size_in_mb;
-            table_size = (static_cast<uint64_t>(new_size_in_mb) << 20) / sizeof(Entry);
-            alloc();
-        }
-    }
-
-    inline void advance()
-    {
-        current_generation += 8;
-    }
-
-    inline uint64_t index_of(const uint64_t& key)
-    {
-        return static_cast<uint64_t>((static_cast<__uint128_t>(key) * static_cast<__uint128_t>(table_size)) >> 64);
-    }
-
+    void clear(Entry* start, size_t length);
+    void free_tt();
+    void alloc();
+    void resize(uint32_t new_size_in_mb);
+    void advance();
     __attribute__((no_sanitize_thread))
-    inline std::tuple<Entry*, int, NodeType, Move, int, int> probe(const uint64_t key, bool& match, const uint8_t ply)
-    {
-        Entry* entry = &table[index_of(key)];
-        int score;
-        if (entry->key == key)
-        {
-            match = true;
-            score = static_cast<int>(entry->score);
-            if (score < mated_in_max_ply)
-                score += ply;
-            else if (score > mate_in_max_ply)
-                score -= ply;
-        }
-        return {entry, entry->depth, static_cast<NodeType>(entry->age_pv_type & 0b11), entry->best_move, entry->static_eval, score};
-    }
-
+    std::tuple<Entry*, int, NodeType, Move, int, int> probe(uint64_t key, bool& match, uint8_t ply);
     __attribute__((no_sanitize_thread))
-    inline void write(Entry* entry, const uint64_t key, const Move best_move, const int depth, const uint8_t ply,
-                      const int static_eval, int score, const NodeType type, const bool pv)
-    {
-        if (score < mated_in_max_ply)
-        {
-            score -= ply;
-        }
-        else if (score > mate_in_max_ply)
-        {
-            score += ply;
-        }
+    void write(Entry* entry, uint64_t key, Move best_move, int depth, uint8_t ply,
+               int static_eval, int score, NodeType type, bool pv);
 
-        if (!(type == NodeType::exact
-            || (entry->age_pv_type & 252) != current_generation
-            || key != entry->key
-            || depth + 4 * entry->is_pv() * 2 >= entry->depth - 1))
-            return;
-
-        if (best_move || entry->key != key)
-        {
-            entry->best_move = best_move;
-        }
-
-        entry->key = key;
-        entry->depth = depth + 1;
-        entry->score = static_cast<int16_t>(score);
-        entry->static_eval = static_cast<int16_t>(static_eval);
-        entry->age_pv_type = current_generation + std::to_underlying(type) + (pv << 2);
-    }
-
-    inline uint16_t full()
-    {
-        uint16_t hash_full = 0;
-        for (int i = 0; i < 1000; i++)
-        {
-            if ((table[i].age_pv_type & 0b11111100) == current_generation) hash_full++;
-        }
-        return hash_full;
-    }
+    uint16_t full();
 }

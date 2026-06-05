@@ -14,7 +14,7 @@ inline size_t perft(const int depth)
     static Position& position = ThreadPool::get(0).position;
 
     MoveList moves;
-    legals<MoveType::all>(position, moves);
+    legals(position, moves);
     const auto n = moves.size();
     uint64_t nodes = 0;
 
@@ -41,7 +41,7 @@ inline void divide(const int depth)
     const auto start = std::chrono::high_resolution_clock::now();
     MoveList moves;
     auto& position = ThreadPool::get(0).position;
-    legals<MoveType::all>(position, moves);
+    legals(position, moves);
     const auto n = moves.size();
 
     State st;

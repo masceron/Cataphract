@@ -1,3 +1,5 @@
+#include <cstring>
+
 #include "nnue.hpp"
 #include "arch.hpp"
 

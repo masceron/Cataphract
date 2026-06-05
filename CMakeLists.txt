@@ -11,12 +11,7 @@ option(ENABLE_TUNING "Build with SPSA tuning hooks enabled" OFF)
 
 add_executable(Cataphract main.cpp
         board/bitboard.hpp
-        board/pieces/pawn.hpp
-        board/pieces/knight.hpp
-        board/pieces/king.hpp
-        board/pieces/bishop.hpp
-        board/pieces/rook.hpp
-        board/pieces/slider.hpp
+        board/slider.hpp
         position/fen.hpp
         position/position.hpp
         board/lines.hpp
@@ -50,6 +45,23 @@ add_executable(Cataphract main.cpp
         eval/simd/simd.hpp
         search/thread.hpp
         eval/nnue.cpp
+        search/search.cpp
+        search/thread.cpp
+        search/time.cpp
+        search/timer.cpp
+        search/see.cpp
+        search/movepicker.cpp
+        search/history.cpp
+        position/fen.cpp
+        position/movegen.cpp
+        eval/accumulators.cpp
+        eval/transposition.cpp
+        board/bitboard.cpp
+        position/move.cpp
+        cataphract.cpp
+        uci.cpp
+        board/slider.cpp
+        board/attacks.hpp
 )
 
 if(ENABLE_TUNING)

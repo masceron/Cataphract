@@ -5,6 +5,7 @@
 
 #include "../eval/transposition.hpp"
 #include "../search/search.hpp"
+#include "../search/thread.hpp"
 
 namespace Bench
 {

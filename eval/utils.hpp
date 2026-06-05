@@ -1,6 +1,7 @@
 #pragma once
 
 #include <utility>
+#include <array>
 
 #include "arch.hpp"
 #include "../board/bitboard.hpp"

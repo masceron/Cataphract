@@ -75,7 +75,6 @@ void prune_cal();
     PARAM(int, reduction_check_weight, 1012, 128, 4096, 96) \
     PARAM(int, pawn_correction_weight, 180, 16, 192, 90) \
     PARAM(int, non_pawn_correction_weight, 180, 16, 192, 9) \
-    PARAM(int, minor_correction_weight, 180, 16, 192, 9) \
     PARAM(int, major_correction_weight, 180, 16, 192, 9) \
 
 

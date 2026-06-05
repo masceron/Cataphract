@@ -3,9 +3,8 @@
 
 #include "move.hpp"
 #include "zobrist.hpp"
-#include "../board/pieces/king.hpp"
-#include "../board/pieces/knight.hpp"
-#include "../board/pieces/slider.hpp"
+#include "../board/attacks.hpp"
+#include "../board/slider.hpp"
 
 
 namespace Cuckoo

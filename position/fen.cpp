@@ -1,0 +1,270 @@
+#include <cstdint>
+#include <charconv>
+#include <deque>
+
+#include "move.hpp"
+#include "../search/thread.hpp"
+
+void setup_state(State& st)
+{
+    st.captured_piece = nil;
+    st.castling_rights = 0;
+    st.en_passant_square = -1;
+    st.previous = nullptr;
+    st.repetition = 1;
+    st.checker = 0;
+    st.check_blocker = 0;
+}
+
+int fen_parse(Position& position, std::string_view fen)
+{
+    State st;
+    setup_state(st);
+    Position temp;
+    temp.new_game();
+    temp.state = &st;
+
+    const size_t first = fen.find_first_not_of(" \t\n\r\f\v");
+    if (first == std::string_view::npos) return -1;
+    const size_t last = fen.find_last_not_of(" \t\n\r\f\v");
+    fen = fen.substr(first, last - first + 1);
+
+    if (fen == "startpos") fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+    uint64_t cr_pts = 0;
+    uint64_t cr_chars = 0;
+    while (fen[cr_chars] != ' ')
+    {
+        switch (fen[cr_chars])
+        {
+        case 'p':
+            if (cr_pts < 8 || cr_pts > 55) return -1;
+            set_bit(temp.boards[p], cr_pts);
+            temp.piece_on[cr_pts] = p;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'r':
+            set_bit(temp.boards[r], cr_pts);
+            temp.piece_on[cr_pts] = r;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'b':
+            set_bit(temp.boards[b], cr_pts);
+            temp.piece_on[cr_pts] = b;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'n':
+            set_bit(temp.boards[n], cr_pts);
+            temp.piece_on[cr_pts] = n;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'k':
+            set_bit(temp.boards[k], cr_pts);
+            temp.piece_on[cr_pts] = k;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'q':
+            set_bit(temp.boards[q], cr_pts);
+            temp.piece_on[cr_pts] = q;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'P':
+            if (cr_pts < 8 || cr_pts > 55) return -1;
+            set_bit(temp.boards[P], cr_pts);
+            temp.piece_on[cr_pts] = P;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'R':
+            set_bit(temp.boards[R], cr_pts);
+            temp.piece_on[cr_pts] = R;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'B':
+            set_bit(temp.boards[B], cr_pts);
+            temp.piece_on[cr_pts] = B;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'N':
+            set_bit(temp.boards[N], cr_pts);
+            temp.piece_on[cr_pts] = N;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'K':
+            set_bit(temp.boards[K], cr_pts);
+            temp.piece_on[cr_pts] = K;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case 'Q':
+            set_bit(temp.boards[Q], cr_pts);
+            temp.piece_on[cr_pts] = Q;
+            cr_pts++;
+            cr_chars++;
+            break;
+        case '1':
+            cr_pts += 1;
+            cr_chars++;
+            break;
+        case '2':
+            cr_pts += 2;
+            cr_chars++;
+            break;
+        case '3':
+            cr_pts += 3;
+            cr_chars++;
+            break;
+        case '4':
+            cr_pts += 4;
+            cr_chars++;
+            break;
+        case '5':
+            cr_pts += 5;
+            cr_chars++;
+            break;
+        case '6':
+            cr_pts += 6;
+            cr_chars++;
+            break;
+        case '7':
+            cr_pts += 7;
+            cr_chars++;
+            break;
+        case '8':
+            cr_pts += 8;
+            cr_chars++;
+            break;
+        case '/':
+            cr_chars++;
+            break;
+        default:
+            return -1;
+        }
+    }
+    if (cr_pts != 64)
+    {
+        return -1;
+    }
+    cr_chars++;
+    switch (fen[cr_chars])
+    {
+    case 'w':
+        temp.side_to_move = white;
+        break;
+    case 'b':
+        temp.side_to_move = black;
+        break;
+    default:
+        return -1;
+    }
+    cr_chars++;
+
+    if (fen[cr_chars] != ' ')
+    {
+        return -1;
+    }
+    cr_chars++;
+    int counter = 0;
+    if (fen[cr_chars] == '-')
+    {
+        counter = 4;
+        cr_chars++;
+    }
+    while (counter < 4)
+        switch (fen[cr_chars])
+        {
+        case 'K':
+            st.castling_rights |= white_king;
+            cr_chars++;
+            counter++;
+            break;
+        case 'Q':
+            st.castling_rights |= white_queen;
+            cr_chars++;
+            counter++;
+            break;
+        case 'k':
+            st.castling_rights |= black_king;
+            cr_chars++;
+            counter++;
+            break;
+        case 'q':
+            st.castling_rights |= black_queen;
+            cr_chars++;
+            counter++;
+            break;
+        case ' ':
+            counter = 4;
+            break;
+        default:
+            return -1;
+        }
+
+    if (fen[cr_chars] != ' ')
+    {
+        return -1;
+    }
+    cr_chars++;
+
+    if (fen[cr_chars] != '-')
+    {
+        if (st.en_passant_square = static_cast<int8_t>(algebraic_to_num(fen.substr(cr_chars, 2))); st.en_passant_square
+            == -1)
+        {
+            return -1;
+        }
+        cr_chars += 2;
+    }
+    else
+        cr_chars += 1;
+
+    if (cr_chars >= fen.length())
+    {
+        st.rule_50 = 0;
+        st.ply = 0;
+    }
+    else
+    {
+        cr_chars++;
+        const auto next = fen.find(' ', cr_chars);
+        if (next == std::string_view::npos)
+        {
+            return -1;
+        }
+
+        std::string_view rule_50_str = fen.substr(cr_chars, next - cr_chars);
+        st.rule_50 = 0;
+        std::from_chars(rule_50_str.data(), rule_50_str.data() + rule_50_str.size(), st.rule_50);
+
+        st.ply = 0;
+    }
+
+    temp.occupations[white] = temp.boards[P] | temp.boards[K] | temp.boards[N] | temp.boards[Q] | temp.boards[B] | temp.
+        boards[R];
+    temp.occupations[black] = temp.boards[p] | temp.boards[k] | temp.boards[n] | temp.boards[q] | temp.boards[b] | temp.
+        boards[r];
+    temp.occupations[2] = temp.occupations[white] | temp.occupations[black];
+
+    temp.get_checks();
+    st.attacks = UINT64_MAX;
+    st.pinned = UINT64_MAX;
+
+    temp.construct_zobrist_key();
+
+    ThreadPool::states.clear();
+    ThreadPool::states.push_back(st);
+    temp.state = &ThreadPool::states.back();
+
+    position = temp;
+
+    return 0;
+}

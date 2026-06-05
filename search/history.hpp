@@ -2,12 +2,10 @@
 
 #include <cstdint>
 #include <forward_list>
-#include <algorithm>
 #include <array>
-#include <span>
 
-#include "params.hpp"
 #include "../eval/transposition.hpp"
+#include "../position/position.hpp"
 
 struct SearchEntry
 {
@@ -22,18 +20,9 @@ struct Killers
 {
     std::array<std::array<Move, 2>, 128> table;
 
-    void insert(const Move move, const int ply) const
-    {
-        auto killers_of_ply = table[ply];
-        if (move == killers_of_ply[0] || move == killers_of_ply[1]) return;
-        killers_of_ply[1] = killers_of_ply[0];
-        killers_of_ply[0] = move;
-    }
+    void insert(Move move, int ply) const;
 
-    [[nodiscard]] Move get(const int ply, const int order) const
-    {
-        return table[ply][order];
-    }
+    [[nodiscard]] Move get(int ply, int order) const;
 };
 
 struct CaptureEntry
@@ -42,120 +31,38 @@ struct CaptureEntry
     uint8_t captured;
     uint8_t sq;
 
-    CaptureEntry(const uint8_t _moved, const uint8_t _captured, const Move move) :
-        moved(_moved & 7), captured(_captured != nil ? _captured & 7 : P), sq(move.to())
-    {
-    }
+    CaptureEntry(uint8_t _moved, uint8_t _captured, Move move);
 };
 
 struct Capture
 {
     std::array<std::array<std::array<std::array<int16_t, 64>, 5>, 6>, 2> table;
 
-    void scale_down()
-    {
-        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 5 * 64);
-             int16_t& score : flat_view)
-        {
-            score >>= 1;
-        }
-    }
-
-    void apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq,
-               const int16_t bonus)
-    {
-        const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_capture_history()),
-                                                 max_capture_history());
-        table[stm][moved_piece][captured_piece][sq] += clamped_bonus - table[stm][moved_piece][captured_piece][sq] *
-            abs(clamped_bonus) / max_capture_history();
-    }
-
-    void update(const std::forward_list<CaptureEntry>& searched, const bool stm, uint8_t moved_piece,
-                uint8_t captured_piece, const uint8_t sq, const uint8_t depth)
-    {
-        moved_piece &= 7;
-        captured_piece = captured_piece == nil ? P : captured_piece & 7;
-
-        const auto bonus = static_cast<int16_t>(capture_history_bonus() * depth);
-        apply(stm, moved_piece, captured_piece, sq, bonus);
-
-        for (const auto& [_moved, _captured, _sq] : searched)
-        {
-            apply(stm, _moved, _captured, _sq, static_cast<int16_t>(-bonus));
-        }
-        if (table[stm][moved_piece][captured_piece][sq] >= max_capture_history()) scale_down();
-    }
+    void scale_down();
+    void apply(bool stm, uint8_t moved_piece, uint8_t captured_piece, int sq,
+               int16_t bonus);
+    void update(const std::forward_list<CaptureEntry>& searched, bool stm, uint8_t moved_piece,
+                uint8_t captured_piece, uint8_t sq, uint8_t depth);
 };
 
 struct ButterflyHistory
 {
     std::array<std::array<std::array<int16_t, 64>, 64>, 2> table;
 
-    void scale_down()
-    {
-        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 64 * 64);
-             int16_t& score : flat_view)
-        {
-            score >>= 1;
-        }
-    }
-
-    void apply(const bool side, const int from, const int to, const int16_t bonus)
-    {
-        const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_butterfly_history()),
-                                                 max_butterfly_history());
-        table[side][from][to] += clamped_bonus - table[side][from][to] * abs(clamped_bonus) / max_butterfly_history();
-    }
-
-    void update(const std::forward_list<Move>& searched, const bool side, const int from, const int to,
-                const uint8_t depth)
-    {
-        const auto bonus = static_cast<int16_t>(butterfly_history_scale() * depth - butterfly_history_minus());
-        apply(side, from, to, bonus);
-
-        for (const Move move : searched)
-        {
-            apply(side, move.from(), move.to(), static_cast<int16_t>(-bonus));
-        }
-        if (table[side][from][to] >= max_butterfly_history()) scale_down();
-    }
+    void scale_down();
+    void apply(bool side, int from, int to, int16_t bonus);
+    void update(const std::forward_list<Move>& searched, bool side, int from, int to,
+                uint8_t depth);
 };
 
 struct PieceToHistory
 {
     std::array<std::array<std::array<int16_t, 64>, 6>, 2> table;
 
-    void scale_down()
-    {
-        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 64);
-             int16_t& score : flat_view)
-        {
-            score >>= 1;
-        }
-    }
-
-    void apply(const bool side, const Piece piece, const int to, const int16_t bonus)
-    {
-        const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_piece_to_history()),
-                                                 max_piece_to_history());
-        table[side][piece][to] += clamped_bonus - table[side][piece][to] * abs(clamped_bonus) / max_piece_to_history();
-    }
-
-    void update(const Position& pos, const std::forward_list<Move>& searched, const bool side, Piece piece,
-                const int to, const uint8_t depth)
-    {
-        piece = static_cast<Piece>(piece & 7);
-        const auto bonus = static_cast<int16_t>(piece_to_history_scale() * depth - piece_to_history_minus());
-        apply(side, piece, to, bonus);
-
-        for (const Move move : searched)
-        {
-            uint8_t p = pos.piece_on[move.from()] & 7;
-
-            apply(side, static_cast<Piece>(p), move.to(), static_cast<int16_t>(-bonus));
-        }
-        if (table[side][piece & 7][to] >= max_piece_to_history()) scale_down();
-    }
+    void scale_down();
+    void apply(bool side, Piece piece, int to, int16_t bonus);
+    void update(const Position& pos, const std::forward_list<Move>& searched, bool side, Piece piece,
+                int to, uint8_t depth);
 };
 
 struct Continuation
@@ -164,79 +71,11 @@ struct Continuation
     std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
     std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> four_plies;
 
-    static void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
-    {
-        for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 64 * 6 * 64 * 6 * 2);
-             int16_t& score : flat_view)
-        {
-            score >>= 1;
-        }
-    }
-
-    static void apply(auto& table, const bool stm, const uint8_t prev_piece, const uint8_t prev_to, const uint8_t piece,
-                      const uint8_t to, const int16_t bonus)
-    {
-        const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_continuation_history()),
-                                                 max_continuation_history());
-        table[stm][prev_piece][prev_to][piece][to] += clamped_bonus - table[stm][prev_piece][prev_to][piece][to] *
-            abs(clamped_bonus) / max_continuation_history();
-    }
-
-    void update(const Position& pos, const std::forward_list<Move>& searched, const Move move,
-                const uint8_t depth, const SearchEntry* ss)
-    {
-        const auto bonus = static_cast<int16_t>(continuation_history_scale() * depth - continuation_history_minus());
-        const bool stm = pos.side_to_move;
-        const uint8_t piece = pos.piece_on[move.from()] & 7;
-
-        if (const auto prev = ss - 1; (ss - 1)->piece_to != UINT16_MAX)
-        {
-            const uint8_t prev_piece = prev->piece_to >> 6 & 7;
-            const uint8_t prev_to = prev->piece_to & 0b111111;
-
-            apply(counter_moves, stm, prev_piece, prev_to, piece, move.to(), bonus);
-
-            for (const auto& tpm : searched)
-            {
-                const uint8_t tmp = pos.piece_on[tpm.from()] & 7;
-                apply(counter_moves, stm, prev_piece, prev_to, tmp, tpm.to(), -bonus);
-            }
-            if (counter_moves[stm][prev_piece][prev_to][piece][move.to()] >= max_continuation_history())
-                scale_down(counter_moves);
-        }
-
-        if (const auto prev2 = ss - 2; (ss - 2)->piece_to != UINT16_MAX)
-        {
-            const uint8_t prev2_piece = prev2->piece_to >> 6 & 7;
-            const uint8_t prev2_to = prev2->piece_to & 0b111111;
-
-            apply(follow_up, stm, prev2_piece, prev2_to, piece, move.to(), bonus);
-
-            for (const auto& tmp_move : searched)
-            {
-                const uint8_t tmp = pos.piece_on[tmp_move.from()] & 7;
-                apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmp_move.to(), -bonus);
-            }
-            if (follow_up[stm][prev2_piece][prev2_to][piece][move.to()] >= max_continuation_history())
-                scale_down(follow_up);
-        }
-
-        if (const auto prev4 = ss - 4; (ss - 4)->piece_to != UINT16_MAX)
-        {
-            const uint8_t prev4_piece = prev4->piece_to >> 6 & 7;
-            const uint8_t prev4_to = prev4->piece_to & 0b111111;
-
-            apply(four_plies, stm, prev4_piece, prev4_to, piece, move.to(), bonus);
-
-            for (const auto& tmp_move : searched)
-            {
-                const uint8_t tmp = pos.piece_on[tmp_move.from()] & 7;
-                apply(four_plies, stm, prev4_piece, prev4_to, tmp, tmp_move.to(), -bonus);
-            }
-            if (four_plies[stm][prev4_piece][prev4_to][piece][move.to()] >= max_continuation_history())
-                scale_down(four_plies);
-        }
-    }
+    static void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table);
+    static void apply(auto& table, bool stm, uint8_t prev_piece, uint8_t prev_to, uint8_t piece,
+                      uint8_t to, int16_t bonus);
+    void update(const Position& pos, const std::forward_list<Move>& searched, Move move,
+                uint8_t depth, const SearchEntry* ss);
 };
 
 struct Corrections
@@ -244,54 +83,15 @@ struct Corrections
     static constexpr uint16_t correction_size = 16384;
     static constexpr int correction_limit = 1024;
 
-    std::array<int16_t, correction_size> pawn_corrections;
-    std::array<int16_t, correction_size> white_non_pawns;
-    std::array<int16_t, correction_size> black_non_pawns;
-    std::array<int16_t, correction_size> minor_piece_corrections;
-    std::array<int16_t, correction_size> major_piece_corrections;
+    std::array<std::array<int16_t, correction_size>, 2> pawn_corrections;
+    std::array<std::array<int16_t, correction_size>, 2> white_non_pawns;
+    std::array<std::array<int16_t, correction_size>, 2> black_non_pawns;
+    std::array<std::array<int16_t, correction_size>, 2> major_piece_corrections;
 
-    static uint16_t index_of(const uint64_t key)
-    {
-        return key & (correction_size - 1);
-    }
-
-    static void apply(int16_t& entry, const int bonus)
-    {
-        entry += bonus - entry * std::abs(bonus) / correction_limit;
-    }
-
-    void update(const int delta, const Position& pos, const uint8_t depth)
-    {
-        auto& pawns = pawn_corrections[index_of(pos.state->pawn_key)];
-        auto& non_pawns_white = white_non_pawns[index_of(pos.state->non_pawn_keys[white])];
-        auto& non_pawns_black = black_non_pawns[index_of(pos.state->non_pawn_keys[black])];
-        auto& major = major_piece_corrections[index_of(pos.state->major_key)];
-
-        const int bonus = std::clamp(delta * depth / 8, -correction_limit / 4, correction_limit / 4);
-
-        apply(pawns, bonus);
-        apply(non_pawns_white, bonus);
-        apply(non_pawns_black, bonus);
-        apply(major, bonus);
-    }
-
-    [[nodiscard]] int correct(int static_eval, const Position& pos) const
-    {
-        const auto pawn_correction = pawn_corrections[index_of(pos.state->pawn_key)];
-        const auto non_pawns_white_correction = white_non_pawns[index_of(pos.state->non_pawn_keys[white])];
-        const auto non_pawns_black_correction = black_non_pawns[index_of(pos.state->non_pawn_keys[black])];
-        const auto major_correction = major_piece_corrections[index_of(pos.state->major_key)];
-
-        const int corrections =
-            pawn_correction * pawn_correction_weight() +
-            non_pawns_white_correction * non_pawn_correction_weight() +
-            non_pawns_black_correction * non_pawn_correction_weight() +
-            major_correction * major_correction_weight();
-
-        static_eval += corrections / 1024;
-
-        return std::clamp(static_eval, mated_in_max_ply + 1, mate_in_max_ply - 1);
-    }
+    static uint16_t index_of(uint64_t key);
+    static void apply(int16_t& entry, int bonus);
+    void update(int delta, const Position& pos, uint8_t depth);
+    [[nodiscard]] int correct(int static_eval, const Position& pos) const;
 };
 
 struct History
@@ -303,20 +103,7 @@ struct History
     Capture capture;
     Corrections corrections;
 
-    void update_quiet_histories(const Position& pos, const int depth, const Move picked_move, const SearchEntry* ss,
-                                const std::forward_list<Move>& quiets_searched)
-    {
-        killers.insert(picked_move, ss->plies);
-        butterfly_history.update(quiets_searched, pos.side_to_move, picked_move.from(), picked_move.to(),
-                                 depth);
-        piece_to_history.update(pos, quiets_searched, pos.side_to_move, pos.piece_on[picked_move.from()],
-                                picked_move.to(),
-                                depth);
-        continuation.update(pos, quiets_searched, picked_move, depth, ss);
-    }
-
-    void clear()
-    {
-        memset(this, 0, sizeof(History));
-    }
+    void update_quiet_histories(const Position& pos, int depth, Move picked_move, const SearchEntry* ss,
+                                const std::forward_list<Move>& quiets_searched);
+    void clear();
 };

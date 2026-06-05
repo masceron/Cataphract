@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cstdint>
-
 #define MAX_PLY 127
 
 struct Options

@@ -1,12 +1,10 @@
-#pragma once
-
 #include <bit>
 #include <immintrin.h>
-#include <cstdint>
 #include <random>
+#include <array>
 
-#include "bishop.hpp"
-#include "rook.hpp"
+#include "slider.hpp"
+#include "attacks.hpp"
 
 #ifndef __BMI2__
 struct Magic
@@ -17,8 +15,8 @@ struct Magic
     mutable uint64_t* attacks;
 };
 
-inline std::array<uint64_t, 5248> bishop_table{};
-inline std::array<uint64_t, 102400> rook_table{};
+std::array<uint64_t, 5248> bishop_table{};
+std::array<uint64_t, 102400> rook_table{};
 
 constexpr std::array bishop_magic_numbers = {
     31667043057275136ull, 2379101304879329763ull, 757774626364359168ull, 1130437606901761ull, 299342208567552ull,
@@ -52,7 +50,7 @@ constexpr std::array rook_magic_numbers = {
     4939604503868739585ull, 5066687154229250ull, 2533309217243651ull, 72075463384764676ull, 147493163278303490ull
 };
 
-inline uint64_t generate_random_number()
+uint64_t generate_random_number()
 {
     std::random_device rd;
     std::mt19937_64 gnr(rd());
@@ -61,7 +59,7 @@ inline uint64_t generate_random_number()
         48);
 }
 
-inline uint64_t random_uint64_few_bits()
+uint64_t random_uint64_few_bits()
 {
     return generate_random_number() & generate_random_number() & generate_random_number();
 }
@@ -81,7 +79,7 @@ constexpr uint64_t occupancy_board(const int set_index, const int mask_bits_coun
     return occupancy;
 }
 
-inline std::array<Magic, 64> generate_magics(const bool is_bishop)
+std::array<Magic, 64> generate_magics(const bool is_bishop)
 {
     constexpr std::array<Magic, 64> magics = {};
     int size = 0, count = 0;
@@ -132,22 +130,22 @@ inline std::array<Magic, 64> generate_magics(const bool is_bishop)
     return magics;
 }
 
-inline std::array<Magic, 64> bishop_magics = generate_magics(true);
-inline std::array<Magic, 64> rook_magics = generate_magics(false);
+std::array<Magic, 64> bishop_magics = generate_magics(true);
+std::array<Magic, 64> rook_magics = generate_magics(false);
 
-inline uint64_t get_bishop_attack(const int index, const uint64_t occupancy)
+uint64_t get_bishop_attack(const int index, const uint64_t occupancy)
 {
     const auto [magic, shift, mask, attacks] = bishop_magics[index];
     return attacks[((occupancy & mask) * magic) >> shift];
 }
 
-inline uint64_t get_rook_attack(const int index, const uint64_t occupancy)
+uint64_t get_rook_attack(const int index, const uint64_t occupancy)
 {
     const auto [magic, shift, mask, attacks] = rook_magics[index];
     return attacks[((occupancy & mask) * magic) >> shift];
 }
 
-inline uint64_t get_queen_attack(const int index, const uint64_t occupancy)
+uint64_t get_queen_attack(const int index, const uint64_t occupancy)
 {
     const auto [magic_r, shift_r, mask_r, attacks_r] = rook_magics[index];
     const auto [magic_b, shift_b, mask_b, attacks_b] = bishop_magics[index];
@@ -261,17 +259,17 @@ static const std::array<uint64_t, 102400> rook_table = []
     return rook_pext;
 }();
 
-inline uint64_t get_bishop_attack(const int index, const uint64_t occupancy)
+uint64_t get_bishop_attack(const int index, const uint64_t occupancy)
 {
     return bishop_table[bishop_offsets[index] + static_cast<uint32_t>(_pext_u64(occupancy, bishop_masks[index]))];
 }
 
-inline uint64_t get_rook_attack(const int index, const uint64_t occupancy)
+uint64_t get_rook_attack(const int index, const uint64_t occupancy)
 {
     return rook_table[rook_offsets[index] + static_cast<uint32_t>(_pext_u64(occupancy, rook_masks[index]))];
 }
 
-inline uint64_t get_queen_attack(const int index, const uint64_t occupancy)
+uint64_t get_queen_attack(const int index, const uint64_t occupancy)
 {
     return get_rook_attack(index, occupancy) | get_bishop_attack(index, occupancy);
 }

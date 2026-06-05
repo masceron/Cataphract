@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <deque>
 #include <bit>
 
 #include "move.hpp"
@@ -15,7 +14,7 @@
 
 struct AccumulatorEntry;
 
-inline bool color_of(const Pieces piece)
+inline bool color_of(const Piece piece)
 {
     if (piece < 6) return white;
     return black;
@@ -23,10 +22,9 @@ inline bool color_of(const Pieces piece)
 
 struct State
 {
-    uint64_t piece_key;
-    uint64_t castling_key;
-    uint64_t en_passant_key;
-    uint64_t side_key;
+    uint64_t pawn_key;
+    std::array<uint64_t, 2> non_pawn_keys;
+    uint64_t major_key;
     uint16_t ply;
     uint8_t castling_rights;
     uint8_t rule_50;
@@ -38,15 +36,15 @@ struct State
     uint64_t check_blocker;
     uint64_t attacks;
     State* previous;
-    Pieces captured_piece;
+    Piece captured_piece;
     int8_t repetition;
 };
 
 struct Position
 {
-    Pieces piece_on[64]{};
-    uint64_t boards[12]{};
-    uint64_t occupations[3]{};
+    std::array<Piece, 64> piece_on;
+    std::array<uint64_t, 14> boards;
+    std::array<uint64_t, 3> occupations;
     bool side_to_move = white;
     State* state = nullptr;
     Position()
@@ -56,7 +54,7 @@ struct Position
     void new_game();
 
     void move_piece(int from, int to);
-    void put_piece(Pieces piece, int sq);
+    void put_piece(Piece piece, int sq);
     void remove_piece(int sq);
 
     void make_move(Move move, State &st);
@@ -168,7 +166,7 @@ struct Position
     [[nodiscard]] bool is_pseudo_legal(Move move) const;
     [[nodiscard]] bool is_quiet(Move move) const;
 
-    [[nodiscard]] uint64_t construct_zobrist_key() const;
+    void construct_zobrist_key() const;
 
     void print_board() const;
 

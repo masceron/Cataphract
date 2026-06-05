@@ -188,7 +188,7 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
     }
 }
 
-template <const bool us, const MoveType type, const Pieces piece, const bool evasive>
+template <const bool us, const MoveType type, const Piece piece, const bool evasive>
 void general_move_generator(const Position& cr_pos, Move*& pos)
 {
     uint64_t board = 0;

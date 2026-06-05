@@ -135,7 +135,6 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
         }
 
         uint8_t moving_piece = position.piece_on[picked_move.from()];
-        if (moving_piece >= p) moving_piece -= 6;
         ss->piece_to = (moving_piece << 6) + picked_move.to();
 
         position.make_move(picked_move, st);
@@ -178,13 +177,10 @@ inline int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
             }
         }
 
-        if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil)
+        if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil || picked_move.flag() ==
+            MoveFlag::ep_capture)
         {
-            capture_searched.emplace_front(moving_piece, captured, picked_move.to());
-        }
-        else if (picked_move.flag() == MoveFlag::ep_capture)
-        {
-            capture_searched.emplace_front(moving_piece, P, picked_move.to());
+            capture_searched.emplace_front(moving_piece, captured, picked_move);
         }
     }
 
@@ -398,7 +394,6 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
                 if (picked_move == ss->excluded) continue;
 
                 uint8_t moving_piece = position.piece_on[picked_move.from()];
-                if (moving_piece >= p) moving_piece -= 6;
                 ss->piece_to = (moving_piece << 6) + picked_move.to();
 
                 State st;
@@ -529,7 +524,6 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
         State st;
 
         uint8_t moving_piece = position.piece_on[picked_move.from()];
-        if (moving_piece >= p) moving_piece -= 6;
         ss->piece_to = (moving_piece << 6) + picked_move.to();
 
         position.make_move(picked_move, st);
@@ -596,16 +590,11 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
                     }
                     else
                     {
-                        if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil)
+                        if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil || picked_move.
+                            flag() == MoveFlag::ep_capture)
                         {
-                            thread.history.capture.update(capture_searched, position.side_to_move, moving_piece,
-                                                          captured,
-                                                          picked_move.to(),
-                                                          depth);
-                        }
-                        else if (picked_move.flag() == MoveFlag::ep_capture)
-                        {
-                            thread.history.capture.update(capture_searched, position.side_to_move, moving_piece, P,
+                            thread.history.capture.update(capture_searched, position.side_to_move,
+                                                          moving_piece, captured,
                                                           picked_move.to(),
                                                           depth);
                         }
@@ -624,13 +613,9 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
         }
         else
         {
-            if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil)
+            if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil || picked_move.flag() == MoveFlag::ep_capture)
             {
-                capture_searched.emplace_front(moving_piece, captured, picked_move.to());
-            }
-            else if (picked_move.flag() == MoveFlag::ep_capture)
-            {
-                capture_searched.emplace_front(moving_piece, P, picked_move.to());
+                capture_searched.emplace_front(moving_piece, captured, picked_move);
             }
         }
     }

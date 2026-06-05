@@ -49,6 +49,7 @@ add_executable(Cataphract main.cpp
         eval/arch.hpp
         eval/simd/simd.hpp
         search/thread.hpp
+        eval/nnue.cpp
 )
 
 if(ENABLE_TUNING)

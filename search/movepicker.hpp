@@ -9,8 +9,8 @@
 #include "see.hpp"
 #include "thread.hpp"
 
-static constexpr int16_t mvv[12] = {
-    105, 205, 305, 405, 505, 605, 105, 205, 305, 405, 505, 605
+static constexpr int16_t mvv[14] = {
+    105, 205, 305, 405, 505, 605, 0, 0, 105, 205, 305, 405, 505, 605
 };
 
 enum class Stage: uint8_t
@@ -197,7 +197,7 @@ struct MovePicker
         return move;
     }
 
-    void score_mvv_caphist(int start_idx, int end_idx)
+    void score_mvv_caphist(const int start_idx, const int end_idx)
     {
         if (start_idx == end_idx) return;
 
@@ -211,12 +211,11 @@ struct MovePicker
             const auto from = move.from();
             const auto to = move.to();
 
-            int moved = pos.piece_on[from];
+            const int moved = pos.piece_on[from] & 7;
             int captured = pos.piece_on[to];
 
             if (captured == nil) captured = P;
-            else if (captured >= 6) captured -= 6;
-            if (moved >= 6) moved -= 6;
+            captured &= 7;
 
             scores[i] = mvv[captured] * mvv_weight() / 1024 + history.capture.table[stm][moved][captured][to] *
                 capture_history_weight() / 1024;
@@ -242,17 +241,16 @@ struct MovePicker
             const auto from = move.from();
             const auto to = move.to();
 
-            int moved = pos.piece_on[from];
-            if (moved >= 6) moved -= 6;
+            const int moved = pos.piece_on[from] & 7;
 
             scores[i] =
                 (history.butterfly_history.table[pos.side_to_move][from][to]
                     + history.piece_to_history.table[pos.side_to_move][moved][to]) * piece_history_weight() / 1024
-                + history.continuation.counter_moves[pos.side_to_move][prev >> 6][prev & 0b111111][moved][to] *
+                + history.continuation.counter_moves[pos.side_to_move][prev >> 6 & 7][prev & 0b111111][moved][to] *
                 counter_move_weight() / 1024
-                + history.continuation.follow_up[pos.side_to_move][prev2 >> 6][prev2 & 0b111111][moved][to] *
+                + history.continuation.follow_up[pos.side_to_move][prev2 >> 6 & 7][prev2 & 0b111111][moved][to] *
                 follow_up_weight() / 1024
-                + history.continuation.four_plies[pos.side_to_move][prev4 >> 6][prev4 & 0b111111][moved][to] *
+                + history.continuation.four_plies[pos.side_to_move][prev4 >> 6 & 7][prev4 & 0b111111][moved][to] *
                 four_plies_weight() / 1024;
         }
     }

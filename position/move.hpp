@@ -62,7 +62,8 @@ constexpr int algebraic_to_num(const std::string_view algebraic)
     return rank * 8 + file;
 }
 
-constexpr const char* num_to_algebraic(const int sq) {
+constexpr const char* num_to_algebraic(const int sq)
+{
     static constexpr const char* table[64] = {
         "a8", "b8", "c8", "d8", "e8", "f8", "g8", "h8",
         "a7", "b7", "c7", "d7", "e7", "f7", "g7", "h7",
@@ -110,7 +111,8 @@ struct Move
     [[nodiscard]] bool is_quiet() const
     {
         const auto _flag = flag();
-        return !(_flag == MoveFlag::capture || _flag == MoveFlag::ep_capture || _flag == MoveFlag::queen_promotion || _flag == MoveFlag::queen_promo_capture);
+        return !(_flag == MoveFlag::capture || _flag == MoveFlag::ep_capture || _flag == MoveFlag::queen_promotion ||
+            _flag == MoveFlag::queen_promo_capture);
     }
 
     [[nodiscard]] explicit operator bool() const
@@ -118,10 +120,9 @@ struct Move
         return move != 0;
     }
 
-    [[nodiscard]] Pieces promoted_to(const bool side = white) const
+    [[nodiscard]] Piece promoted_to(const bool side = white) const
     {
-        if (side == white) return static_cast<Pieces>((std::to_underlying(flag()) & 0b11) + 1);
-        return static_cast<Pieces>(6 + ((std::to_underlying(flag()) & 0b11) + 1));
+        return static_cast<Piece>((std::to_underlying(flag()) & 0b11) + 1 ^ side << 3);
     }
 
     bool operator==(const Move _move) const { return _move.move == this->move; }
@@ -149,7 +150,7 @@ struct Move
     }
 };
 
-template<>
+template <>
 struct std::hash<Move>
 {
     std::size_t operator()(const Move& m) const noexcept

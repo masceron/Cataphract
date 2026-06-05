@@ -8,7 +8,8 @@
 namespace SIMD
 {
     template <const int exclude>
-    void accumulators_addsub(Network* __restrict network, const int16_t* __restrict prev, int16_t* __restrict accs,
+    void accumulators_addsub(const Network& __restrict network, const int16_t* __restrict prev,
+                             int16_t* __restrict accs,
                              const std::pair<uint8_t, int8_t>* add,
                              const std::pair<uint8_t, int8_t>* sub, const std::pair<bool, bool>& mirrors,
                              const std::pair<uint8_t, uint8_t>& buckets)
@@ -21,21 +22,22 @@ namespace SIMD
             if constexpr (exclude != white)
             {
                 accs[iter] = prev[iter]
-                    + network->accumulator_weights[buckets.first][white_add][iter]
-                    - network->accumulator_weights[buckets.first][white_sub][iter];
+                    + network.accumulator_weights[buckets.first][white_add][iter]
+                    - network.accumulator_weights[buckets.first][white_sub][iter];
             }
 
             if constexpr (exclude != black)
             {
                 accs[iter + HL_SIZE] = prev[iter + HL_SIZE]
-                    + network->accumulator_weights[buckets.second][black_add][iter]
-                    - network->accumulator_weights[buckets.second][black_sub][iter];
+                    + network.accumulator_weights[buckets.second][black_add][iter]
+                    - network.accumulator_weights[buckets.second][black_sub][iter];
             }
         }
     }
 
     template <const int exclude>
-    void accumulators_addsub2(Network* __restrict network, const int16_t* __restrict prev, int16_t* __restrict accs,
+    void accumulators_addsub2(const Network& __restrict network, const int16_t* __restrict prev,
+                              int16_t* __restrict accs,
                               const std::pair<uint8_t, int8_t>* add,
                               const std::pair<uint8_t, int8_t>* sub, const std::pair<bool, bool>& mirrors,
                               const std::pair<uint8_t, uint8_t>& buckets)
@@ -49,29 +51,27 @@ namespace SIMD
             if constexpr (exclude != white)
             {
                 accs[iter] = prev[iter]
-                    + network->accumulator_weights[buckets.first][white_add][iter]
-                    - network->accumulator_weights[buckets.first][white_sub1][iter]
-                    - network->accumulator_weights[buckets.first][white_sub2][iter];
+                    + network.accumulator_weights[buckets.first][white_add][iter]
+                    - network.accumulator_weights[buckets.first][white_sub1][iter]
+                    - network.accumulator_weights[buckets.first][white_sub2][iter];
             }
 
             if constexpr (exclude != black)
             {
                 accs[iter + HL_SIZE] = prev[iter + HL_SIZE]
-                    + network->accumulator_weights[buckets.second][black_add][iter]
-                    - network->accumulator_weights[buckets.second][black_sub1][iter]
-                    - network->accumulator_weights[buckets.second][black_sub2][iter];
+                    + network.accumulator_weights[buckets.second][black_add][iter]
+                    - network.accumulator_weights[buckets.second][black_sub1][iter]
+                    - network.accumulator_weights[buckets.second][black_sub2][iter];
             }
         }
     }
 
     template <const int exclude>
-    void accumulators_add2sub2(Network* __restrict network, const int16_t* __restrict prev, int16_t* __restrict accs,
-
+    void accumulators_add2sub2(const Network& __restrict network, const int16_t* __restrict prev,
+                               int16_t* __restrict accs,
                                const std::pair<uint8_t, int8_t>* add,
-
                                const std::pair<uint8_t, int8_t>* sub,
                                const std::pair<bool, bool>& mirrors,
-
                                const std::pair<uint8_t, uint8_t>& buckets
     )
     {
@@ -85,28 +85,29 @@ namespace SIMD
             if constexpr (exclude != white)
             {
                 accs[iter] = prev[iter]
-                    + network->accumulator_weights[buckets.first][white_add1][iter]
-                    + network->accumulator_weights[buckets.first][white_add2][iter]
-                    - network->accumulator_weights[buckets.first][white_sub1][iter]
-                    - network->accumulator_weights[buckets.first][white_sub2][iter];
+                    + network.accumulator_weights[buckets.first][white_add1][iter]
+                    + network.accumulator_weights[buckets.first][white_add2][iter]
+                    - network.accumulator_weights[buckets.first][white_sub1][iter]
+                    - network.accumulator_weights[buckets.first][white_sub2][iter];
             }
 
             if constexpr (exclude != black)
             {
                 accs[iter + HL_SIZE] = prev[iter + HL_SIZE]
-                    + network->accumulator_weights[buckets.second][black_add1][iter]
-                    + network->accumulator_weights[buckets.second][black_add2][iter]
-                    - network->accumulator_weights[buckets.second][black_sub1][iter]
-                    - network->accumulator_weights[buckets.second][black_sub2][iter];
+                    + network.accumulator_weights[buckets.second][black_add1][iter]
+                    + network.accumulator_weights[buckets.second][black_add2][iter]
+                    - network.accumulator_weights[buckets.second][black_sub1][iter]
+                    - network.accumulator_weights[buckets.second][black_sub2][iter];
             }
         }
     }
 
-    inline int32_t forward(const Network* __restrict network, const int16_t* __restrict stm, const int16_t* __restrict nstm, const uint8_t bucket)
+    inline int32_t forward(const Network& __restrict network, const int16_t* __restrict stm,
+                           const int16_t* __restrict nstm, const uint8_t bucket)
     {
         int sum = 0;
-        const auto move_weights = &network->output_weights[bucket][0];
-        const auto non_move_weights = &network->output_weights[bucket][HL_SIZE];
+        const auto move_weights = &network.output_weights[bucket][0];
+        const auto non_move_weights = &network.output_weights[bucket][HL_SIZE];
 
         auto screlu = [](const int value)
         {

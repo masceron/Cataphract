@@ -2,8 +2,8 @@
 #include <cstdint>
 #include <string>
 #include <charconv>
+#include <deque>
 
-#include "zobrist.hpp"
 #include "position.hpp"
 #include "move.hpp"
 #include "../search/thread.hpp"
@@ -11,13 +11,9 @@
 inline void setup_state(State& st)
 {
     st.captured_piece = nil;
-    st.castling_key = 0;
     st.castling_rights = 0;
-    st.en_passant_key = 0;
-    st.piece_key = 0;
     st.en_passant_square = -1;
     st.previous = nullptr;
-    st.side_key = 0;
     st.repetition = 1;
     st.checker = 0;
     st.check_blocker = 0;
@@ -28,6 +24,7 @@ inline int fen_parse(Position& position, std::string_view fen)
     State st;
     setup_state(st);
     Position temp;
+    temp.new_game();
     temp.state = &st;
 
     const size_t first = fen.find_first_not_of(" \t\n\r\f\v");
@@ -47,42 +44,36 @@ inline int fen_parse(Position& position, std::string_view fen)
             if (cr_pts < 8 || cr_pts > 55) return -1;
             set_bit(temp.boards[p], cr_pts);
             temp.piece_on[cr_pts] = p;
-            st.piece_key ^= Zobrist::piece_keys[p][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'r':
             set_bit(temp.boards[r], cr_pts);
             temp.piece_on[cr_pts] = r;
-            st.piece_key ^= Zobrist::piece_keys[r][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'b':
             set_bit(temp.boards[b], cr_pts);
             temp.piece_on[cr_pts] = b;
-            st.piece_key ^= Zobrist::piece_keys[b][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'n':
             set_bit(temp.boards[n], cr_pts);
             temp.piece_on[cr_pts] = n;
-            st.piece_key ^= Zobrist::piece_keys[n][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'k':
             set_bit(temp.boards[k], cr_pts);
             temp.piece_on[cr_pts] = k;
-            st.piece_key ^= Zobrist::piece_keys[k][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'q':
             set_bit(temp.boards[q], cr_pts);
             temp.piece_on[cr_pts] = q;
-            st.piece_key ^= Zobrist::piece_keys[q][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
@@ -90,42 +81,36 @@ inline int fen_parse(Position& position, std::string_view fen)
             if (cr_pts < 8 || cr_pts > 55) return -1;
             set_bit(temp.boards[P], cr_pts);
             temp.piece_on[cr_pts] = P;
-            st.piece_key ^= Zobrist::piece_keys[P][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'R':
             set_bit(temp.boards[R], cr_pts);
             temp.piece_on[cr_pts] = R;
-            st.piece_key ^= Zobrist::piece_keys[R][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'B':
             set_bit(temp.boards[B], cr_pts);
             temp.piece_on[cr_pts] = B;
-            st.piece_key ^= Zobrist::piece_keys[B][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'N':
             set_bit(temp.boards[N], cr_pts);
             temp.piece_on[cr_pts] = N;
-            st.piece_key ^= Zobrist::piece_keys[N][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'K':
             set_bit(temp.boards[K], cr_pts);
             temp.piece_on[cr_pts] = K;
-            st.piece_key ^= Zobrist::piece_keys[K][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
         case 'Q':
             set_bit(temp.boards[Q], cr_pts);
             temp.piece_on[cr_pts] = Q;
-            st.piece_key ^= Zobrist::piece_keys[Q][cr_pts];
             cr_pts++;
             cr_chars++;
             break;
@@ -186,9 +171,6 @@ inline int fen_parse(Position& position, std::string_view fen)
     }
     cr_chars++;
 
-    if (temp.side_to_move == black)
-        st.side_key ^= Zobrist::side_key;
-
     if (fen[cr_chars] != ' ')
     {
         return -1;
@@ -230,8 +212,6 @@ inline int fen_parse(Position& position, std::string_view fen)
             return -1;
         }
 
-    st.castling_key ^= Zobrist::castling_keys[st.castling_rights];
-
     if (fen[cr_chars] != ' ')
     {
         return -1;
@@ -249,9 +229,6 @@ inline int fen_parse(Position& position, std::string_view fen)
     }
     else
         cr_chars += 1;
-
-    if (st.en_passant_square != -1)
-        st.en_passant_key ^= Zobrist::en_passant_key[st.en_passant_square % 8];
 
     if (cr_chars >= fen.length())
     {
@@ -284,9 +261,8 @@ inline int fen_parse(Position& position, std::string_view fen)
     st.attacks = UINT64_MAX;
     st.pinned = UINT64_MAX;
 
-    st.key = st.piece_key ^ st.castling_key ^ st.en_passant_key ^ st.side_key;
+    temp.construct_zobrist_key();
 
-    position.new_game();
     ThreadPool::states.clear();
     ThreadPool::states.push_back(st);
     temp.state = &ThreadPool::states.back();

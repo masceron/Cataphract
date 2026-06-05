@@ -58,11 +58,6 @@ void prune_cal();
     PARAM(int16_t, max_continuation_history, 10277, 4096, INT16_MAX, 768) \
     PARAM(int, continuation_history_scale, 44, 1, 100, 5) \
     PARAM(int, continuation_history_minus, 9, 1, 100, 5) \
-    PARAM(int, correction_limit, 8707, 1024, 16384, 768) \
-    PARAM(int, correction_bonus_scale, 135, 64, 1024, 48) \
-    PARAM(int, pawn_correction_scale, 1129, 256, 2048, 90) \
-    PARAM(int, minor_correction_scale, 1231, 256, 2048, 90) \
-    PARAM(int, major_correction_scale, 953, 256, 2048, 90) \
     PARAM(int, pawn_weight, 150, 50, 300, 13) \
     PARAM(int, knight_weight, 992, 390, 1560, 59) \
     PARAM(int, bishop_weight, 1060, 412, 1650, 80) \
@@ -78,6 +73,10 @@ void prune_cal();
     PARAM(int, reduction_tt_depth_weight, 1006, 128, 4096, 96) \
     PARAM(int, reduction_killer_weight, 2018, 128, 4096, 96) \
     PARAM(int, reduction_check_weight, 1012, 128, 4096, 96) \
+    PARAM(int, pawn_correction_weight, 180, 16, 192, 90) \
+    PARAM(int, non_pawn_correction_weight, 180, 16, 192, 9) \
+    PARAM(int, minor_correction_weight, 180, 16, 192, 9) \
+    PARAM(int, major_correction_weight, 180, 16, 192, 9) \
 
 
 #ifndef SPSA_TUNE

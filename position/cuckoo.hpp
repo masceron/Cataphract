@@ -50,7 +50,7 @@ namespace Cuckoo
 
     inline void init()
     {
-        for (int piece = 1; piece < 12; piece++)
+        for (int piece = 1; piece < 14; piece++)
         {
             if (piece == p) continue;
             for (int sq0 = 0; sq0 < 64; sq0++)

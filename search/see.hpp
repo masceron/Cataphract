@@ -21,24 +21,19 @@ inline uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64
     return attackers;
 }
 
-inline int value_of(const Pieces piece)
+inline int value_of(const Piece piece)
 {
-    switch (piece)
+    switch (piece & 7)
     {
     case P:
-    case p:
         return pawn_weight();
     case N:
-    case n:
         return knight_weight();
     case B:
-    case b:
         return bishop_weight();
     case R:
-    case r:
         return rook_weight();
     case Q:
-    case q:
         return queen_weight();
     default:
         return 0;
@@ -46,13 +41,13 @@ inline int value_of(const Pieces piece)
 }
 
 inline uint64_t least_valuable_piece(const Position& pos, const uint64_t attackers, const uint8_t side,
-                                     Pieces& attacker)
+                                     Piece& attacker)
 {
     for (int i = P + side * 6; i <= Q + side * 6; i++)
     {
         if (const uint64_t attack = attackers & pos.boards[i])
         {
-            attacker = static_cast<Pieces>(i);
+            attacker = static_cast<Piece>(i);
             return attack & ~(attack - 1);
         }
     }
@@ -83,7 +78,7 @@ inline int static_exchange_evaluation(const Position& pos, const Move capture)
     uint64_t occ = pos.occupations[2];
     uint64_t attackers = attackers_of(pos, to, occ);
     gains[depth] = value_of(pos.piece_on[to]);
-    Pieces attacker = pos.piece_on[from];
+    Piece attacker = pos.piece_on[from];
     uint64_t attacked = 0;
 
     do

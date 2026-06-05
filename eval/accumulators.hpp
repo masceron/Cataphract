@@ -1,14 +1,15 @@
 #pragma once
 
+#include <cstring>
+
 #include "utils.hpp"
 #include "../position/position.hpp"
-
 #include "simd/simd.hpp"
 
 struct AccumulatorEntry
 {
     SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
-    uint64_t bitboards[12];
+    std::array<uint64_t, 14> bitboards;
     std::pair<uint8_t, int8_t> adds[2];
     std::pair<uint8_t, int8_t> subs[2];
     bool is_dirty;
@@ -27,11 +28,11 @@ struct AccumulatorEntry
         const uint8_t from = move.from();
         const uint8_t to = move.to();
         const auto flag = move.flag();
-        const Pieces moved_piece = pos.piece_on[to];
-        std::memcpy(bitboards, &pos.boards, 12 * sizeof(uint64_t));
+        const Piece moved_piece = pos.piece_on[to];
+        std::memcpy(bitboards.data(), &pos.boards, sizeof(bitboards));
         const bool just_moved = !pos.side_to_move;
 
-        if (moved_piece == K || moved_piece == k)
+        if (type_of(moved_piece) == King)
         {
             if (const int flip = !just_moved * 56;
                 input_buckets_map[from ^ flip] != input_buckets_map[to ^ flip] || ((from % 8 > 3) != (to % 8 > 3)))
@@ -79,7 +80,7 @@ struct AccumulatorEntry
 
 struct FinnyEntry
 {
-    uint64_t bitboards[12];
+    std::array<uint64_t, 14> bitboards;
     SIMD_ALIGN int16_t accumulators[2 * HL_SIZE];
 };
 
@@ -114,21 +115,22 @@ struct AccumulatorStack
         --size;
     }
 
-    AccumulatorEntry* operator[](const int idx)
+    AccumulatorEntry& operator[](const int idx)
     {
-        return &stack[idx];
+        return stack[idx];
     }
 };
 
-inline void accumulators_set(const Network* __restrict network, const uint64_t* __restrict boards, int16_t* __restrict accumulators)
+inline void accumulators_set(const Network& __restrict network, const std::array<uint64_t, 14>& boards,
+                             int16_t* __restrict accumulators)
 {
-    std::memcpy(accumulators, network->accumulator_biases, HL_SIZE * sizeof(int16_t));
-    std::memcpy(&accumulators[HL_SIZE], network->accumulator_biases, HL_SIZE * sizeof(int16_t));
+    std::memcpy(accumulators, network.accumulator_biases, HL_SIZE * sizeof(int16_t));
+    std::memcpy(&accumulators[HL_SIZE], network.accumulator_biases, HL_SIZE * sizeof(int16_t));
 
     const std::pair mirror = {lsb(boards[K]) % 8 > 3, lsb(boards[k]) % 8 > 3};
     const auto [white_bucket, black_bucket] = get_buckets(boards);
 
-    for (int i = 0; i < 12; i++)
+    for (int i = 0; i < 14; i++)
     {
         uint64_t board = boards[i];
 
@@ -138,8 +140,8 @@ inline void accumulators_set(const Network* __restrict network, const uint64_t* 
             for (int iter = 0; iter < HL_SIZE; iter++)
             {
                 accumulators[iter] = static_cast<int16_t>(accumulators[iter]
-                    + network->accumulator_weights[white_bucket][white_add][iter]);
-                accumulators[iter + HL_SIZE] = static_cast<int16_t>(accumulators[iter + HL_SIZE] + network->
+                    + network.accumulator_weights[white_bucket][white_add][iter]);
+                accumulators[iter + HL_SIZE] = static_cast<int16_t>(accumulators[iter + HL_SIZE] + network.
                     accumulator_weights[black_bucket][black_add][iter]);
             }
         }
@@ -147,7 +149,7 @@ inline void accumulators_set(const Network* __restrict network, const uint64_t* 
 }
 
 template <const int exclude>
-void update_from_move(Network* __restrict network, int16_t* __restrict prev, int16_t* __restrict cur,
+void update_from_move(const Network& __restrict network, int16_t* __restrict prev, int16_t* __restrict cur,
                       const std::pair<uint8_t, int8_t>* add,
                       const std::pair<uint8_t, int8_t>* sub,
                       const std::pair<bool, bool>& mirrors,
@@ -159,57 +161,57 @@ void update_from_move(Network* __restrict network, int16_t* __restrict prev, int
         if (add[1].second != -1)
         {
             SIMD::accumulators_add2sub2<exclude>(network, prev, cur,
-                                           add, sub, mirrors,
-                                           buckets);
+                                                 add, sub, mirrors,
+                                                 buckets);
         }
         //Capture or promo-capture
         else
         {
             SIMD::accumulators_addsub2<exclude>(network, prev, cur, add,
-                                          sub, mirrors,
-                                          buckets);
+                                                sub, mirrors,
+                                                buckets);
         }
     }
     else
     {
         SIMD::accumulators_addsub<exclude>(network, prev, cur, add,
-                                     sub, mirrors,
-                                     buckets);
+                                           sub, mirrors,
+                                           buckets);
     }
 }
 
-inline void accumulator_stack_update(Network* __restrict network, AccumulatorStack& accumulator_stack)
+inline void accumulator_stack_update(const Network& __restrict network, AccumulatorStack& accumulator_stack)
 {
     auto idx = accumulator_stack.size - 1;
-    while (accumulator_stack[idx - 1]->is_dirty) idx--;
+    while (accumulator_stack[idx - 1].is_dirty) idx--;
     auto& finny_table = accumulator_stack.finny_table;
 
     for (; idx < accumulator_stack.size; idx++)
     {
-        const auto stack_entry = accumulator_stack[idx];
-        const auto new_bitboards = stack_entry->bitboards;
+        auto& stack_entry = accumulator_stack[idx];
+        auto& new_bitboards = stack_entry.bitboards;
         const auto new_buckets = get_buckets(new_bitboards);
         const std::pair new_mirrors = {
             lsb(new_bitboards[K]) % 8 > 3, lsb(new_bitboards[k]) % 8 > 3
         };
-        const auto current_accumulators = stack_entry->accumulators;
+        const auto current_accumulators = stack_entry.accumulators;
 
-        const auto previous_entry = accumulator_stack[idx - 1];
-        const auto previous_boards = previous_entry->bitboards;
-        const auto previous_accumulators = accumulator_stack[idx - 1]->accumulators;
+        auto& previous_entry = accumulator_stack[idx - 1];
+        auto& previous_boards = previous_entry.bitboards;
+        auto& previous_accumulators = accumulator_stack[idx - 1].accumulators;
 
-        if (!stack_entry->require_rebuild)
+        if (!stack_entry.require_rebuild)
         {
-            update_from_move<-1>(network, previous_accumulators, current_accumulators, stack_entry->adds,
-                                 stack_entry->subs, new_mirrors, new_buckets);
+            update_from_move<-1>(network, previous_accumulators, current_accumulators, stack_entry.adds,
+                                 stack_entry.subs, new_mirrors, new_buckets);
         }
         else
         {
             const auto previous_buckets = get_buckets(previous_boards);
             const auto [white_bucket, black_bucket] = new_buckets;
-            const auto saved_entry = &finny_table[white_bucket][black_bucket];
-            const auto saved_bitboards = saved_entry->bitboards;
-            const auto saved_accumulators = saved_entry->accumulators;
+            auto& saved_entry = finny_table[white_bucket][black_bucket];
+            auto& saved_bitboards = saved_entry.bitboards;
+            auto& saved_accumulators = saved_entry.accumulators;
 
             bool to_update;
 
@@ -229,7 +231,7 @@ inline void accumulator_stack_update(Network* __restrict network, AccumulatorSta
 
             if (!to_update)
             {
-                for (int piece = 0; piece < 12; piece++)
+                for (int piece = 0; piece < 14; piece++)
                 {
                     const auto old_white = saved_mirrors.first
                                                ? horizontal_mirror(saved_bitboards[piece])
@@ -242,10 +244,10 @@ inline void accumulator_stack_update(Network* __restrict network, AccumulatorSta
                     while (white_adds)
                     {
                         const int index_added = pop_lsb(white_adds);
-                        const int input_index = index_added + piece * 64;
+                        const int input_index = index_added + nnue_index(piece) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
-                            saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] + network->
+                            saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] + network.
                                 accumulator_weights[white_bucket][input_index][iter]);
                         }
                     }
@@ -255,23 +257,23 @@ inline void accumulator_stack_update(Network* __restrict network, AccumulatorSta
                     while (white_subs)
                     {
                         const int index_subbed = pop_lsb(white_subs);
-                        const int input_index = index_subbed + piece * 64;
+                        const int input_index = index_subbed + nnue_index(piece) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
-                            saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] - network->
+                            saved_accumulators[iter] = static_cast<int16_t>(saved_accumulators[iter] - network.
                                 accumulator_weights[white_bucket][input_index][iter]);
                         }
                     }
                 }
 
-                update_from_move<white>(network, previous_accumulators, current_accumulators, stack_entry->adds,
-                                        stack_entry->subs, new_mirrors, new_buckets);
+                update_from_move<white>(network, previous_accumulators, current_accumulators, stack_entry.adds,
+                                        stack_entry.subs, new_mirrors, new_buckets);
                 std::memcpy(current_accumulators, saved_accumulators, HL_SIZE * sizeof(int16_t));
                 std::memcpy(&saved_accumulators[HL_SIZE], &current_accumulators[HL_SIZE], HL_SIZE * sizeof(int16_t));
             }
             else
             {
-                for (int piece = 0; piece < 12; piece++)
+                for (int piece = 0; piece < 14; piece++)
                 {
                     const auto old_black = saved_mirrors.second
                                                ? horizontal_mirror(saved_bitboards[piece])
@@ -285,11 +287,11 @@ inline void accumulator_stack_update(Network* __restrict network, AccumulatorSta
                     while (black_adds)
                     {
                         const int index_added = pop_lsb(black_adds);
-                        const int input_index = index_added + flip_color(piece) * 64;
+                        const int input_index = index_added + nnue_index(flip_color(piece)) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
                             saved_accumulators[iter + HL_SIZE] = static_cast<int16_t>(saved_accumulators[iter + HL_SIZE]
-                                + network->accumulator_weights[black_bucket][input_index][iter]);
+                                + network.accumulator_weights[black_bucket][input_index][iter]);
                         }
                     }
 
@@ -298,23 +300,23 @@ inline void accumulator_stack_update(Network* __restrict network, AccumulatorSta
                     while (black_subs)
                     {
                         const int index_subbed = pop_lsb(black_subs);
-                        const int input_index = index_subbed + flip_color(piece) * 64;
+                        const int input_index = index_subbed + nnue_index(flip_color(piece)) * 64;
                         for (int iter = 0; iter < HL_SIZE; iter++)
                         {
                             saved_accumulators[iter + HL_SIZE] = static_cast<int16_t>(saved_accumulators[iter + HL_SIZE]
-                                - network->accumulator_weights[black_bucket][input_index][iter]);
+                                - network.accumulator_weights[black_bucket][input_index][iter]);
                         }
                     }
                 }
-                update_from_move<black>(network, previous_accumulators, current_accumulators, stack_entry->adds,
-                                        stack_entry->subs, new_mirrors, new_buckets);
+                update_from_move<black>(network, previous_accumulators, current_accumulators, stack_entry.adds,
+                                        stack_entry.subs, new_mirrors, new_buckets);
                 std::memcpy(&current_accumulators[HL_SIZE], &saved_accumulators[HL_SIZE], HL_SIZE * sizeof(int16_t));
                 std::memcpy(saved_accumulators, current_accumulators, HL_SIZE * sizeof(int16_t));
             }
 
-            std::memcpy(saved_bitboards, new_bitboards, 12 * sizeof(uint64_t));
+            std::memcpy(saved_bitboards.data(), new_bitboards.data(), sizeof(new_bitboards));
         }
 
-        stack_entry->is_dirty = false;
+        stack_entry.is_dirty = false;
     }
 }

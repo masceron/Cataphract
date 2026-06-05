@@ -7,9 +7,9 @@
 #define OUTPUT_BUCKETS 8
 #define INPUT_BUCKETS 16
 
-static constexpr int QA = 255;
-static constexpr int QB = 64;
-static constexpr int16_t EVAL_SCALE = 400;
+constexpr int QA = 255;
+constexpr int QB = 64;
+constexpr int16_t EVAL_SCALE = 400;
 
 struct Network
 {

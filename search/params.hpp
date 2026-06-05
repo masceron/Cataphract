@@ -77,7 +77,6 @@ void prune_cal();
     PARAM(int, non_pawn_correction_weight, 180, 16, 192, 9) \
     PARAM(int, major_correction_weight, 180, 16, 192, 9) \
 
-
 #ifndef SPSA_TUNE
 
 #define PARAM(type, name, def, min, max, step) \

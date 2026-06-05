@@ -2,7 +2,7 @@
 #include "params.hpp"
 #include "see.hpp"
 
-static constexpr int16_t mvv[14] = {
+constexpr int16_t mvv[14] = {
     105, 205, 305, 405, 505, 605, 0, 0, 105, 205, 305, 405, 505, 605
 };
 

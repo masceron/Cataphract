@@ -96,7 +96,7 @@ namespace TT
         if (!(type == NodeType::exact
             || (entry->age_pv_type & 252) != current_generation
             || key != entry->key
-            || depth + 4 * entry->is_pv() * 2 >= entry->depth - 1))
+            || depth + 4 * entry->is_pv() * 2 >= entry->depth))
             return;
 
         if (best_move || entry->key != key)
@@ -105,7 +105,7 @@ namespace TT
         }
 
         entry->key = key;
-        entry->depth = depth + 1;
+        entry->depth = depth;
         entry->score = static_cast<int16_t>(score);
         entry->static_eval = static_cast<int16_t>(static_eval);
         entry->age_pv_type = current_generation + std::to_underlying(type) + (pv << 2);

@@ -8,8 +8,6 @@ enum Piece : uint8_t;
 struct Move;
 struct AccumulatorEntry;
 
-bool color_of(Piece piece);
-
 struct State
 {
     uint64_t pawn_key;

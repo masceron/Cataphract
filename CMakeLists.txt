@@ -66,6 +66,7 @@ add_executable(Cataphract main.cpp
         position/zobrist.cpp
         board/lines.cpp
         position/perft.cpp
+        eval/utils.cpp
 )
 
 if(ENABLE_TUNING)
@@ -84,7 +85,7 @@ if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_compile_options(Cataphract PRIVATE
                 -Wall -Wextra -Wno-class-memaccess -DNDEBUG -fno-exceptions
                 -ffunction-sections -fdata-sections -fno-rtti
-                -O3 -flto=auto -fipa-pta -flto-partition=one
+                -O3 -flto=auto -fipa-pta
                 -march=native -mtune=native
         )
         target_compile_definitions(Cataphract PRIVATE NDEBUG)

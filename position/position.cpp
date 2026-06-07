@@ -15,8 +15,7 @@
 
 bool color_of(const Piece piece)
 {
-    if (piece < 6) return white;
-    return black;
+    return piece >= 6;
 }
 
 Position::Position()

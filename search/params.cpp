@@ -1,8 +1,5 @@
 #include "params.hpp"
 
-#include <array>
-#include <cmath>
-
 void reduction_cal()
 {
     for (int depth = 0; depth < MAX_PLY; depth++)

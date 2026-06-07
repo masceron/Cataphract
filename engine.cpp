@@ -12,7 +12,6 @@
 #include "position/fen.hpp"
 #include "eval/nnue.hpp"
 
-
 void new_game()
 {
     TT::current_generation = 8;

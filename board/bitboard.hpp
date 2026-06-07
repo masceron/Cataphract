@@ -2,12 +2,6 @@
 
 #include <cstdint>
 
-constexpr uint64_t not_a_file = 0xFEFEFEFEFEFEFEFE;
-constexpr uint64_t not_h_file = 0x7F7F7F7F7F7F7F7F;
-constexpr uint64_t not_ab_file = 0xFCFCFCFCFCFCFCFC;
-constexpr uint64_t not_gh_file = 0x3F3F3F3F3F3F3F3F;
-
-
 enum Side: bool
 {
     white, black
@@ -37,56 +31,9 @@ enum class Direction
 };
 
 template <const Direction direction, const bool side>
-uint64_t Shift(const uint64_t& board)
-{
-    if constexpr (direction == Direction::Up && side == white)
-    {
-        return board >> 8;
-    }
-    else if constexpr (direction == Direction::Up && side == black)
-    {
-        return board << 8;
-    }
-    else if constexpr (direction == Direction::Upleft && side == white)
-    {
-        return (board >> 9) & not_h_file;
-    }
-    else if constexpr (direction == Direction::Upleft && side == black)
-    {
-        return (board << 9) & not_a_file;
-    }
-    else if constexpr (direction == Direction::Upright && side == white)
-    {
-        return (board >> 7) & not_a_file;
-    }
-    else if constexpr (direction == Direction::Upright && side == black)
-    {
-        return (board << 7) & not_h_file;
-    }
-}
+uint64_t Shift(const uint64_t& board);
 
-template <const Direction direction>
-int8_t Delta(const bool side)
-{
-    if constexpr (direction == Direction::Up)
-    {
-        if (side == white)
-            return -8;
-        return 8;
-    }
-    if constexpr (direction == Direction::Upleft)
-    {
-        if (side == white)
-            return -9;
-        return 9;
-    }
-    if constexpr (direction == Direction::Upright)
-    {
-        if (side == white)
-            return -7;
-        return 7;
-    }
-}
+template <const Direction direction> int8_t Delta(bool side);
 
 void set_bit(uint64_t& bitboard, uint8_t index);
 int lsb(uint64_t bitboard);

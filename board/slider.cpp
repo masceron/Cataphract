@@ -1,7 +1,6 @@
 #include <bit>
 #include <immintrin.h>
 #include <random>
-#include <array>
 
 #include "slider.hpp"
 #include "attacks.hpp"

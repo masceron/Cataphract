@@ -3,19 +3,7 @@
 #include <cstdint>
 #include <tuple>
 
-#include "../options.hpp"
 #include "../position/move.hpp"
-
-enum Values: int
-{
-    draw = 0,
-    infinity = 32000,
-    negative_infinity = -32000,
-    mate_value = 31999,
-    mate_in_max_ply = mate_value - MAX_PLY,
-    mated_in_max_ply = -mate_in_max_ply,
-    score_none = -32500
-};
 
 enum class NodeType: uint8_t
 {

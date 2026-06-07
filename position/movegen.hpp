@@ -1,7 +1,8 @@
 #pragma once
 
 #include "move.hpp"
-#include "position.hpp"
+
+struct Position;
 
 struct MoveList
 {

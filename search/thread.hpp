@@ -6,10 +6,11 @@
 #include <list>
 #include <deque>
 
-#include "../position/position.hpp"
 #include "history.hpp"
-#include "../options.hpp"
-#include "../eval/nnue.hpp"
+#include "../eval/accumulators.hpp"
+#include "../position/position.hpp"
+
+struct SearchEntry;
 
 template <bool silent>
 void thread_search(int thread_idx, int search_depth);

@@ -1,7 +1,9 @@
 #pragma once
 
-#include "../eval/transposition.hpp"
-#include "../position/position.hpp"
+#include "../options.hpp"
+#include "../position/move.hpp"
+
+struct Position;
 
 enum class TimeControlMode: uint8_t
 {

@@ -1,11 +1,11 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
+#include <string>
 
-#include "move.hpp"
-#include "zobrist.hpp"
-#include "../board/bitboard.hpp"
-
+enum Piece : uint8_t;
+struct Move;
 struct AccumulatorEntry;
 
 bool color_of(Piece piece);
@@ -35,7 +35,7 @@ struct Position
     std::array<Piece, 64> piece_on;
     std::array<uint64_t, 14> boards;
     std::array<uint64_t, 3> occupations;
-    bool side_to_move = white;
+    bool side_to_move;
     State* state = nullptr;
     Position();
     void new_game();

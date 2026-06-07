@@ -3,6 +3,7 @@
 #include <cstring>
 
 #include "transposition.hpp"
+#include "../options.hpp"
 
 namespace TT
 {

@@ -1,4 +1,8 @@
+#include <numeric>
+
 #include "thread.hpp"
+#include "../eval/transposition.hpp"
+#include "../eval/nnue.hpp"
 
 void SearchThread::search_stack_init()
 {
@@ -94,7 +98,7 @@ void ThreadPool::worker_loop(const int thread_idx, uint32_t current_generation)
 
         if (task == WorkerTask::Refresh)
         {
-            NNUE::refresh_accumulators(thread.position, thread.accumulator_stack);
+            refresh_accumulators(thread.position, thread.accumulator_stack);
         }
         else if (task == WorkerTask::Search)
         {

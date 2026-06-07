@@ -21,7 +21,6 @@ add_executable(Cataphract main.cpp
         position/perft.hpp
         uci.hpp
         search/movepicker.hpp
-        eval/eval.hpp
         search/search.hpp
         eval/transposition.hpp
         search/timer.hpp
@@ -62,6 +61,11 @@ add_executable(Cataphract main.cpp
         uci.cpp
         board/slider.cpp
         board/attacks.hpp
+        position/cuckoo.cpp
+        position/bench.cpp
+        position/zobrist.cpp
+        board/lines.cpp
+        position/perft.cpp
 )
 
 if(ENABLE_TUNING)

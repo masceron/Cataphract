@@ -2,8 +2,6 @@
 
 #include <cstdint>
 
-#include "bitboard.hpp"
-
 constexpr uint64_t not_a_file = 0xFEFEFEFEFEFEFEFE;
 constexpr uint64_t not_h_file = 0x7F7F7F7F7F7F7F7F;
 constexpr uint64_t not_ab_file = 0xFCFCFCFCFCFCFCFC;

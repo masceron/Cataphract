@@ -1,6 +1,8 @@
 #pragma once
 
-#include "../position/position.hpp"
+struct Move;
+struct Position;
+enum Piece : uint8_t;
 
 int value_of(Piece piece);
-int static_exchange_evaluation(const Position& pos, const Move capture);
+int static_exchange_evaluation(const Position& pos, Move capture);

@@ -4,8 +4,10 @@
 #include <forward_list>
 #include <array>
 
-#include "../eval/transposition.hpp"
-#include "../position/position.hpp"
+#include "../options.hpp"
+#include "../position/move.hpp"
+
+struct Position;
 
 struct SearchEntry
 {

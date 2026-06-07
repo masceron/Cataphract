@@ -1,8 +1,11 @@
 #pragma once
 
-#include "utils.hpp"
-#include "../position/position.hpp"
+#include <array>
+
 #include "simd/simd.hpp"
+
+struct Move;
+struct Position;
 
 struct AccumulatorEntry
 {

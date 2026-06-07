@@ -1,6 +1,7 @@
 #pragma once
-#include "position/movegen.hpp"
-#include "position/position.hpp"
+
+struct MoveList;
+struct Position;
 
 namespace Cataphract
 {

@@ -1,11 +1,9 @@
 #pragma once
 
-#include "accumulators.hpp"
-#include "../position/position.hpp"
+#include <cstdint>
 
-namespace NNUE
-{
-    void update_accumulators(AccumulatorStack& accumulator_stack);
-    void refresh_accumulators(const Position& pos, AccumulatorStack& accumulator_stack);
-    int16_t evaluate(const Position& pos, int16_t* accumulator_pair);
-}
+struct Position;
+struct AccumulatorStack;
+
+void refresh_accumulators(const Position& pos, AccumulatorStack& accumulator_stack);
+int16_t eval(const Position& pos, AccumulatorStack& accumulator_stack);

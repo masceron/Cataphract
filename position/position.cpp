@@ -1,13 +1,17 @@
 #include <sstream>
 #include <print>
 #include <deque>
+#include <algorithm>
 #include <cstring>
+#include <utility>
 
 #include "position.hpp"
 #include "cuckoo.hpp"
-#include "../search/history.hpp"
+#include "zobrist.hpp"
+#include "../board/attacks.hpp"
 #include "../search/thread.hpp"
 #include "../board/lines.hpp"
+#include "../board/slider.hpp"
 
 bool color_of(const Piece piece)
 {
@@ -22,6 +26,7 @@ Position::Position()
 
 void Position::new_game()
 {
+    side_to_move = white;
     std::ranges::fill(piece_on, nil);
     std::ranges::fill(boards, 0);
     std::ranges::fill(occupations, 0);

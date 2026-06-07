@@ -1,6 +1,10 @@
+#include <bit>
+
 #include "movegen.hpp"
+#include "../board/slider.hpp"
 #include "../board/lines.hpp"
 #include "../board/attacks.hpp"
+#include "position.hpp"
 
 [[nodiscard]] Move* MoveList::begin()
 {

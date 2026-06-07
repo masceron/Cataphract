@@ -96,7 +96,7 @@ Move::Move(const uint16_t _move) : move(_move)
 
 [[nodiscard]] Piece Move::promoted_to(const bool side) const
 {
-    return static_cast<Piece>((std::to_underlying(flag()) & 0b11) + 1 ^ side << 3);
+    return static_cast<Piece>(((std::to_underlying(flag()) & 0b11) + 1) ^ (side << 3));
 }
 
 [[nodiscard]] bool Move::operator==(const Move _move) const { return _move.move == this->move; }

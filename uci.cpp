@@ -1,10 +1,11 @@
 #include <charconv>
 #include <ranges>
 #include <iostream>
+#include <algorithm>
+#include <print>
 
 #include "cataphract.hpp"
 #include "options.hpp"
-#include "eval/eval.hpp"
 #include "position/bench.hpp"
 #include "position/perft.hpp"
 #include "search/search.hpp"
@@ -14,6 +15,8 @@
 #include "search/params.hpp"
 #endif
 #include "uci.hpp"
+#include "eval/transposition.hpp"
+#include "eval/nnue.hpp"
 
 namespace UCI
 {

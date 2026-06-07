@@ -1,15 +1,16 @@
 #include <ranges>
 
+#include "cataphract.hpp"
 #include "board/lines.hpp"
-#include "eval/nnue.hpp"
 #include "eval/transposition.hpp"
 #include "position/cuckoo.hpp"
-#include "position/fen.hpp"
+#include "search/params.hpp"
+#include "position/position.hpp"
+#include "position/movegen.hpp"
 #include "position/zobrist.hpp"
 #include "search/thread.hpp"
-#include "cataphract.hpp"
-
-#include "search/params.hpp"
+#include "position/fen.hpp"
+#include "eval/nnue.hpp"
 
 namespace Cataphract
 {
@@ -125,7 +126,7 @@ namespace Cataphract
         ThreadPool::setup();
 
         ThreadPool::start_workers(WorkerTask::Refresh);
-        NNUE::refresh_accumulators(position, accumulators);
+        refresh_accumulators(position, accumulators);
 
         ThreadPool::wait_for_workers();
     }

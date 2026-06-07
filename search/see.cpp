@@ -4,6 +4,8 @@
 #include "params.hpp"
 #include "../board/slider.hpp"
 #include "../board/attacks.hpp"
+#include "../position/position.hpp"
+#include "../position/move.hpp"
 
 uint64_t attackers_of(const Position& pos, const uint8_t sq, const uint64_t occ)
 {

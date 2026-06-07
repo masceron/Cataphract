@@ -3,6 +3,7 @@
 
 #include "history.hpp"
 #include "params.hpp"
+#include "../position/position.hpp"
 
 void Killers::insert(const Move move, const int ply) const
 {
@@ -198,7 +199,7 @@ void Continuation::update(const Position& pos, const std::forward_list<Move>& se
 
 uint16_t Corrections::index_of(const uint64_t key, const uint16_t size)
 {
-    return key & size - 1;
+    return key & (size - 1);
 }
 
 void Corrections::apply(int16_t& entry, const int bonus)

@@ -12,8 +12,9 @@
 #include "see.hpp"
 #include "thread.hpp"
 #include "timer.hpp"
-#include "../eval/eval.hpp"
 #include "time.hpp"
+#include "../eval/transposition.hpp"
+#include "../eval/nnue.hpp"
 
 int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
 {

@@ -138,14 +138,14 @@ void Position::make_move(const Move move, State& st)
         {
         case MoveFlag::king_castle:
             move_piece(to + 1, to - 1);
-            st.non_pawn_keys[side_to_move] ^= Zobrist::piece_keys[rook_piece][to + 1] ^ Zobrist::piece_keys[rook_piece][
-                to - 1];
+            st.non_pawn_keys[side_to_move] ^= Zobrist::piece_keys[rook_piece][to + 1] ^ Zobrist::piece_keys[rook_piece][to - 1];
+            st.major_key ^= Zobrist::piece_keys[rook_piece][to + 1] ^ Zobrist::piece_keys[rook_piece][to - 1];
             key ^= Zobrist::piece_keys[rook_piece][to + 1] ^ Zobrist::piece_keys[rook_piece][to - 1];
             break;
         case MoveFlag::queen_castle:
             move_piece(to - 2, to + 1);
-            st.non_pawn_keys[side_to_move] ^= Zobrist::piece_keys[rook_piece][to - 2] ^ Zobrist::piece_keys[rook_piece][
-                to + 1];
+            st.non_pawn_keys[side_to_move] ^= Zobrist::piece_keys[rook_piece][to - 2] ^ Zobrist::piece_keys[rook_piece][to + 1];
+            st.major_key ^= Zobrist::piece_keys[rook_piece][to - 2] ^ Zobrist::piece_keys[rook_piece][to + 1];
             key ^= Zobrist::piece_keys[rook_piece][to - 2] ^ Zobrist::piece_keys[rook_piece][to + 1];
             break;
         default: break;

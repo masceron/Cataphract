@@ -196,9 +196,9 @@ void Continuation::update(const Position& pos, const std::forward_list<Move>& se
 }
 
 
-uint16_t Corrections::index_of(const uint64_t key)
+uint16_t Corrections::index_of(const uint64_t key, const uint16_t size)
 {
-    return key & (correction_size - 1);
+    return key & size - 1;
 }
 
 void Corrections::apply(int16_t& entry, const int bonus)
@@ -213,26 +213,70 @@ void Corrections::update(const int delta, const Position& pos, const uint8_t dep
     auto& non_pawns_black = black_non_pawns[pos.side_to_move][index_of(pos.state->non_pawn_keys[black])];
     auto& major = major_piece_corrections[pos.side_to_move][index_of(pos.state->major_key)];
 
+    const auto continuation_correct = [&](const int offset, const int bonus)
+    {
+        if (pos.state->ply < offset) return;
+        const auto key = pos.state->key;
+        auto state = pos.state;
+        for (int i = 0; i < offset; i++)
+        {
+            state = state->previous;
+        }
+        apply(continuation_corrections[index_of(key ^ state->key, continuation_correction_size)], bonus);
+    };
+
     const int bonus = std::clamp(delta * depth / 8, -correction_limit / 4, correction_limit / 4);
 
     apply(pawns, bonus);
     apply(non_pawns_white, bonus);
     apply(non_pawns_black, bonus);
     apply(major, bonus);
+    continuation_correct(1, bonus);
+    continuation_correct(2, bonus);
+    continuation_correct(4, bonus);
 }
 
 [[nodiscard]] int Corrections::correct(int static_eval, const Position& pos) const
 {
     const auto pawn_correction = pawn_corrections[pos.side_to_move][index_of(pos.state->pawn_key)];
-    const auto non_pawns_white_correction = white_non_pawns[pos.side_to_move][index_of(pos.state->non_pawn_keys[white])];
-    const auto non_pawns_black_correction = black_non_pawns[pos.side_to_move][index_of(pos.state->non_pawn_keys[black])];
+    const auto non_pawns_white_correction = white_non_pawns[pos.side_to_move][
+        index_of(pos.state->non_pawn_keys[white])];
+    const auto non_pawns_black_correction = black_non_pawns[pos.side_to_move][
+        index_of(pos.state->non_pawn_keys[black])];
     const auto major_correction = major_piece_corrections[pos.side_to_move][index_of(pos.state->major_key)];
+
+    const auto continuation_correct = [&]()
+    {
+        const auto key = pos.state->key;
+        int corr = 0;
+        if (auto& state = pos.state; state->ply >= 1)
+        {
+            corr += continuation_corrections[index_of(key ^ state->previous->key, continuation_correction_size)]
+                * continuation_correction_weight_1();
+            if (state->ply >= 2)
+            {
+                corr += continuation_corrections[index_of(key ^ state->previous->previous->key,
+                                                          continuation_correction_size)]
+                    * continuation_correction_weight_2();
+
+                if (state->ply >= 4)
+                {
+                    corr += continuation_corrections[index_of(key ^ state->previous->previous->previous->previous->key,
+                                                              continuation_correction_size)]
+                        * continuation_correction_weight_4();
+                }
+            }
+        }
+
+        return corr;
+    };
 
     const int corrections =
         pawn_correction * pawn_correction_weight() +
         non_pawns_white_correction * non_pawn_correction_weight() +
         non_pawns_black_correction * non_pawn_correction_weight() +
-        major_correction * major_correction_weight();
+        major_correction * major_correction_weight() +
+        continuation_correct();
 
     static_eval += corrections / 1024;
 

@@ -81,14 +81,16 @@ struct Continuation
 struct Corrections
 {
     static constexpr uint16_t correction_size = 16384;
+    static constexpr uint16_t continuation_correction_size = 32768;
     static constexpr int correction_limit = 1024;
 
     std::array<std::array<int16_t, correction_size>, 2> pawn_corrections;
     std::array<std::array<int16_t, correction_size>, 2> white_non_pawns;
     std::array<std::array<int16_t, correction_size>, 2> black_non_pawns;
     std::array<std::array<int16_t, correction_size>, 2> major_piece_corrections;
+    std::array<int16_t, continuation_correction_size> continuation_corrections;
 
-    static uint16_t index_of(uint64_t key);
+    static uint16_t index_of(uint64_t key, uint16_t size = correction_size);
     static void apply(int16_t& entry, int bonus);
     void update(int delta, const Position& pos, uint8_t depth);
     [[nodiscard]] int correct(int static_eval, const Position& pos) const;

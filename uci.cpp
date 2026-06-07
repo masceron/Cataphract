@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <print>
 
-#include "cataphract.hpp"
+#include "engine.hpp"
 #include "options.hpp"
 #include "position/bench.hpp"
 #include "position/perft.hpp"
@@ -120,7 +120,7 @@ namespace UCI
         {
             std::from_chars((*it).begin(), (*it).end(), tt_size);
         }
-        Bench::run(depth, tt_size);
+        run_bench(depth, tt_size);
     }
 
     void go(const std::string_view input)
@@ -213,7 +213,7 @@ namespace UCI
 
     void process()
     {
-        Cataphract::set_board("startpos");
+        set_board("startpos");
 
         std::string input;
         bool quit = false;
@@ -257,7 +257,7 @@ namespace UCI
 
                 if (command == "position")
                 {
-                    Cataphract::set_board(input_view.substr(9));
+                    set_board(input_view.substr(9));
                 }
                 else if (command == "go")
                 {
@@ -269,7 +269,7 @@ namespace UCI
                 }
                 else if (command == "ucinewgame")
                 {
-                    Cataphract::new_game();
+                    new_game();
                 }
                 else if (command == "uci")
                 {

@@ -1,6 +1,3 @@
 #pragma once
 
-namespace Bench
-{
-    void run(int depth, uint32_t tt_size);
-}
+void run_bench(int depth, uint32_t tt_size);

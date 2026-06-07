@@ -134,13 +134,13 @@ constexpr uint64_t mask_pawn_attack(const bool side, const uint8_t index)
     const uint64_t piece_board = (attack_board + 1) << index;
     if (side == white)
     {
-        attack_board |= (piece_board >> 7) & not_a_file;
-        attack_board |= (piece_board >> 9) & not_h_file;
+        attack_board |= (piece_board >> 7) & 0xFEFEFEFEFEFEFEFE;
+        attack_board |= (piece_board >> 9) & 0x7F7F7F7F7F7F7F7F;
     }
     else
     {
-        attack_board |= (piece_board << 7) & not_h_file;
-        attack_board |= (piece_board << 9) & not_a_file;
+        attack_board |= (piece_board << 7) & 0x7F7F7F7F7F7F7F7F;
+        attack_board |= (piece_board << 9) & 0xFEFEFEFEFEFEFEFE;
     }
     return attack_board;
 }
@@ -162,14 +162,14 @@ consteval uint64_t mask_knight_attack(const int index)
 {
     uint64_t attack_board = 0;
     const uint64_t piece_board = (attack_board + 1) << index;
-    attack_board |= (piece_board >> 17) & 0x7fffffffffff & not_h_file;
-    attack_board |= (piece_board >> 15) & 0x1ffffffffffff & not_a_file;
-    attack_board |= (piece_board >> 10) & 0x3fffffffffffff & not_gh_file;
-    attack_board |= (piece_board >> 6) & 0x3ffffffffffffff & not_ab_file;
-    attack_board |= (piece_board << 17) & not_a_file;
-    attack_board |= (piece_board << 15) & not_h_file;
-    attack_board |= (piece_board << 10) & not_ab_file;
-    attack_board |= (piece_board << 6) & not_gh_file;
+    attack_board |= (piece_board >> 17) & 0x7fffffffffff & 0x7F7F7F7F7F7F7F7F;
+    attack_board |= (piece_board >> 15) & 0x1ffffffffffff & 0xFEFEFEFEFEFEFEFE;
+    attack_board |= (piece_board >> 10) & 0x3fffffffffffff & 0x3F3F3F3F3F3F3F3F;
+    attack_board |= (piece_board >> 6) & 0x3ffffffffffffff & 0xFCFCFCFCFCFCFCFC;
+    attack_board |= (piece_board << 17) & 0xFEFEFEFEFEFEFEFE;
+    attack_board |= (piece_board << 15) & 0x7F7F7F7F7F7F7F7F;
+    attack_board |= (piece_board << 10) & 0xFCFCFCFCFCFCFCFC;
+    attack_board |= (piece_board << 6) & 0x3F3F3F3F3F3F3F3F;
     return attack_board;
 }
 
@@ -189,14 +189,14 @@ consteval uint64_t mask_king_attack(const uint8_t index)
 {
     uint64_t attack_board = 0;
     const uint64_t piece_board = (attack_board + 1) << index;
-    attack_board |= (piece_board >> 7) & 0x1ffffffffffffff & not_a_file;
+    attack_board |= (piece_board >> 7) & 0x1ffffffffffffff & 0xFEFEFEFEFEFEFEFE;
     attack_board |= (piece_board >> 8) & 0xffffffffffffff;
-    attack_board |= (piece_board >> 9) & 0x7fffffffffffff & not_h_file;
-    attack_board |= (piece_board >> 1) & 0x7fffffffffffffff & not_h_file;
-    attack_board |= (piece_board << 7) & not_h_file;
+    attack_board |= (piece_board >> 9) & 0x7fffffffffffff & 0x7F7F7F7F7F7F7F7F;
+    attack_board |= (piece_board >> 1) & 0x7fffffffffffffff & 0x7F7F7F7F7F7F7F7F;
+    attack_board |= (piece_board << 7) & 0x7F7F7F7F7F7F7F7F;
     attack_board |= piece_board << 8;
-    attack_board |= (piece_board << 9) & not_a_file;
-    attack_board |= (piece_board << 1) & not_a_file;
+    attack_board |= (piece_board << 9) & 0xFEFEFEFEFEFEFEFE;
+    attack_board |= (piece_board << 1) & 0xFEFEFEFEFEFEFEFE;
     return attack_board;
 }
 

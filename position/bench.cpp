@@ -1,4 +1,3 @@
-#include <array>
 #include <print>
 
 #include "../eval/transposition.hpp"

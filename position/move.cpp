@@ -66,7 +66,6 @@ Move::Move(const uint16_t _move) : move(_move)
 {
 }
 
-
 [[nodiscard]] MoveFlag Move::flag() const
 {
     return static_cast<MoveFlag>(move >> 12);

@@ -189,7 +189,7 @@ void MovePicker::score_mvv_caphist(const int start_idx, const int end_idx)
     }
 }
 
-void MovePicker::score_history(int start_idx, int end_idx)
+void MovePicker::score_history(const int start_idx, const int end_idx)
 {
     if (start_idx == end_idx) return;
 
@@ -211,16 +211,16 @@ void MovePicker::score_history(int start_idx, int end_idx)
             piece_to_history_weight() / 1024
             + history.piece_to_history.table[pos.side_to_move][moved][to] *
             butterfly_history_weight() / 1024
-            + history.continuation.counter_moves[pos.side_to_move][prev >> 6 & 7][prev & 0b111111][moved][to] *
+            + history.continuation.continuation_table[0][pos.side_to_move][prev >> 6 & 7][prev & 0b111111][moved][to] *
             counter_move_weight() / 1024
-            + history.continuation.follow_up[pos.side_to_move][prev2 >> 6 & 7][prev2 & 0b111111][moved][to] *
+            + history.continuation.continuation_table[1][pos.side_to_move][prev2 >> 6 & 7][prev2 & 0b111111][moved][to] *
             follow_up_weight() / 1024
-            + history.continuation.four_plies[pos.side_to_move][prev4 >> 6 & 7][prev4 & 0b111111][moved][to] *
+            + history.continuation.continuation_table[2][pos.side_to_move][prev4 >> 6 & 7][prev4 & 0b111111][moved][to] *
             four_plies_weight() / 1024;
     }
 }
 
-void MovePicker::select_highest(int start_idx, int end_idx)
+void MovePicker::select_highest(const int start_idx, const int end_idx)
 {
     int best_idx = start_idx;
     auto best_score = scores[start_idx];

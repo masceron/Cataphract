@@ -1,4 +1,3 @@
-#include <span>
 #include <cstring>
 
 #include "history.hpp"
@@ -18,20 +17,9 @@ void Killers::insert(const Move move, const int ply) const
     return table[ply][order];
 }
 
-
 CaptureEntry::CaptureEntry(const uint8_t _moved, const uint8_t _captured, const Move move) :
     moved(_moved & 7), captured(_captured != nil ? _captured & 7 : P), sq(move.to())
 {
-}
-
-
-void Capture::scale_down()
-{
-    for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 5 * 64);
-         int16_t& score : flat_view)
-    {
-        score >>= 1;
-    }
 }
 
 void Capture::apply(const bool stm, const uint8_t moved_piece, const uint8_t captured_piece, const int sq,
@@ -56,16 +44,6 @@ void Capture::update(const std::forward_list<CaptureEntry>& searched, const bool
     {
         apply(stm, _moved, _captured, _sq, static_cast<int16_t>(-bonus));
     }
-    if (table[stm][moved_piece][captured_piece][sq] >= max_capture_history()) scale_down();
-}
-
-void ButterflyHistory::scale_down()
-{
-    for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 64 * 64);
-         int16_t& score : flat_view)
-    {
-        score >>= 1;
-    }
 }
 
 void ButterflyHistory::apply(const bool side, const int from, const int to, const int16_t bonus)
@@ -84,16 +62,6 @@ void ButterflyHistory::update(const std::forward_list<Move>& searched, const boo
     for (const Move move : searched)
     {
         apply(side, move.from(), move.to(), static_cast<int16_t>(-bonus));
-    }
-    if (table[side][from][to] >= max_butterfly_history()) scale_down();
-}
-
-void PieceToHistory::scale_down()
-{
-    for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 2 * 6 * 64);
-         int16_t& score : flat_view)
-    {
-        score >>= 1;
     }
 }
 
@@ -117,25 +85,16 @@ void PieceToHistory::update(const Position& pos, const std::forward_list<Move>& 
 
         apply(side, static_cast<Piece>(p), move.to(), static_cast<int16_t>(-bonus));
     }
-    if (table[side][piece & 7][to] >= max_piece_to_history()) scale_down();
 }
 
-void Continuation::scale_down(
-    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table)
-{
-    for (auto flat_view = std::span(reinterpret_cast<int16_t*>(table.data()), 64 * 6 * 64 * 6 * 2);
-         int16_t& score : flat_view)
-    {
-        score >>= 1;
-    }
-}
-
-void Continuation::apply(auto& table, const bool stm, const uint8_t prev_piece, const uint8_t prev_to,
+void Continuation::apply(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table,
+                         const bool stm, const uint8_t prev_piece, const uint8_t prev_to,
                          const uint8_t piece,
                          const uint8_t to, const int16_t bonus)
 {
     const int16_t clamped_bonus = std::clamp(bonus, static_cast<int16_t>(-max_continuation_history()),
                                              max_continuation_history());
+
     table[stm][prev_piece][prev_to][piece][to] += clamped_bonus - table[stm][prev_piece][prev_to][piece][to] *
         abs(clamped_bonus) / max_continuation_history();
 }
@@ -147,55 +106,29 @@ void Continuation::update(const Position& pos, const std::forward_list<Move>& se
     const bool stm = pos.side_to_move;
     const uint8_t piece = pos.piece_on[move.from()] & 7;
 
-    if (const auto prev = ss - 1; (ss - 1)->piece_to != UINT16_MAX)
+    const auto offset_to_idx = [](const int offset)
     {
+        return offset == 1 ? 0 : offset == 2 ? 1 : 2;
+    };
+
+    for (const int offset : {1, 2, 4})
+    {
+        const auto prev = ss - offset;
+        if (prev->piece_to == UINT16_MAX) continue;
+
         const uint8_t prev_piece = prev->piece_to >> 6 & 7;
         const uint8_t prev_to = prev->piece_to & 0b111111;
+        const auto idx = offset_to_idx(offset);
 
-        apply(counter_moves, stm, prev_piece, prev_to, piece, move.to(), bonus);
+        apply(continuation_table[idx], stm, prev_piece, prev_to, piece, move.to(), bonus);
 
         for (const auto& tpm : searched)
         {
             const uint8_t tmp = pos.piece_on[tpm.from()] & 7;
-            apply(counter_moves, stm, prev_piece, prev_to, tmp, tpm.to(), -bonus);
+            apply(continuation_table[idx], stm, prev_piece, prev_to, tmp, tpm.to(), -bonus);
         }
-        if (counter_moves[stm][prev_piece][prev_to][piece][move.to()] >= max_continuation_history())
-            scale_down(counter_moves);
-    }
-
-    if (const auto prev2 = ss - 2; (ss - 2)->piece_to != UINT16_MAX)
-    {
-        const uint8_t prev2_piece = prev2->piece_to >> 6 & 7;
-        const uint8_t prev2_to = prev2->piece_to & 0b111111;
-
-        apply(follow_up, stm, prev2_piece, prev2_to, piece, move.to(), bonus);
-
-        for (const auto& tmp_move : searched)
-        {
-            const uint8_t tmp = pos.piece_on[tmp_move.from()] & 7;
-            apply(follow_up, stm, prev2_piece, prev2_to, tmp, tmp_move.to(), -bonus);
-        }
-        if (follow_up[stm][prev2_piece][prev2_to][piece][move.to()] >= max_continuation_history())
-            scale_down(follow_up);
-    }
-
-    if (const auto prev4 = ss - 4; (ss - 4)->piece_to != UINT16_MAX)
-    {
-        const uint8_t prev4_piece = prev4->piece_to >> 6 & 7;
-        const uint8_t prev4_to = prev4->piece_to & 0b111111;
-
-        apply(four_plies, stm, prev4_piece, prev4_to, piece, move.to(), bonus);
-
-        for (const auto& tmp_move : searched)
-        {
-            const uint8_t tmp = pos.piece_on[tmp_move.from()] & 7;
-            apply(four_plies, stm, prev4_piece, prev4_to, tmp, tmp_move.to(), -bonus);
-        }
-        if (four_plies[stm][prev4_piece][prev4_to][piece][move.to()] >= max_continuation_history())
-            scale_down(four_plies);
     }
 }
-
 
 uint16_t Corrections::index_of(const uint64_t key, const uint16_t size)
 {
@@ -283,7 +216,6 @@ void Corrections::update(const int delta, const Position& pos, const uint8_t dep
 
     return std::clamp(static_eval, mated_in_max_ply + 1, mate_in_max_ply - 1);
 }
-
 
 void History::update_quiet_histories(const Position& pos, const int depth, const Move picked_move,
                                      const SearchEntry* ss,

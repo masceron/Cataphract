@@ -40,7 +40,6 @@ struct Capture
 {
     std::array<std::array<std::array<std::array<int16_t, 64>, 5>, 6>, 2> table;
 
-    void scale_down();
     void apply(bool stm, uint8_t moved_piece, uint8_t captured_piece, int sq,
                int16_t bonus);
     void update(const std::forward_list<CaptureEntry>& searched, bool stm, uint8_t moved_piece,
@@ -51,7 +50,6 @@ struct ButterflyHistory
 {
     std::array<std::array<std::array<int16_t, 64>, 64>, 2> table;
 
-    void scale_down();
     void apply(bool side, int from, int to, int16_t bonus);
     void update(const std::forward_list<Move>& searched, bool side, int from, int to,
                 uint8_t depth);
@@ -61,7 +59,6 @@ struct PieceToHistory
 {
     std::array<std::array<std::array<int16_t, 64>, 6>, 2> table;
 
-    void scale_down();
     void apply(bool side, Piece piece, int to, int16_t bonus);
     void update(const Position& pos, const std::forward_list<Move>& searched, bool side, Piece piece,
                 int to, uint8_t depth);
@@ -69,12 +66,11 @@ struct PieceToHistory
 
 struct Continuation
 {
-    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> counter_moves;
-    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> follow_up;
-    std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2> four_plies;
+    std::array<std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>, 3>
+    continuation_table;
 
-    static void scale_down(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table);
-    static void apply(auto& table, bool stm, uint8_t prev_piece, uint8_t prev_to, uint8_t piece,
+    static void apply(std::array<std::array<std::array<std::array<std::array<int16_t, 64>, 6>, 64>, 6>, 2>& table,
+                      bool stm, uint8_t prev_piece, uint8_t prev_to, uint8_t piece,
                       uint8_t to, int16_t bonus);
     void update(const Position& pos, const std::forward_list<Move>& searched, Move move,
                 uint8_t depth, const SearchEntry* ss);

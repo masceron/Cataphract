@@ -18,10 +18,10 @@ enum class Stage: uint8_t
 
 struct MovePicker
 {
+    MoveList moves;
     SearchThread& thread;
     SearchEntry* ss;
     Move pv = null_move;
-    MoveList moves;
 
     int current = 0;
     int end = 0;
@@ -29,8 +29,8 @@ struct MovePicker
 
     int threshold;
     int scores[256];
-    bool noisy_only;
     Stage stage = Stage::generating_capture_moves;
+    bool noisy_only;
 
     explicit MovePicker(SearchThread& _thread, bool _noisy_only, Move _pv, SearchEntry* _ss, int _threshold = 0);
     std::pair<Move, int> pick();

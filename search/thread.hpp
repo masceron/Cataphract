@@ -19,13 +19,13 @@ enum class WorkerTask { None, Search, Refresh, NewGame };
 
 struct SearchThread
 {
+    AccumulatorStack accumulator_stack;
     std::vector<SearchEntry> search_stack{140};
     History history{};
     Position position;
     State root_state{};
-    AccumulatorStack accumulator_stack;
-    std::atomic<uint64_t> node_searched{0};
     std::list<Move> principal_variation{};
+    std::atomic<uint64_t> node_searched{0};
     int score{negative_infinity};
     int nmp_min_ply{0};
 

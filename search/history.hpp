@@ -96,12 +96,12 @@ struct Corrections
 
 struct History
 {
-    Killers killers;
+    Continuation continuation;
+    Corrections corrections;
     ButterflyHistory butterfly_history;
     PieceToHistory piece_to_history;
-    Continuation continuation;
     Capture capture;
-    Corrections corrections;
+    Killers killers;
 
     void update_quiet_histories(const Position& pos, int depth, Move picked_move, const SearchEntry* ss,
                                 const std::forward_list<Move>& quiets_searched);

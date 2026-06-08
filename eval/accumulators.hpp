@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "arch.hpp"
 #include "simd/simd.hpp"
 
 struct Move;

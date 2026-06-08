@@ -1,14 +1,13 @@
-#pragma once
+#ifdef __AVX512F__
 
 #include <immintrin.h>
 
 #include "../arch.hpp"
+#include "simd.hpp"
 
-#define SIMD_ALIGN alignas(64)
-
-namespace SIMD
+namespace NNUE
 {
-    inline int32_t forward(const Network& __restrict network, int16_t* __restrict stm, int16_t* __restrict nstm, const uint8_t bucket)
+    int32_t forward(const Network& __restrict network, int16_t* __restrict stm, int16_t* __restrict nstm, const uint8_t bucket)
     {
         static const __m512i vec_zero = _mm512_setzero_si512();
         static const __m512i vec_QA = _mm512_set1_epi16(QA);
@@ -42,3 +41,5 @@ namespace SIMD
         return _mm512_reduce_add_epi32(sum);
     }
 }
+
+#endif

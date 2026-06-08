@@ -36,9 +36,6 @@ add_executable(Cataphract main.cpp
         search/params.hpp
         search/params.cpp
         options.hpp
-        eval/simd/avx512.hpp
-        eval/simd/avx2.hpp
-        eval/simd/scalar.hpp
         eval/utils.hpp
         eval/arch.hpp
         eval/simd/simd.hpp
@@ -67,6 +64,9 @@ add_executable(Cataphract main.cpp
         board/lines.cpp
         position/perft.cpp
         eval/utils.cpp
+        eval/simd/avx512.cpp
+        eval/simd/avx2.cpp
+        eval/simd/scalar.cpp
 )
 
 if(ENABLE_TUNING)

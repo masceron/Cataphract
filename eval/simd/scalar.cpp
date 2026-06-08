@@ -1,16 +1,13 @@
-#pragma once
+#if !defined(__AVX512F__) && !defined(__AVX2__)
 
 #include <algorithm>
 
 #include "../arch.hpp"
-#include "../utils.hpp"
+#include "simd.hpp"
 
-#define SIMD_ALIGN alignas(16)
-
-namespace SIMD
+namespace NNUE
 {
-    inline int32_t forward(const Network& __restrict network, const int16_t* __restrict stm,
-                           const int16_t* __restrict nstm, const uint8_t bucket)
+    int32_t forward(const Network& __restrict network, const int16_t* __restrict stm, const int16_t* __restrict nstm, const uint8_t bucket)
     {
         int sum = 0;
         const auto move_weights = &network.output_weights[bucket][0];
@@ -31,3 +28,5 @@ namespace SIMD
         return sum;
     }
 }
+
+#endif

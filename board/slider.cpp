@@ -8,10 +8,10 @@
 #ifndef __BMI2__
 struct Magic
 {
-    mutable uint64_t magic;
-    mutable uint8_t shift;
-    mutable uint64_t mask;
-    mutable uint64_t* attacks;
+    uint64_t magic;
+    uint8_t shift;
+    uint64_t mask;
+    uint64_t* attacks;
 };
 
 std::array<uint64_t, 5248> bishop_table{};
@@ -80,7 +80,7 @@ constexpr uint64_t occupancy_board(const int set_index, const int mask_bits_coun
 
 std::array<Magic, 64> generate_magics(const bool is_bishop)
 {
-    constexpr std::array<Magic, 64> magics = {};
+    std::array<Magic, 64> magics = {};
     int size = 0, count = 0;
     std::array<int, 4096> epoch{};
     std::array<uint64_t, 4096> occupancy{};
@@ -89,7 +89,7 @@ std::array<Magic, 64> generate_magics(const bool is_bishop)
     {
         uint64_t temp = 0;
         const uint64_t mask = is_bishop ? mask_bishop_attack(sq) : mask_rook_attack(sq);
-        const Magic& magic = magics[sq];
+        Magic& magic = magics[sq];
         magic.shift = 64 - std::popcount(mask);
         magic.mask = mask;
         if (sq == 0)

@@ -192,22 +192,14 @@ void pawn_move_generator(const Position& cr_pos, Move*& pos)
     }
 }
 
-template <const bool us, const MoveType type, const Piece piece, const bool evasive>
+template <const bool us, const MoveType type, const PieceType piece, const bool evasive>
 void general_move_generator(const Position& cr_pos, Move*& pos)
 {
     uint64_t board = 0;
     const uint64_t occ = cr_pos.occupations[us];
     const uint64_t eocc = cr_pos.occupations[!us];
     const uint64_t aocc = cr_pos.occupations[2];
-    constexpr int board_index = us == white
-                                    ? (piece == Q ? Q : piece == R ? R : piece == B ? B : N)
-                                    : piece == Q
-                                    ? q
-                                    : piece == R
-                                    ? r
-                                    : piece == B
-                                    ? b
-                                    : n;
+    constexpr int board_index = us == white ? piece : piece ^ 8;
 
     constexpr int king = us == white ? K : k;
     const int king_sq = lsb(cr_pos.boards[king]);
@@ -217,26 +209,26 @@ void general_move_generator(const Position& cr_pos, Move*& pos)
     {
         const int from = pop_lsb(board);
         uint64_t movable = 0;
-        if constexpr (piece == Q)
+        if constexpr (piece == Queen)
         {
             movable = get_bishop_attack(from, aocc) | get_rook_attack(from, aocc);
         }
-        else if constexpr (piece == R)
+        else if constexpr (piece == Rook)
         {
             movable = get_rook_attack(from, aocc);
         }
-        else if constexpr (piece == B)
+        else if constexpr (piece == Bishop)
         {
             movable = get_bishop_attack(from, aocc);
         }
-        else if constexpr (piece == N)
+        else if constexpr (piece == Knight)
         {
             movable = knight_attack_tables[from];
         }
 
         if (cr_pos.state->pinned & (1ull << from))
         {
-            if constexpr (piece == N) continue;
+            if constexpr (piece == Knight) continue;
             movable &= lines_intersect[king_sq][from];
         }
 
@@ -345,10 +337,10 @@ void move_generator(const Position& cr_pos, Move*& last)
     if (std::popcount(cr_pos.state->checker) != 2)
     {
         pawn_move_generator<us, type, evasive>(cr_pos, last);
-        general_move_generator<us, type, N, evasive>(cr_pos, last);
-        general_move_generator<us, type, B, evasive>(cr_pos, last);
-        general_move_generator<us, type, R, evasive>(cr_pos, last);
-        general_move_generator<us, type, Q, evasive>(cr_pos, last);
+        general_move_generator<us, type, Knight, evasive>(cr_pos, last);
+        general_move_generator<us, type, Bishop, evasive>(cr_pos, last);
+        general_move_generator<us, type, Rook, evasive>(cr_pos, last);
+        general_move_generator<us, type, Queen, evasive>(cr_pos, last);
     }
     static constexpr int king = us == white ? K : k;
     king_move_generator<us, type, evasive>(cr_pos, last, lsb(cr_pos.boards[king]));

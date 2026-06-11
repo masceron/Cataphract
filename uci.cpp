@@ -34,11 +34,11 @@ namespace UCI
         auto it = tokens.begin();
         ++it;
 
-        if (const std::string_view name((*it).begin(), (*it).end()); name == "Hash")
+        if (const std::string_view name{*it}; name == "Hash")
         {
             ++it;
             ++it;
-            const std::string_view value((*it).begin(), (*it).end());
+            const std::string_view value{*it};
             int32_t new_size = 0;
             std::from_chars(value.data(), value.data() + value.size(), new_size);
 
@@ -48,7 +48,7 @@ namespace UCI
         else if (name == "Clear")
         {
             ++it;
-            if (std::string_view((*it).begin(), (*it).end()) == "Hash")
+            if (std::string_view{*it} == "Hash")
             {
                 TT::clear(TT::table, TT::table_size);
             }
@@ -57,7 +57,7 @@ namespace UCI
         {
             ++it;
             ++it;
-            const std::string_view value((*it).begin(), (*it).end());
+            const std::string_view value{*it};
             int thread = -1;
             std::from_chars(value.data(), value.data() + value.size(), thread);
             if (thread >= 1 && thread <= 1024) Options::threads = thread;
@@ -67,7 +67,7 @@ namespace UCI
         {
             ++it;
             ++it;
-            if (const std::string_view value((*it).begin(), (*it).end()); value == "true")
+            if (const std::string_view value{*it}; value == "true")
                 Options::show_currmove = true;
             else if (value == "false")
                 Options::show_currmove = false;
@@ -75,11 +75,11 @@ namespace UCI
         else if (name == "Move")
         {
             ++it;
-            if (std::string_view((*it).begin(), (*it).end()) == "Overhead")
+            if (std::string_view{*it} == "Overhead")
             {
                 ++it;
                 ++it;
-                const std::string_view value((*it).begin(), (*it).end());
+                const std::string_view value{*it};
                 int overhead = -1;
                 std::from_chars(value.data(), value.data() + value.size(), overhead);
                 if (overhead >= 0 && overhead <= 5000) Options::move_overhead = overhead;
@@ -89,12 +89,12 @@ namespace UCI
         else
         {
             ++it;
-            if (it != tokens.end() && std::string_view((*it).begin(), (*it).end()) == "value")
+            if (it != tokens.end() && std::string_view{*it} == "value")
             {
                 ++it;
                 if (it != tokens.end())
                 {
-                    const std::string_view value((*it).begin(), (*it).end());
+                    const std::string_view value{*it};
                     Tuning::set_parameter(name, value);
                 }
             }
@@ -200,14 +200,13 @@ namespace UCI
             if (infinite) depth = MAX_PLY;
 
             search_thread = std::thread(start_search<false>,
-                                         depth,
-                                         movetime,
-                                         wtime,
-                                         btime,
-                                         winc,
-                                         binc,
-                                         movestogo);
-
+                                        depth,
+                                        movetime,
+                                        wtime,
+                                        btime,
+                                        winc,
+                                        binc,
+                                        movestogo);
         }
     }
 
@@ -221,12 +220,12 @@ namespace UCI
         {
             std::getline(std::cin, input);
 
-            auto I = std::ranges::unique(input, [](auto lhs, auto rhs)
+            auto [first, last] = std::ranges::unique(input, [](auto lhs, auto rhs)
             {
                 return lhs == rhs && lhs == ' ';
-            }).begin();
+            });
 
-            input.erase(I, input.end());
+            input.erase(first, last);
 
             if (!input.empty() && input.front() == ' ') input.erase(0, 1);
             if (!input.empty() && (input.back() == ' ' || input.back() == '\r')) input.pop_back();
@@ -290,7 +289,8 @@ namespace UCI
                 {
                     auto& position = ThreadPool::threads[0].position;
                     std::println("NNUE evaluation: {} (white side)",
-                                 eval(position, ThreadPool::get(0).accumulator_stack) * (!position.side_to_move ? 1 : -1));
+                                 eval(position, ThreadPool::get(0).accumulator_stack) * (
+                                     !position.side_to_move ? 1 : -1));
                 }
                 else if (command == "d")
                 {

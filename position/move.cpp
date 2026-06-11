@@ -98,7 +98,15 @@ Move::Move(const uint16_t _move) : move(_move)
     return static_cast<Piece>(((std::to_underlying(flag()) & 0b11) + 1) ^ (side << 3));
 }
 
-[[nodiscard]] bool Move::operator==(const Move _move) const { return _move.move == this->move; }
+[[nodiscard]] bool Move::operator==(const Move _move) const
+{
+    return _move.move == this->move;
+}
+
+uint16_t Move::operator&(const Move _move) const
+{
+    return move & _move.move;
+}
 
 [[nodiscard]] std::string_view Move::get_move_string() const
 {

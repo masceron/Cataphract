@@ -44,6 +44,7 @@ struct Move
     [[nodiscard]] explicit operator bool() const;
     [[nodiscard]] Piece promoted_to(bool side = white) const;
     [[nodiscard]] bool operator==(Move _move) const;
+    [[nodiscard]] uint16_t operator&(Move _move) const;
     [[nodiscard]] std::string_view get_move_string() const;
 };
 

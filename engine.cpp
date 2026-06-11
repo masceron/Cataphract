@@ -42,13 +42,12 @@ void process_move(Position& position, const std::string_view move, MoveList& lis
         if (from == -1 || to == -1) return;
         const auto _move = Move(from, to, MoveFlag::quiet_move);
         legals(position, list);
-        for (const auto& move_test : list)
+        if (const auto it = std::ranges::find_if(list, [&](const auto& m)
         {
-            if ((move_test.move & 0xFFF) == _move.move)
-            {
-                position.do_move(move_test);
-                return;
-            }
+            return (m.move & 0xFFF) == _move.move;
+        }); it != list.end())
+        {
+            position.do_move(*it);
         }
     }
     else if (move.length() == 5)
@@ -79,13 +78,12 @@ void process_move(Position& position, const std::string_view move, MoveList& lis
 
         legals(position, list);
 
-        for (const auto& move_test : list)
+        if (const auto it = std::ranges::find_if(list, [&](const auto& m)
         {
-            if (move_test.move == _move.move)
-            {
-                position.do_move(move_test);
-                return;
-            }
+            return m == _move;
+        }); it != list.end())
+        {
+            position.do_move(*it);
         }
     }
 }

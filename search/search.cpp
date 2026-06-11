@@ -147,15 +147,11 @@ int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
             {
                 if (score >= beta)
                 {
-                    if (const uint8_t captured = position.piece_on[picked_move.to()]; captured != nil)
+                    if (const uint8_t captured = position.piece_on[picked_move.to()];
+                        captured != nil || picked_move.flag() == MoveFlag::ep_capture)
                     {
                         thread.history.capture.update(capture_searched, position.side_to_move, moving_piece,
                                                       captured,
-                                                      picked_move.to(), 1);
-                    }
-                    else if (picked_move.flag() == MoveFlag::ep_capture)
-                    {
-                        thread.history.capture.update(capture_searched, position.side_to_move, moving_piece, P,
                                                       picked_move.to(), 1);
                     }
 
@@ -167,8 +163,8 @@ int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)
             }
         }
 
-        if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil || picked_move.flag() ==
-            MoveFlag::ep_capture)
+        if (uint8_t captured = position.piece_on[picked_move.to()];
+            captured != nil || picked_move.flag() == MoveFlag::ep_capture)
         {
             capture_searched.emplace_front(moving_piece, captured, picked_move);
         }
@@ -580,8 +576,8 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
                     }
                     else
                     {
-                        if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil || picked_move.
-                            flag() == MoveFlag::ep_capture)
+                        if (uint8_t captured = position.piece_on[picked_move.to()];
+                            captured != nil || picked_move.flag() == MoveFlag::ep_capture)
                         {
                             thread.history.capture.update(capture_searched, position.side_to_move,
                                                           moving_piece, captured,
@@ -603,7 +599,8 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
         }
         else
         {
-            if (uint8_t captured = position.piece_on[picked_move.to()]; captured != nil || picked_move.flag() == MoveFlag::ep_capture)
+            if (uint8_t captured = position.piece_on[picked_move.to()];
+                captured != nil || picked_move.flag() == MoveFlag::ep_capture)
             {
                 capture_searched.emplace_front(moving_piece, captured, picked_move);
             }

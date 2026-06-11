@@ -44,7 +44,7 @@ int value_of(const Piece piece)
 }
 
 uint64_t least_valuable_piece(const Position& pos, const uint64_t attackers, const uint8_t side,
-                                     Piece& attacker)
+                              Piece& attacker)
 {
     const int flip = side == white ? 0 : 8;
     for (int i = P ^ flip; i <= (Q ^ flip); i++)
@@ -77,8 +77,8 @@ int static_exchange_evaluation(const Position& pos, const Move capture)
     const uint8_t to = capture.to();
     const uint8_t from = capture.from();
     uint64_t from_set = 1ull << from;
-    const uint64_t x_ray_able = pos.boards[P] | pos.boards[p] | pos.boards[B] | pos.boards[b] | pos.boards[R] | pos.
-        boards[r] | pos.boards[Q] | pos.boards[q];
+    const uint64_t x_ray_able = pos.boards[P] | pos.boards[p] | pos.boards[B] | pos.boards[b]
+        | pos.boards[R] | pos.boards[r] | pos.boards[Q] | pos.boards[q];
     uint64_t occ = pos.occupations[2];
     uint64_t attackers = attackers_of(pos, to, occ);
     gains[depth] = value_of(pos.piece_on[to]);

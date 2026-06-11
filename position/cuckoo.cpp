@@ -39,7 +39,7 @@ namespace Cuckoo
     {
         for (int piece = 1; piece < 14; piece++)
         {
-            if (piece == p) continue;
+            if (piece == p || piece == 6 || piece == 7) continue;
             for (int sq0 = 0; sq0 < 64; sq0++)
             {
                 for (int sq1 = sq0 + 1; sq1 < 64; sq1++)

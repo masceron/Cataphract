@@ -595,6 +595,8 @@ void Position::construct_zobrist_key() const
     state->non_pawn_keys = {0, 0};
     for (int i = 0; i < 14; i++)
     {
+        if (i == 6 || i == 7) continue;
+
         auto board = boards[i];
         while (board)
         {

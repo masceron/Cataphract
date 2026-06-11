@@ -109,6 +109,8 @@ void accumulators_set(const Network& __restrict network, const std::array<uint64
 
     for (int i = 0; i < 14; i++)
     {
+        if (i == 6 || i == 7) continue;
+
         uint64_t board = boards[i];
 
         while (board)
@@ -305,6 +307,8 @@ void accumulator_stack_update(const Network& __restrict network, AccumulatorStac
             {
                 for (int piece = 0; piece < 14; piece++)
                 {
+                    if (piece == 6 || piece == 7) continue;
+
                     const auto old_white = saved_mirrors.first
                                                ? horizontal_mirror(saved_bitboards[piece])
                                                : saved_bitboards[piece];
@@ -347,6 +351,8 @@ void accumulator_stack_update(const Network& __restrict network, AccumulatorStac
             {
                 for (int piece = 0; piece < 14; piece++)
                 {
+                    if (piece == 6 || piece == 7) continue;
+
                     const auto old_black = saved_mirrors.second
                                                ? horizontal_mirror(saved_bitboards[piece])
                                                : saved_bitboards[piece];

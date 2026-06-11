@@ -94,9 +94,9 @@ namespace TT
         }
 
         if (!(type == NodeType::exact
-            || (entry->age_pv_type & 252) != current_generation
+            || (entry->age_pv_type & 0b11111000) != current_generation
             || key != entry->key
-            || depth + 4 * entry->is_pv() * 2 >= entry->depth))
+            || depth + 4 + entry->is_pv() * 2 >= entry->depth))
             return;
 
         if (best_move || entry->key != key)
@@ -116,7 +116,7 @@ namespace TT
         uint16_t hash_full = 0;
         for (int i = 0; i < 1000; i++)
         {
-            if ((table[i].age_pv_type & 0b11111100) == current_generation) hash_full++;
+            if ((table[i].age_pv_type & 0b11111000) == current_generation) hash_full++;
         }
         return hash_full;
     }

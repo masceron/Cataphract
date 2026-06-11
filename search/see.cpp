@@ -46,7 +46,8 @@ int value_of(const Piece piece)
 uint64_t least_valuable_piece(const Position& pos, const uint64_t attackers, const uint8_t side,
                                      Piece& attacker)
 {
-    for (int i = P + side * 6; i <= Q + side * 6; i++)
+    const int flip = side == white ? 0 : 8;
+    for (int i = P ^ flip; i <= (Q ^ flip); i++)
     {
         if (const uint64_t attack = attackers & pos.boards[i])
         {

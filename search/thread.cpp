@@ -1,7 +1,7 @@
 #include <numeric>
 
 #include "thread.hpp"
-#include "../eval/transposition.hpp"
+#include "transposition.hpp"
 #include "../eval/nnue.hpp"
 
 void SearchThread::search_stack_init()

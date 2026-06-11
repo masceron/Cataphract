@@ -7,7 +7,7 @@
 #include "thread.hpp"
 #include "timer.hpp"
 #include "time.hpp"
-#include "../eval/transposition.hpp"
+#include "transposition.hpp"
 #include "../eval/nnue.hpp"
 
 int quiesce(SearchThread& thread, int alpha, int beta, SearchEntry* ss)

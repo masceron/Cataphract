@@ -22,7 +22,7 @@ add_executable(Cataphract main.cpp
         uci.hpp
         search/movepicker.hpp
         search/search.hpp
-        eval/transposition.hpp
+        search/transposition.hpp
         search/timer.hpp
         search/see.hpp
         position/position.cpp
@@ -51,7 +51,7 @@ add_executable(Cataphract main.cpp
         position/fen.cpp
         position/movegen.cpp
         eval/accumulators.cpp
-        eval/transposition.cpp
+        search/transposition.cpp
         board/bitboard.cpp
         position/move.cpp
         Engine.cpp

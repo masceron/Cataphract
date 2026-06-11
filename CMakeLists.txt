@@ -32,7 +32,7 @@ add_executable(Cataphract main.cpp
         position/cuckoo.hpp
         search/time.hpp
         position/bench.hpp
-        Engine.hpp
+        engine.hpp
         search/params.hpp
         search/params.cpp
         options.hpp
@@ -54,7 +54,7 @@ add_executable(Cataphract main.cpp
         search/transposition.cpp
         board/bitboard.cpp
         position/move.cpp
-        Engine.cpp
+        engine.cpp
         uci.cpp
         board/slider.cpp
         board/attacks.hpp

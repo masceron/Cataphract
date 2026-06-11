@@ -15,7 +15,7 @@
 #include "search/params.hpp"
 #endif
 #include "uci.hpp"
-#include "eval/transposition.hpp"
+#include "search/transposition.hpp"
 #include "eval/nnue.hpp"
 
 namespace UCI

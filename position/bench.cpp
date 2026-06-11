@@ -1,6 +1,6 @@
 #include <print>
 
-#include "../eval/transposition.hpp"
+#include "../search/transposition.hpp"
 #include "../search/search.hpp"
 #include "../search/thread.hpp"
 #include "../engine.hpp"

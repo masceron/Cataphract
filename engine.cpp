@@ -2,7 +2,7 @@
 
 #include "engine.hpp"
 #include "board/lines.hpp"
-#include "eval/transposition.hpp"
+#include "search/transposition.hpp"
 #include "position/cuckoo.hpp"
 #include "search/params.hpp"
 #include "position/position.hpp"

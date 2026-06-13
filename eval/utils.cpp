@@ -13,12 +13,12 @@ int nnue_index(const uint8_t piece) {
     return piece - ((piece & 8) >> 2);
 }
 
-std::pair<int, int> input_index_of(const uint8_t p, const uint8_t sq,
+std::pair<int, int> input_index_of(const uint8_t piece, const uint8_t square,
                                                     const std::pair<bool, bool>& mirrors)
 {
     return {
-        nnue_index(p) * 64 + (sq ^ 56 ^ (mirrors.first ? 7 : 0)),
-        nnue_index(flip_color(p)) * 64 + (sq ^ (mirrors.second ? 7 : 0))
+        nnue_index(piece) * 64 + (square ^ 56 ^ (mirrors.first ? 7 : 0)),
+        nnue_index(flip_color(piece)) * 64 + (square ^ (mirrors.second ? 7 : 0))
     };
 }
 

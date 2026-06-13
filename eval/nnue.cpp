@@ -50,10 +50,10 @@ int16_t evaluate(const Position& pos, int16_t* accumulator_pair)
 {
     static constexpr uint8_t divisor = (32 + OUTPUT_BUCKETS - 1) / OUTPUT_BUCKETS;
     const uint8_t bucket = (std::popcount(pos.occupations[2]) - 2) / divisor;
-    const int32_t eval = NNUE::forward(network, &accumulator_pair[pos.side_to_move * HL_SIZE],
+    const int32_t evaluation = NNUE::forward(network, &accumulator_pair[pos.side_to_move * HL_SIZE],
                                        &accumulator_pair[!pos.side_to_move * HL_SIZE], bucket);
 
-    return static_cast<int16_t>((eval / QA + network.output_bias[bucket]) * EVAL_SCALE / (QA * QB));
+    return static_cast<int16_t>((evaluation / QA + network.output_bias[bucket]) * EVAL_SCALE / (QA * QB));
 }
 
 int16_t eval(const Position& pos, AccumulatorStack& accumulator_stack)

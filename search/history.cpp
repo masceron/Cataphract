@@ -151,7 +151,7 @@ void Corrections::update(const int delta, const Position& pos, const uint8_t dep
     {
         if (pos.state->ply < offset) return;
         const auto key = pos.state->key;
-        auto state = pos.state;
+        const State* state = pos.state;
         for (int i = 0; i < offset; i++)
         {
             state = state->previous;

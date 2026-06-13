@@ -2,7 +2,7 @@
 
 #include <cstdint>
 
-enum Side: bool
+enum Side: uint8_t
 {
     white, black
 };

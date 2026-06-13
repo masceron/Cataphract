@@ -270,8 +270,6 @@ void accumulator_stack_update(const Network& __restrict network, AccumulatorStac
         };
         const auto current_accumulators = stack_entry.accumulators;
 
-        auto& previous_entry = accumulator_stack[idx - 1];
-        auto& previous_boards = previous_entry.bitboards;
         auto& previous_accumulators = accumulator_stack[idx - 1].accumulators;
 
         if (!stack_entry.require_rebuild)
@@ -281,11 +279,11 @@ void accumulator_stack_update(const Network& __restrict network, AccumulatorStac
         }
         else
         {
+            auto& previous_entry = accumulator_stack[idx - 1];
+            const auto& previous_boards = previous_entry.bitboards;
             const auto previous_buckets = get_buckets(previous_boards);
             const auto [white_bucket, black_bucket] = new_buckets;
-            auto& saved_entry = finny_table[white_bucket][black_bucket];
-            auto& saved_bitboards = saved_entry.bitboards;
-            auto& saved_accumulators = saved_entry.accumulators;
+            auto& [saved_bitboards, saved_accumulators] = finny_table[white_bucket][black_bucket];
 
             bool to_update;
 

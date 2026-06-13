@@ -68,7 +68,7 @@ void run_bench(const int depth, const uint32_t tt_size)
     if (Options::threads > 1) std::println(
         "Warning: Benching with more than one thread. Result will not be deterministic.");
 
-    const auto start = std::chrono::steady_clock::now();
+    const auto start_time = std::chrono::steady_clock::now();
 
     for (const auto& fen : bench_positions)
     {
@@ -79,7 +79,7 @@ void run_bench(const int depth, const uint32_t tt_size)
     }
 
     const auto time_taken = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::steady_clock::now() - start).count();
+        std::chrono::steady_clock::now() - start_time).count();
     std::println("{} nodes {} nps", total_nodes,
                  static_cast<uint64_t>(static_cast<double>(total_nodes) / time_taken * 1000000.0));
 }

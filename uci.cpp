@@ -287,7 +287,7 @@ namespace UCI
                 }
                 else if (command == "eval")
                 {
-                    auto& position = ThreadPool::threads[0].position;
+                    const auto& position = ThreadPool::threads[0].position;
                     std::println("NNUE evaluation: {} (white side)",
                                  eval(position, ThreadPool::get(0).accumulator_stack) * (
                                      !position.side_to_move ? 1 : -1));

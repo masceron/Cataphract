@@ -30,6 +30,8 @@ uint64_t Shift(const uint64_t& board)
     {
         return (board << 7) & 0x7F7F7F7F7F7F7F7F;
     }
+
+    return board;
 }
 
 template uint64_t Shift<Direction::Up, false>(const uint64_t&);
@@ -60,6 +62,8 @@ int8_t Delta(const bool side)
             return -7;
         return 7;
     }
+
+    return 0;
 }
 
 template int8_t Delta<Direction::Upleft>(bool);

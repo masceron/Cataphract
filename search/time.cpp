@@ -3,6 +3,7 @@
 
 #include "time.hpp"
 #include "params.hpp"
+#include "thread.hpp"
 #include "../position/movegen.hpp"
 
 void TimeManager::init_time_control(const Position& _position, const int time_left_ms, const int inc_ms,
@@ -33,6 +34,12 @@ void TimeManager::init_move_time(const int move_time)
 
     max_time = safe_time;
     opt_time = safe_time;
+}
+
+void TimeManager::init_nodes(const uint32_t nodes)
+{
+    soft_nodes = nodes;
+    init_none();
 }
 
 void TimeManager::init_none()
@@ -81,7 +88,7 @@ void TimeManager::update(const Move current_best_move, const int current_score)
     scale = tmp_scale;
 }
 
-[[nodiscard]] bool TimeManager::should_stop(const double elapsed_ms) const
+[[nodiscard]] bool TimeManager::should_stop(const double elapsed_ms, const uint32_t node_searched) const
 {
-    return elapsed_ms >= std::min(max_time, opt_time * scale);
+    return elapsed_ms >= std::min(max_time, opt_time * scale) || node_searched >= soft_nodes;
 }

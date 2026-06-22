@@ -138,6 +138,7 @@ namespace UCI
         bool infinite = false;
         bool perft_cmd = false;
         int perft_depth = 0;
+        uint32_t nodes = 0;
 
         if (it != tokens.end()) ++it;
 
@@ -178,6 +179,11 @@ namespace UCI
                 ++it;
                 std::from_chars((*it).begin(), (*it).end(), movestogo);
             }
+            else if (token == "nodes")
+            {
+                ++it;
+                std::from_chars((*it).begin(), (*it).end(), nodes);
+            }
             else if (token == "infinite")
             {
                 infinite = true;
@@ -206,7 +212,8 @@ namespace UCI
                                         btime,
                                         winc,
                                         binc,
-                                        movestogo);
+                                        movestogo,
+                                        nodes);
         }
     }
 

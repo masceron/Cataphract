@@ -734,7 +734,7 @@ void thread_search(const int thread_idx, const int search_depth)
             time_manager.update(best_move, thread.score);
 
             if (const double elapsed_ms = static_cast<double>(Timer::elapsed()) / 1000.0; time_manager.should_stop(
-                elapsed_ms))
+                elapsed_ms, ThreadPool::node_searched()))
             {
                 break;
             }
@@ -820,7 +820,7 @@ SearchThread& thread_vote()
 
 template <bool silent>
 void start_search(const int depth_param, const int move_time, const int wtime, const int btime,
-                  const int winc, const int binc, const int moves_to_go)
+                  const int winc, const int binc, const int moves_to_go, uint32_t nodes)
 {
     std::vector<std::jthread> searchers;
     searchers.reserve(Options::threads);
@@ -846,6 +846,10 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
         const int increment = position.side_to_move == white ? winc : binc;
 
         time_manager.init_time_control(position, time_left, increment, moves_to_go);
+    }
+    else if (nodes != 0)
+    {
+        time_manager.init_nodes(nodes);
     }
 
     Timer::start(static_cast<uint32_t>(time_manager.max_time));
@@ -891,5 +895,5 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
 
 template void thread_search<false>(int, int);
 template void thread_search<true>(int, int);
-template void start_search<false>(int, int, int, int, int, int, int);
-template void start_search<true>(int, int, int, int, int, int, int);
+template void start_search<false>(int, int, int, int, int, int, int, uint32_t);
+template void start_search<true>(int, int, int, int, int, int, int, uint32_t);

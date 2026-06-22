@@ -74,7 +74,7 @@ void run_bench(const int depth, const uint32_t tt_size)
     {
         new_game();
         set_board(std::string("fen ") + fen);
-        start_search<true>(depth, 0, 0, 0, 0, 0, 0);
+        start_search<true>(depth, 0, 0, 0, 0, 0, 0, 0);
         total_nodes += ThreadPool::node_searched();
     }
 

@@ -451,7 +451,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
         if constexpr (root_node)
         {
-            if (&thread == &ThreadPool::get(0) && Options::verbose && Timer::elapsed() / 1000 > 2500)
+            if (&thread == &ThreadPool::get(0) && Options::showcurrmove && Timer::elapsed() / 1000 > 2500)
             {
                 std::println("info depth {} currmove {} currmovenumber {}", thread.root_depth,
                              picked_move.get_move_string(), move_searched);

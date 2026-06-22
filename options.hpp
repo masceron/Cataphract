@@ -10,6 +10,7 @@ struct Options
     static inline int threads{1};
     static inline int move_overhead{50};
     static inline bool verbose{false};
+    static inline bool showcurrmove{false};
 };
 
 enum Values: int

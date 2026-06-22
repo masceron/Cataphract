@@ -28,7 +28,7 @@ struct Entry
 namespace TT
 {
     inline uintptr_t table_size = (64ull << 20) / sizeof(Entry);
-    inline uint8_t current_generation = 4;
+    inline uint8_t current_generation = 0;
     inline Entry* table = nullptr;
 
     void clear(Entry* start, size_t length);

@@ -151,9 +151,8 @@ std::pair<Move, int> MovePicker::next_move()
 {
     auto move = pick();
     if (!move.first) return {null_move, 0};
-    const auto& pos = thread.position;
 
-    while (!pos.is_legal(move.first))
+    while (!thread.position.is_legal(move.first))
     {
         move = pick();
         if (!move.first) return {null_move, 0};

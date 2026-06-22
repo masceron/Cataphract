@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 template <bool silent>
 void thread_search(int thread_idx, int search_depth);
 

@@ -451,7 +451,7 @@ int search(SearchThread& thread, int alpha, int beta, int depth, std::list<Move>
 
         if constexpr (root_node)
         {
-            if (&thread == &ThreadPool::get(0) && Options::show_currmove && Timer::elapsed() / 1000 > 2500)
+            if (&thread == &ThreadPool::get(0) && Options::verbose && Timer::elapsed() / 1000 > 2500)
             {
                 std::println("info depth {} currmove {} currmovenumber {}", thread.root_depth,
                              picked_move.get_move_string(), move_searched);
@@ -883,7 +883,7 @@ void start_search(const int depth_param, const int move_time, const int wtime, c
             print_info(best_thread);
         }
 
-        if (Options::show_currmove)
+        if (Options::verbose)
         {
             std::println("info string Selected thread {}", best_thread.id);
         }

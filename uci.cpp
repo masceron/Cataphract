@@ -63,14 +63,14 @@ namespace UCI
             if (thread >= 1 && thread <= 1024) Options::threads = thread;
             ThreadPool::resize();
         }
-        else if (name == "ShowCurrMove")
+        else if (name == "Verbose")
         {
             ++it;
             ++it;
             if (const std::string_view value{*it}; value == "true")
-                Options::show_currmove = true;
+                Options::verbose = true;
             else if (value == "false")
-                Options::show_currmove = false;
+                Options::verbose = false;
         }
         else if (name == "Move")
         {

@@ -29,7 +29,7 @@ void start()
     Cuckoo::init();
     TT::alloc();
 
-    std::println("Cataphract v1.6 by masceron");
+    std::println("Cataphract v1.5.1 by masceron");
     std::fflush(stdout);
 }
 
